@@ -1,0 +1,55 @@
+package homeservices
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/umar5678/go-backend/internal/middleware"
+)
+
+func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gin.HandlerFunc) {
+	services := router.Group("/services")
+	{
+		// --- Public Routes ---
+		services.GET("/categories", handler.ListCategories)
+		services.GET("", handler.ListServices)
+		services.GET("/:id", handler.GetServiceDetails)
+
+		// --- Customer Protected Routes ---
+		customer := services.Group("/orders")
+		customer.Use(authMiddleware)
+		customer.Use(middleware.RequireRole("customer")) // Only customers can book
+		{
+			customer.POST("", handler.CreateOrder)
+			customer.GET("", handler.GetMyOrders)
+			customer.GET("/:id", handler.GetOrderDetails)
+			customer.POST("/:id/cancel", handler.CancelOrder)
+		}
+
+		// --- Provider Protected Routes ---
+		provider := services.Group("/provider")
+		provider.Use(authMiddleware)
+		provider.Use(middleware.RequireRole("provider")) // Only providers
+		{
+			provider.GET("/orders", handler.GetProviderOrders)
+			provider.POST("/orders/:id/accept", handler.AcceptOrder)
+			provider.POST("/orders/:id/reject", handler.RejectOrder)
+			provider.POST("/orders/:id/start", handler.StartOrder)
+			provider.POST("/orders/:id/complete", handler.CompleteOrder)
+		}
+
+		// --- Admin Protected Routes ---
+		admin := services.Group("/admin")
+		admin.Use(authMiddleware)
+		admin.Use(middleware.RequireRole("admin"))
+		{
+			admin.POST("/services", handler.CreateService)
+			admin.PUT("/services/:id", handler.UpdateService)
+			// Add more admin routes here:
+			// - POST /categories
+			// - POST /services/:id/options
+			// - POST /options/:id/choices
+			// - GET /providers
+			// - PUT /providers/:id/verify
+			// - POST /providers/:id/qualify (assign services)
+		}
+	}
+}

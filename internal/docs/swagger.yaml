@@ -1,0 +1,3109 @@
+definitions:
+  github_com_umar5678_go-backend_internal_models.TransactionStatus:
+    enum:
+    - pending
+    - completed
+    - failed
+    - cancelled
+    - held
+    - released
+    type: string
+    x-enum-varnames:
+    - TransactionStatusPending
+    - TransactionStatusCompleted
+    - TransactionStatusFailed
+    - TransactionStatusCancelled
+    - TransactionStatusHeld
+    - TransactionStatusReleased
+  github_com_umar5678_go-backend_internal_models.TransactionType:
+    enum:
+    - credit
+    - debit
+    - refund
+    - hold
+    - release
+    - transfer
+    type: string
+    x-enum-varnames:
+    - TransactionTypeCredit
+    - TransactionTypeDebit
+    - TransactionTypeRefund
+    - TransactionTypeHold
+    - TransactionTypeRelease
+    - TransactionTypeTransfer
+  github_com_umar5678_go-backend_internal_models.UserRole:
+    enum:
+    - rider
+    - driver
+    - admin
+    - delivery_person
+    - service_provider
+    - handyman
+    type: string
+    x-enum-varnames:
+    - RoleRider
+    - RoleDriver
+    - RoleAdmin
+    - RoleDeliveryPerson
+    - RoleServiceProvider
+    - RoleHandyman
+  github_com_umar5678_go-backend_internal_models.UserStatus:
+    enum:
+    - active
+    - suspended
+    - banned
+    - pending_verification
+    type: string
+    x-enum-varnames:
+    - StatusActive
+    - StatusSuspended
+    - StatusBanned
+    - StatusPendingVerification
+  github_com_umar5678_go-backend_internal_models.WalletType:
+    enum:
+    - rider
+    - driver
+    - platform
+    type: string
+    x-enum-varnames:
+    - WalletTypeRider
+    - WalletTypeDriver
+    - WalletTypePlatform
+  github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse:
+    properties:
+      accessToken:
+        type: string
+      refreshToken:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_auth_dto.EmailLoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  github_com_umar5678_go-backend_internal_modules_auth_dto.EmailSignupRequest:
+    properties:
+      email:
+        type: string
+      name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      password:
+        minLength: 8
+        type: string
+      role:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+    required:
+    - email
+    - name
+    - password
+    - role
+    type: object
+  github_com_umar5678_go-backend_internal_modules_auth_dto.PhoneLoginRequest:
+    properties:
+      phone:
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+        enum:
+        - rider
+        - driver
+    required:
+    - phone
+    - role
+    type: object
+  github_com_umar5678_go-backend_internal_modules_auth_dto.PhoneSignupRequest:
+    properties:
+      name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      phone:
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+        enum:
+        - rider
+        - driver
+    required:
+    - name
+    - phone
+    - role
+    type: object
+  github_com_umar5678_go-backend_internal_modules_auth_dto.RefreshTokenRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      lastLoginAt:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      profilePhotoUrl:
+        type: string
+      role:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+      status:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverDashboardResponse:
+    properties:
+      acceptanceRate:
+        type: number
+      completionRate:
+        type: number
+      profile:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverProfileResponse'
+      rating:
+        type: number
+      status:
+        type: string
+      todayEarnings:
+        type: number
+      todayTrips:
+        type: integer
+      totalTrips:
+        type: integer
+      walletBalance:
+        type: number
+      weekEarnings:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverProfileResponse:
+    properties:
+      acceptanceRate:
+        type: number
+      cancellationRate:
+        type: number
+      createdAt:
+        type: string
+      currentLocation:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.LocationResponse'
+      heading:
+        type: integer
+      id:
+        type: string
+      isVerified:
+        type: boolean
+      licenseNumber:
+        type: string
+      rating:
+        type: number
+      status:
+        type: string
+      totalEarnings:
+        type: number
+      totalTrips:
+        type: integer
+      updatedAt:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+      userId:
+        type: string
+      vehicle:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.VehicleResponse'
+      walletBalance:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.LocationResponse:
+    properties:
+      latitude:
+        type: number
+      longitude:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateDriverProfileRequest:
+    properties:
+      licenseNumber:
+        maxLength: 100
+        minLength: 5
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateLocationRequest:
+    properties:
+      heading:
+        maximum: 360
+        minimum: 0
+        type: integer
+      latitude:
+        maximum: 90
+        minimum: -90
+        type: number
+      longitude:
+        maximum: 180
+        minimum: -180
+        type: number
+    required:
+    - latitude
+    - longitude
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateStatusRequest:
+    properties:
+      status:
+        enum:
+        - offline
+        - online
+        type: string
+    required:
+    - status
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateVehicleRequest:
+    properties:
+      capacity:
+        maximum: 20
+        minimum: 1
+        type: integer
+      color:
+        maxLength: 50
+        minLength: 2
+        type: string
+      isActive:
+        type: boolean
+      licensePlate:
+        maxLength: 50
+        minLength: 2
+        type: string
+      make:
+        maxLength: 100
+        minLength: 2
+        type: string
+      model:
+        maxLength: 100
+        minLength: 2
+        type: string
+      vehicleTypeId:
+        type: string
+      year:
+        minimum: 1900
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.VehicleResponse:
+    properties:
+      capacity:
+        type: integer
+      color:
+        type: string
+      createdAt:
+        type: string
+      driverId:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      licensePlate:
+        type: string
+      make:
+        type: string
+      model:
+        type: string
+      updatedAt:
+        type: string
+      vehicleType:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse'
+      vehicleTypeId:
+        type: string
+      year:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletResponse:
+    properties:
+      balance:
+        type: number
+      lastTransaction:
+        type: string
+      pendingAmount:
+        type: number
+      totalEarnings:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateOrderItemRequest:
+    properties:
+      selectedOptions:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.SelectedOptionRequest'
+        type: array
+      serviceId:
+        minimum: 1
+        type: integer
+    required:
+    - serviceId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateOrderRequest:
+    properties:
+      address:
+        maxLength: 500
+        minLength: 5
+        type: string
+      couponCode:
+        maxLength: 50
+        type: string
+      frequency:
+        enum:
+        - once
+        - daily
+        - weekly
+        - monthly
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateOrderItemRequest'
+        minItems: 1
+        type: array
+      latitude:
+        type: number
+      longitude:
+        type: number
+      notes:
+        maxLength: 500
+        type: string
+      serviceDate:
+        description: RFC3339 format
+        type: string
+    required:
+    - address
+    - items
+    - latitude
+    - longitude
+    - serviceDate
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateServiceRequest:
+    properties:
+      baseDurationMinutes:
+        minimum: 1
+        type: integer
+      basePrice:
+        type: number
+      categoryId:
+        minimum: 1
+        type: integer
+      description:
+        maxLength: 2000
+        type: string
+      imageUrl:
+        type: string
+      name:
+        maxLength: 150
+        minLength: 3
+        type: string
+      pricingModel:
+        enum:
+        - fixed
+        - hourly
+        - per_unit
+        type: string
+    required:
+    - baseDurationMinutes
+    - basePrice
+    - categoryId
+    - description
+    - name
+    - pricingModel
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderItemResponse:
+    properties:
+      basePrice:
+        type: number
+      calculatedPrice:
+        type: number
+      durationMinutes:
+        type: integer
+      id:
+        type: integer
+      selectedOptions:
+        additionalProperties: true
+        type: object
+      serviceId:
+        type: integer
+      serviceName:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderListResponse:
+    properties:
+      address:
+        type: string
+      code:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      serviceDate:
+        type: string
+      status:
+        type: string
+      total:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderResponse:
+    properties:
+      acceptedAt:
+        type: string
+      address:
+        type: string
+      code:
+        type: string
+      completedAt:
+        type: string
+      couponCode:
+        type: string
+      createdAt:
+        type: string
+      discount:
+        type: number
+      frequency:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderItemResponse'
+        type: array
+      platformFee:
+        type: number
+      provider:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderResponse'
+      providerId:
+        type: string
+      serviceDate:
+        type: string
+      status:
+        type: string
+      subtotal:
+        type: number
+      surgeFee:
+        type: number
+      total:
+        type: number
+      userId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderResponse:
+    properties:
+      completedJobs:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      photo:
+        type: string
+      rating:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.SelectedOptionRequest:
+    properties:
+      choiceId:
+        description: For select_single/select_multiple
+        minimum: 1
+        type: integer
+      optionId:
+        minimum: 1
+        type: integer
+      value:
+        description: For text/quantity types
+        type: string
+    required:
+    - optionId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceCategoryResponse:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      iconUrl:
+        type: string
+      id:
+        type: integer
+      isActive:
+        type: boolean
+      name:
+        type: string
+      sortOrder:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceListResponse:
+    properties:
+      basePrice:
+        type: number
+      categoryId:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: integer
+      imageUrl:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionChoiceResponse:
+    properties:
+      durationModifierMinutes:
+        type: integer
+      id:
+        type: integer
+      label:
+        type: string
+      optionId:
+        type: integer
+      priceModifier:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionResponse:
+    properties:
+      choices:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionChoiceResponse'
+        type: array
+      id:
+        type: integer
+      isRequired:
+        type: boolean
+      name:
+        type: string
+      serviceId:
+        type: integer
+      type:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceResponse:
+    properties:
+      baseDurationMinutes:
+        type: integer
+      basePrice:
+        type: number
+      category:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceCategoryResponse'
+      categoryId:
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      imageUrl:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionResponse'
+        type: array
+      pricingModel:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.UpdateServiceRequest:
+    properties:
+      baseDurationMinutes:
+        minimum: 1
+        type: integer
+      basePrice:
+        type: number
+      categoryId:
+        minimum: 1
+        type: integer
+      description:
+        maxLength: 2000
+        type: string
+      imageUrl:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        maxLength: 150
+        minLength: 3
+        type: string
+      pricingModel:
+        enum:
+        - fixed
+        - hourly
+        - per_unit
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateRequest:
+    properties:
+      dropoffLat:
+        maximum: 90
+        minimum: -90
+        type: number
+      dropoffLon:
+        maximum: 180
+        minimum: -180
+        type: number
+      pickupLat:
+        maximum: 90
+        minimum: -90
+        type: number
+      pickupLon:
+        maximum: 180
+        minimum: -180
+        type: number
+      vehicleTypeId:
+        type: string
+    required:
+    - dropoffLat
+    - dropoffLon
+    - pickupLat
+    - pickupLon
+    - vehicleTypeId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateResponse:
+    properties:
+      baseFare:
+        type: number
+      bookingFee:
+        type: number
+      currency:
+        type: string
+      distanceFare:
+        type: number
+      durationFare:
+        type: number
+      estimatedDistance:
+        description: km
+        type: number
+      estimatedDuration:
+        description: seconds
+        type: integer
+      subTotal:
+        type: number
+      surgeAmount:
+        type: number
+      surgeMultiplier:
+        type: number
+      totalFare:
+        type: number
+      vehicleTypeName:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeZoneResponse:
+    properties:
+      areaName:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      multiplier:
+        type: number
+      radiusKm:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_ratings_dto.CreateRatingRequest:
+    properties:
+      comment:
+        maxLength: 500
+        type: string
+      orderId:
+        type: string
+      score:
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - orderId
+    - score
+    type: object
+  github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingResponse:
+    properties:
+      comment:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      orderId:
+        type: string
+      providerId:
+        type: string
+      score:
+        type: integer
+      userId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_riders_dto.AddressInput:
+    properties:
+      address:
+        maxLength: 500
+        minLength: 5
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+    required:
+    - address
+    - lat
+    - lng
+    type: object
+  github_com_umar5678_go-backend_internal_modules_riders_dto.AddressResponse:
+    properties:
+      address:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_riders_dto.RiderProfileResponse:
+    properties:
+      createdAt:
+        type: string
+      homeAddress:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_riders_dto.AddressResponse'
+      id:
+        type: string
+      preferredVehicleType:
+        type: string
+      rating:
+        type: number
+      totalRides:
+        type: integer
+      updatedAt:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+      userId:
+        type: string
+      wallet:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletResponse'
+      workAddress:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_riders_dto.AddressResponse'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_riders_dto.RiderStatsResponse:
+    properties:
+      memberSince:
+        type: string
+      rating:
+        type: number
+      totalRides:
+        type: integer
+      walletBalance:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_riders_dto.UpdateProfileRequest:
+    properties:
+      homeAddress:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_riders_dto.AddressInput'
+      preferredVehicleType:
+        type: string
+      workAddress:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_riders_dto.AddressInput'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.CancelRideRequest:
+    properties:
+      reason:
+        maxLength: 500
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.CompleteRideRequest:
+    properties:
+      actualDistance:
+        minimum: 0
+        type: number
+      actualDuration:
+        minimum: 0
+        type: integer
+    required:
+    - actualDistance
+    - actualDuration
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.CreateRideRequest:
+    properties:
+      dropoffAddress:
+        maxLength: 500
+        type: string
+      dropoffLat:
+        maximum: 90
+        minimum: -90
+        type: number
+      dropoffLon:
+        maximum: 180
+        minimum: -180
+        type: number
+      pickupAddress:
+        maxLength: 500
+        type: string
+      pickupLat:
+        maximum: 90
+        minimum: -90
+        type: number
+      pickupLon:
+        maximum: 180
+        minimum: -180
+        type: number
+      riderNotes:
+        maxLength: 500
+        type: string
+      vehicleTypeId:
+        type: string
+    required:
+    - dropoffLat
+    - dropoffLon
+    - pickupLat
+    - pickupLon
+    - vehicleTypeId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.RejectRideRequest:
+    properties:
+      reason:
+        maxLength: 500
+        type: string
+      rideId:
+        type: string
+    required:
+    - rideId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.RideListResponse:
+    properties:
+      dropoffAddress:
+        type: string
+      estimatedFare:
+        type: number
+      id:
+        type: string
+      pickupAddress:
+        type: string
+      requestedAt:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.RideResponse:
+    properties:
+      acceptedAt:
+        type: string
+      actualDistance:
+        type: number
+      actualDuration:
+        type: integer
+      actualFare:
+        type: number
+      arrivedAt:
+        type: string
+      cancellationReason:
+        type: string
+      cancelledAt:
+        type: string
+      cancelledBy:
+        type: string
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      driver:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+      driverId:
+        type: string
+      dropoffAddress:
+        type: string
+      dropoffLat:
+        type: number
+      dropoffLon:
+        type: number
+      estimatedDistance:
+        type: number
+      estimatedDuration:
+        type: integer
+      estimatedFare:
+        type: number
+      id:
+        type: string
+      pickupAddress:
+        type: string
+      pickupLat:
+        type: number
+      pickupLon:
+        type: number
+      requestedAt:
+        type: string
+      rider:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+      riderId:
+        type: string
+      riderNotes:
+        type: string
+      startedAt:
+        type: string
+      status:
+        type: string
+      surgeMultiplier:
+        type: number
+      updatedAt:
+        type: string
+      vehicleType:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse'
+      vehicleTypeId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_todo_dto.CreateTodoRequest:
+    properties:
+      description:
+        type: string
+      title:
+        minLength: 3
+        type: string
+    required:
+    - title
+    type: object
+  github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse:
+    properties:
+      completed:
+        type: boolean
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_todo_dto.UpdateTodoRequest:
+    properties:
+      completed:
+        type: boolean
+      description:
+        type: string
+      title:
+        minLength: 3
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_tracking_dto.DriverLocationResponse:
+    properties:
+      distance:
+        description: km from search point
+        type: number
+      driver:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverProfileResponse'
+      driverId:
+        type: string
+      eta:
+        description: seconds
+        type: integer
+      location:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.LocationResponse'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_tracking_dto.LocationResponse:
+    properties:
+      accuracy:
+        type: number
+      heading:
+        type: integer
+      latitude:
+        type: number
+      longitude:
+        type: number
+      speed:
+        type: number
+      timestamp:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_tracking_dto.NearbyDriversResponse:
+    properties:
+      count:
+        type: integer
+      drivers:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.DriverLocationResponse'
+        type: array
+      radiusKm:
+        type: number
+      searchLocation:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.LocationResponse'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_tracking_dto.UpdateLocationRequest:
+    properties:
+      accuracy:
+        minimum: 0
+        type: number
+      heading:
+        maximum: 360
+        minimum: 0
+        type: integer
+      latitude:
+        maximum: 90
+        minimum: -90
+        type: number
+      longitude:
+        maximum: 180
+        minimum: -180
+        type: number
+      speed:
+        maximum: 300
+        minimum: 0
+        type: number
+    required:
+    - latitude
+    - longitude
+    type: object
+  github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse:
+    properties:
+      baseFare:
+        type: number
+      bookingFee:
+        type: number
+      capacity:
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      displayName:
+        type: string
+      iconUrl:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+      perKmRate:
+        type: number
+      perMinuteRate:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.AddFundsRequest:
+    properties:
+      amount:
+        type: number
+      description:
+        type: string
+    required:
+    - amount
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.CaptureHoldRequest:
+    properties:
+      amount:
+        description: 'Optional: capture partial amount'
+        type: number
+      description:
+        type: string
+      holdId:
+        type: string
+    required:
+    - holdId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.HoldFundsRequest:
+    properties:
+      amount:
+        type: number
+      holdDuration:
+        description: minutes, default 30
+        minimum: 1
+        type: integer
+      referenceId:
+        type: string
+      referenceType:
+        type: string
+    required:
+    - amount
+    - referenceId
+    - referenceType
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.HoldResponse:
+    properties:
+      amount:
+        type: number
+      createdAt:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      referenceId:
+        type: string
+      referenceType:
+        type: string
+      releasedAt:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.TransactionStatus'
+      walletId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.ReleaseHoldRequest:
+    properties:
+      holdId:
+        type: string
+    required:
+    - holdId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse:
+    properties:
+      amount:
+        type: number
+      balanceAfter:
+        type: number
+      balanceBefore:
+        type: number
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      processedAt:
+        type: string
+      referenceId:
+        type: string
+      referenceType:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.TransactionStatus'
+      type:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.TransactionType'
+      walletId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.TransferFundsRequest:
+    properties:
+      amount:
+        type: number
+      description:
+        type: string
+      recipientId:
+        type: string
+    required:
+    - amount
+    - recipientId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletResponse:
+    properties:
+      availableBalance:
+        type: number
+      balance:
+        type: number
+      createdAt:
+        type: string
+      currency:
+        type: string
+      heldBalance:
+        type: number
+      id:
+        type: string
+      isActive:
+        type: boolean
+      updatedAt:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+      userId:
+        type: string
+      walletType:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.WalletType'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.WithdrawFundsRequest:
+    properties:
+      amount:
+        type: number
+      description:
+        type: string
+    required:
+    - amount
+    type: object
+  github_com_umar5678_go-backend_internal_utils_response.ErrorDetail:
+    properties:
+      code:
+        type: string
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_utils_response.Meta:
+    properties:
+      durationMs:
+        type: number
+      method:
+        type: string
+      path:
+        type: string
+      requestId:
+        type: string
+      timestamp:
+        type: string
+      version:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_utils_response.Response:
+    properties:
+      code:
+        type: string
+      data: {}
+      errors:
+        description: Use ErrorDetail
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.ErrorDetail'
+        type: array
+      message:
+        type: string
+      meta:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Meta'
+      success:
+        type: boolean
+    type: object
+info:
+  contact: {}
+  description: Production-ready Go backend API
+  title: supr booking server in go
+  version: "1.0"
+paths:
+  /auth/email/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.EmailLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse'
+              type: object
+      summary: Login with email
+      tags:
+      - auth
+  /auth/email/signup:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Signup data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.EmailSignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse'
+              type: object
+      summary: Signup with email (other roles)
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /auth/phone/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.PhoneLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse'
+              type: object
+      summary: Login with phone (riders/drivers)
+      tags:
+      - auth
+  /auth/phone/signup:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Signup data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.PhoneSignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse'
+              type: object
+      summary: Signup with phone (riders/drivers)
+      tags:
+      - auth
+  /auth/profile:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse'
+              type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /drivers/dashboard:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverDashboardResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get driver dashboard stats
+      tags:
+      - drivers
+  /drivers/location:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Location data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update driver location
+      tags:
+      - drivers
+  /drivers/profile:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverProfileResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get driver profile
+      tags:
+      - drivers
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateDriverProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverProfileResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update driver profile
+      tags:
+      - drivers
+  /drivers/status:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Status update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverProfileResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update driver status (online/offline)
+      tags:
+      - drivers
+  /drivers/vehicle:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Vehicle update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateVehicleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.VehicleResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update vehicle information
+      tags:
+      - drivers
+  /drivers/wallet:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get driver wallet balance
+      tags:
+      - drivers
+  /pricing/estimate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Fare estimate request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateResponse'
+              type: object
+      summary: Get fare estimate for a trip
+      tags:
+      - pricing
+  /pricing/surge:
+    get:
+      parameters:
+      - description: Latitude
+        in: query
+        name: latitude
+        required: true
+        type: number
+      - description: Longitude
+        in: query
+        name: longitude
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+      summary: Get surge multiplier for a location
+      tags:
+      - pricing
+  /pricing/surge/zones:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeZoneResponse'
+                  type: array
+              type: object
+      summary: Get all active surge zones
+      tags:
+      - pricing
+  /ratings:
+    post:
+      consumes:
+      - application/json
+      description: Rate a completed service order
+      parameters:
+      - description: Rating details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.CreateRatingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Rate a service
+      tags:
+      - ratings
+  /riders/profile:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_riders_dto.RiderProfileResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get rider profile
+      tags:
+      - riders
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Profile data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_riders_dto.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_riders_dto.RiderProfileResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update rider profile
+      tags:
+      - riders
+  /riders/stats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_riders_dto.RiderStatsResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get rider statistics
+      tags:
+      - riders
+  /rides:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: User role (rider or driver)
+        in: query
+        name: role
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.RideListResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List user's rides
+      tags:
+      - rides
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Ride request data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.CreateRideRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.RideResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new ride request
+      tags:
+      - rides
+  /rides/{id}:
+    get:
+      parameters:
+      - description: Ride ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.RideResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get ride details
+      tags:
+      - rides
+  /rides/{id}/accept:
+    post:
+      parameters:
+      - description: Ride ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.RideResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Accept a ride request (Driver)
+      tags:
+      - rides
+  /rides/{id}/arrived:
+    post:
+      parameters:
+      - description: Ride ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.RideResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Mark driver as arrived at pickup (Driver)
+      tags:
+      - rides
+  /rides/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Ride ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Cancellation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.CancelRideRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cancel a ride
+      tags:
+      - rides
+  /rides/{id}/complete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Ride ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Completion data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.CompleteRideRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.RideResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Complete the ride (Driver)
+      tags:
+      - rides
+  /rides/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Ride ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rejection data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.RejectRideRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Reject a ride request (Driver)
+      tags:
+      - rides
+  /rides/{id}/start:
+    post:
+      parameters:
+      - description: Ride ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.RideResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Start the ride (Driver)
+      tags:
+      - rides
+  /services:
+    get:
+      description: Get paginated list of services with filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category ID
+        in: query
+        name: categoryId
+        type: integer
+      - description: Search in name and description
+        in: query
+        name: search
+        type: string
+      - description: Minimum price
+        in: query
+        name: minPrice
+        type: number
+      - description: Maximum price
+        in: query
+        name: maxPrice
+        type: number
+      - description: Filter by active status
+        in: query
+        name: isActive
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceListResponse'
+                  type: array
+              type: object
+      summary: List services
+      tags:
+      - home-services
+  /services/{id}:
+    get:
+      description: Get detailed service information including options
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get service details
+      tags:
+      - home-services
+  /services/admin/services:
+    post:
+      consumes:
+      - application/json
+      description: Create a new home service (admin only)
+      parameters:
+      - description: Service details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a service
+      tags:
+      - home-services-admin
+  /services/admin/services/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Update service details (admin only)
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.UpdateServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update a service
+      tags:
+      - home-services-admin
+  /services/categories:
+    get:
+      description: Get all active service categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceCategoryResponse'
+                  type: array
+              type: object
+      summary: List service categories
+      tags:
+      - home-services
+  /services/orders:
+    get:
+      description: Get authenticated user's service orders
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderListResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get my orders
+      tags:
+      - home-services
+    post:
+      consumes:
+      - application/json
+      description: Book a home service
+      parameters:
+      - description: Order details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a service order
+      tags:
+      - home-services
+  /services/orders/{id}:
+    get:
+      description: Get detailed information about a specific order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get order details
+      tags:
+      - home-services
+  /services/orders/{id}/cancel:
+    post:
+      description: Cancel a pending or searching order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cancel an order
+      tags:
+      - home-services
+  /services/provider/orders:
+    get:
+      description: Get orders assigned to the provider
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderListResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get provider orders
+      tags:
+      - home-services-provider
+  /services/provider/orders/{id}/accept:
+    post:
+      description: Accept a job offer
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Accept an order
+      tags:
+      - home-services-provider
+  /services/provider/orders/{id}/complete:
+    post:
+      description: Mark order as completed and process payment
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Complete an order
+      tags:
+      - home-services-provider
+  /services/provider/orders/{id}/reject:
+    post:
+      description: Reject a job offer
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Reject an order
+      tags:
+      - home-services-provider
+  /services/provider/orders/{id}/start:
+    post:
+      description: Mark order as in progress
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Start an order
+      tags:
+      - home-services-provider
+  /todos:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get all todos
+      tags:
+      - todos
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create Todo
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.CreateTodoRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create new todo
+      tags:
+      - todos
+  /todos/{id}:
+    delete:
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete todo
+      tags:
+      - todos
+    get:
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get todo by ID
+      tags:
+      - todos
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Todo
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.UpdateTodoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update todo
+      tags:
+      - todos
+  /tracking/driver/{driverId}:
+    get:
+      parameters:
+      - description: Driver ID
+        in: path
+        name: driverId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.LocationResponse'
+              type: object
+      summary: Get driver's current location
+      tags:
+      - tracking
+  /tracking/location:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Location data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.UpdateLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update driver location (called by driver app)
+      tags:
+      - tracking
+  /tracking/nearby:
+    get:
+      parameters:
+      - description: Latitude
+        in: query
+        name: latitude
+        required: true
+        type: number
+      - description: Longitude
+        in: query
+        name: longitude
+        required: true
+        type: number
+      - description: Search radius in km
+        in: query
+        name: radiusKm
+        type: number
+      - description: Filter by vehicle type
+        in: query
+        name: vehicleTypeId
+        type: string
+      - description: Maximum results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.NearbyDriversResponse'
+              type: object
+      summary: Find drivers near a location
+      tags:
+      - tracking
+  /vehicles/types:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse'
+                  type: array
+              type: object
+      summary: Get all vehicle types
+      tags:
+      - vehicles
+  /vehicles/types/{id}:
+    get:
+      parameters:
+      - description: Vehicle Type ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse'
+              type: object
+      summary: Get vehicle type by ID
+      tags:
+      - vehicles
+  /vehicles/types/active:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse'
+                  type: array
+              type: object
+      summary: Get active vehicle types
+      tags:
+      - vehicles
+  /wallet:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get wallet details
+      tags:
+      - wallet
+  /wallet/add-funds:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Add funds data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.AddFundsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Add funds to wallet
+      tags:
+      - wallet
+  /wallet/balance:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  format: float64
+                  type: number
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get wallet balance
+      tags:
+      - wallet
+  /wallet/hold:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hold funds data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.HoldFundsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.HoldResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Place a hold on funds
+      tags:
+      - wallet
+  /wallet/hold/capture:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Capture hold data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.CaptureHoldRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Capture a hold
+      tags:
+      - wallet
+  /wallet/hold/release:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hold ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.ReleaseHoldRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Release a hold
+      tags:
+      - wallet
+  /wallet/transactions:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Transaction type
+        in: query
+        name: type
+        type: string
+      - description: Transaction status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List wallet transactions
+      tags:
+      - wallet
+  /wallet/transactions/{id}:
+    get:
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get transaction details
+      tags:
+      - wallet
+  /wallet/transfer:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Transfer data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransferFundsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Transfer funds to another user
+      tags:
+      - wallet
+  /wallet/withdraw:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Withdraw funds data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.WithdrawFundsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Withdraw funds from wallet
+      tags:
+      - wallet
+swagger: "2.0"

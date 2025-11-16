@@ -1,0 +1,51 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.a
+*.bin
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with `-o`
+*.out
+
+# Directories created by `go build`
+# for project-specific binaries
+bin/
+
+# Dependency directories
+# vendor directory
+vendor/
+
+# Go module cache
+# This can be useful if you're managing modules manually
+# or if you have a local proxy, but generally, it's not needed.
+# go.mod and go.sum should be committed.
+# .cache/go-build/
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Logs and temporary files
+*.log
+tmp/
+
+# Environment variables
+.env
+.env.*
+
+# Database files (if applicable)
+*.db
+*.sqlite3
+
+# Frontend build artifacts (if applicable, e.g., if Gin serves a frontend)
+dist/
+build/
