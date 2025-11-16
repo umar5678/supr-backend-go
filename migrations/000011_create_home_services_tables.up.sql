@@ -171,16 +171,16 @@ CREATE INDEX idx_ratings_user ON "ratings"("user_id");
 
 
 -- SURGE ZONES (optional) --
-CREATE TABLE "surge_zones" (
-    "id" SERIAL PRIMARY KEY,
-    "name" VARCHAR(100) NOT NULL,
-    "zone" GEOGRAPHY(Polygon, 4326) NOT NULL,
-    "surge_multiplier" DECIMAL(3, 2) NOT NULL DEFAULT 1.00,
-    "is_active" BOOLEAN NOT NULL DEFAULT TRUE,
-    "valid_from" TIMESTAMPTZ,
-    "valid_to" TIMESTAMPTZ,
-    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_surge_zones_zone ON "surge_zones" USING GIST ("zone");
-CREATE INDEX idx_surge_zones_active ON "surge_zones"("is_active");
+-- CREATE TABLE "surge_zones" (
+--     "id" SERIAL PRIMARY KEY,
+--     "name" VARCHAR(100) NOT NULL,
+--     "zone" GEOGRAPHY(Polygon, 4326) NOT NULL,
+--     "surge_multiplier" DECIMAL(3, 2) NOT NULL DEFAULT 1.00,
+--     "is_active" BOOLEAN NOT NULL DEFAULT TRUE,
+--     "valid_from" TIMESTAMPTZ,
+--     "valid_to" TIMESTAMPTZ,
+--     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- );
+-- CREATE INDEX idx_surge_zones_zone ON "surge_zones" USING GIST ("zone");
+-- CREATE INDEX idx_surge_zones_active ON "surge_zones"("is_active");
