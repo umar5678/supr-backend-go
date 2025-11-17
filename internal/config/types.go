@@ -11,7 +11,7 @@ type Config struct {
 	App      AppConfig
 	Server   ServerConfig
 	Database DatabaseConfig
-	Redis    RedisConfig // Added
+	Redis    RedisConfig
 	JWT      JWTConfig
 	Upload   UploadConfig
 	Logger   LoggerConfig

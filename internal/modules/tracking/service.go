@@ -8,10 +8,10 @@ import (
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/tracking/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
-	"github.com/umar5678/go-backend/internal/utils/helpers"
 	"github.com/umar5678/go-backend/internal/utils/location"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
+	websocketutil "github.com/umar5678/go-backend/internal/websocket/websocketutils"
 )
 
 type Service interface {
@@ -221,13 +221,73 @@ func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, r
 		return err
 	}
 
-	// Send via WebSocket to rider
-	helpers.SendNotification(riderID, map[string]interface{}{
-		"type":     "driver_location_update",
+	// Send via WebSocket to rider using the new utility
+	locationData := map[string]interface{}{
 		"rideId":   rideID,
 		"driverId": driverID,
-		"location": location,
-	})
+		"location": map[string]interface{}{
+			"latitude":  location.Latitude,
+			"longitude": location.Longitude,
+			"heading":   location.Heading,
+			"speed":     location.Speed,
+			"accuracy":  location.Accuracy,
+			"timestamp": location.Timestamp,
+		},
+		"timestamp": time.Now().UTC(),
+	}
+
+	if err := websocketutil.SendRideLocationUpdate(riderID, locationData); err != nil {
+		logger.Error("failed to send driver location update to rider",
+			"error", err,
+			"riderID", riderID,
+			"driverID", driverID,
+			"rideID", rideID,
+		)
+		return err
+	}
+
+	logger.Debug("driver location streamed to rider",
+		"rideID", rideID,
+		"driverID", driverID,
+		"riderID", riderID,
+	)
+
+	return nil
+}
+
+// New method for continuous location streaming
+func (s *service) StartLocationStreaming(ctx context.Context, rideID, driverID, riderID string, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Info("location streaming stopped", "rideID", rideID)
+			return
+		case <-ticker.C:
+			if err := s.StreamLocationToRider(ctx, rideID, driverID, riderID); err != nil {
+				logger.Warn("failed to stream location",
+					"error", err,
+					"rideID", rideID,
+				)
+				// Continue streaming despite errors
+			}
+		}
+	}
+}
+
+// Enhanced location update that also streams to rider if there's an active ride
+func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
+	// Update the location first
+	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
+		return err
+	}
+
+	// If there's an active ride, stream to rider
+	if activeRideID != "" && riderID != "" {
+		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
+	}
 
 	return nil
 }

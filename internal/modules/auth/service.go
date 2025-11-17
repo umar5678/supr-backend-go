@@ -89,6 +89,18 @@ func (s *service) PhoneSignup(ctx context.Context, req authdto.PhoneSignupReques
 		}
 	}
 
+	// if user.Role == models.RoleRider {
+	// 	if _, err := s.riderService.CreateProfile(ctx, user.ID); err != nil {
+	// 		logger.Error("failed to create rider profile", "error", err, "userId", user.ID)
+	// 	}
+
+	// } else if user.Role == models.RoleDriver {
+	// 	// You'll need to inject driverService similar to riderService
+	// 	if _, err := s.driverService.CreateProfile(ctx, user.ID); err != nil {
+	// 		logger.Error("failed to create driver profile", "error", err, "userId", user.ID)
+	// 	}
+	// }
+
 	// Update last login
 	s.repo.UpdateLastLogin(ctx, user.ID)
 
@@ -353,7 +365,7 @@ func (s *service) generateAuthResponse(user *models.User) (*authdto.AuthResponse
 		user.ID,
 		string(user.Role),
 		s.cfg.JWT.Secret,
-		time.Duration(s.cfg.JWT.AccessExpiry)*time.Minute,
+		time.Duration(s.cfg.JWT.AccessExpiry)*7,
 	)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to generate access token", err)
@@ -364,7 +376,7 @@ func (s *service) generateAuthResponse(user *models.User) (*authdto.AuthResponse
 		user.ID,
 		string(user.Role),
 		s.cfg.JWT.Secret,
-		time.Duration(s.cfg.JWT.RefreshExpiry)*time.Hour,
+		time.Duration(s.cfg.JWT.RefreshExpiry)*20,
 	)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to generate refresh token", err)

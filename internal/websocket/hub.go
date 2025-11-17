@@ -118,6 +118,23 @@ func (h *Hub) registerClient(client *Client) {
 	}
 }
 
+// Add this method to Hub for debugging
+func (h *Hub) DebugInfo() map[string]interface{} {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	userConnections := make(map[string]int)
+	for userID, clients := range h.clients {
+		userConnections[userID] = len(clients)
+	}
+
+	return map[string]interface{}{
+		"total_users":       len(h.clients),
+		"total_connections": h.GetTotalConnections(),
+		"user_connections":  userConnections,
+	}
+}
+
 // unregisterClient removes a client from the hub
 func (h *Hub) unregisterClient(client *Client) {
 	h.mu.Lock()
@@ -163,17 +180,32 @@ func (h *Hub) unregisterClient(client *Client) {
 	}
 }
 
-// broadcastMessage sends message to appropriate clients
+// Update the broadcastMessage method with better logging
 func (h *Hub) broadcastMessage(message *Message) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
+	logger.Debug("broadcasting message",
+		"type", message.Type,
+		"targetUserID", message.TargetUserID,
+		"total_users", len(h.clients),
+	)
+
 	if message.TargetUserID != "" {
 		// Send to specific user (all their devices)
 		if clients, ok := h.clients[message.TargetUserID]; ok {
+			logger.Debug("sending to specific user",
+				"targetUserID", message.TargetUserID,
+				"device_count", len(clients),
+			)
 			for _, client := range clients {
 				select {
 				case client.send <- message:
+					logger.Debug("message sent to client",
+						"userID", client.UserID,
+						"clientID", client.ID,
+						"type", message.Type,
+					)
 				default:
 					logger.Warn("client send buffer full",
 						"userID", client.UserID,
@@ -181,16 +213,27 @@ func (h *Hub) broadcastMessage(message *Message) {
 					)
 				}
 			}
+		} else {
+			logger.Warn("target user not found",
+				"targetUserID", message.TargetUserID,
+				"online_users", len(h.clients),
+			)
 		}
 	} else {
 		// Broadcast to all connected clients
-		for _, clients := range h.clients {
+		logger.Debug("broadcasting to all users", "total_connections", h.GetTotalConnections())
+		for userID, clients := range h.clients {
 			for _, client := range clients {
 				select {
 				case client.send <- message:
+					logger.Debug("broadcast message sent",
+						"userID", userID,
+						"clientID", client.ID,
+						"type", message.Type,
+					)
 				default:
-					logger.Warn("client send buffer full",
-						"userID", client.UserID,
+					logger.Warn("broadcast client send buffer full",
+						"userID", userID,
 						"clientID", client.ID,
 					)
 				}

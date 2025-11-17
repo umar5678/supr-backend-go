@@ -1,5 +1,7 @@
 package config
 
+// base config, app-root level ,. envs, etc. /internal.config/config.go
+
 import (
 	"fmt"
 	"strings"

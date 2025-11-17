@@ -67,17 +67,18 @@ func (Ride) TableName() string {
 	return "rides"
 }
 
+// Add to ride.go models
 type RideRequest struct {
-	ID              string         `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	RideID          string         `gorm:"type:uuid;not null;index" json:"rideId"`
-	DriverID        string         `gorm:"type:uuid;not null;index" json:"driverId"`
-	Status          string         `gorm:"type:varchar(50);not null" json:"status"` // pending, expired, rejected, accepted
-	SentAt          time.Time      `gorm:"not null" json:"sentAt"`
-	RespondedAt     *time.Time     `json:"respondedAt"`
-	ExpiresAt       time.Time      `gorm:"not null;index" json:"expiresAt"`
-	RejectionReason string         `gorm:"type:text" json:"rejectionReason"`
-	CreatedAt       time.Time      `gorm:"autoCreateTime" json:"createdAt"`
-	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+	ID              string     `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	RideID          string     `gorm:"type:uuid;not null;index" json:"rideId"`
+	DriverID        string     `gorm:"type:uuid;not null;index" json:"driverId"`
+	Status          string     `gorm:"type:varchar(50);not null" json:"status"` // pending, accepted, rejected, expired, cancelled
+	SentAt          time.Time  `gorm:"not null" json:"sentAt"`
+	RespondedAt     *time.Time `json:"respondedAt,omitempty"`
+	ExpiresAt       time.Time  `gorm:"not null;index" json:"expiresAt"`
+	RejectionReason string     `gorm:"type:text" json:"rejectionReason,omitempty"`
+	CreatedAt       time.Time  `gorm:"autoCreateTime" json:"createdAt"`
+	UpdatedAt       time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`
 
 	// Relations
 	Ride   Ride          `gorm:"foreignKey:RideID" json:"ride,omitempty"`
