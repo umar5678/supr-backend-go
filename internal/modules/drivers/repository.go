@@ -4,6 +4,7 @@ package drivers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
 	"gorm.io/gorm"
@@ -18,6 +19,8 @@ type Repository interface {
 	UpdateDriver(ctx context.Context, driver *models.DriverProfile) error
 	UpdateDriverStatus(ctx context.Context, driverID, status string) error
 	UpdateDriverLocation(ctx context.Context, driverID string, lat, lng float64, heading int) error
+	GetDriverLocationHistory(ctx context.Context, driverID string, limit int) ([]*models.DriverLocation, error)
+	GetLatestDriverLocation(ctx context.Context, driverID string) (*models.DriverLocation, error)
 
 	// Vehicle
 	CreateVehicle(ctx context.Context, vehicle *models.Vehicle) error
@@ -90,7 +93,6 @@ func (r *repository) UpdateDriverStatus(ctx context.Context, driverID, status st
 }
 
 func (r *repository) UpdateDriverLocation(ctx context.Context, driverID string, lat, lng float64, heading int) error {
-	// Using PostGIS POINT format
 	locationStr := fmt.Sprintf("POINT(%f %f)", lng, lat)
 
 	return r.db.WithContext(ctx).
@@ -98,8 +100,27 @@ func (r *repository) UpdateDriverLocation(ctx context.Context, driverID string, 
 		Where("id = ?", driverID).
 		Updates(map[string]interface{}{
 			"current_location": gorm.Expr("ST_GeomFromText(?, 4326)", locationStr),
+			"current_lat":      lat,
+			"current_lng":      lng,
 			"heading":          heading,
+			"updated_at":       time.Now(),
 		}).Error
+}
+
+// Add this to your drivers repository implementation:
+func (r *repository) GetLatestDriverLocation(ctx context.Context, driverID string) (*models.DriverLocation, error) {
+	var location models.DriverLocation
+
+	err := r.db.WithContext(ctx).
+		Where("driver_id = ?", driverID).
+		Order("timestamp DESC").
+		First(&location).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &location, nil
 }
 
 // Vehicle Methods
@@ -184,4 +205,16 @@ func (r *repository) FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm f
 		Find(&drivers).Error
 
 	return drivers, err
+}
+
+// Add to drivers/repository.go
+
+func (r *repository) GetDriverLocationHistory(ctx context.Context, driverID string, limit int) ([]*models.DriverLocation, error) {
+	var locations []*models.DriverLocation
+	err := r.db.WithContext(ctx).
+		Where("driver_id = ?", driverID).
+		Order("timestamp DESC").
+		Limit(limit).
+		Find(&locations).Error
+	return locations, err
 }

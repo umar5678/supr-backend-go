@@ -279,7 +279,7 @@ func (s *service) RefreshToken(ctx context.Context, refreshToken string) (*authd
 	}
 
 	// Blacklist old refresh token
-	cache.Set(ctx, "blacklist:"+refreshToken, "1", time.Duration(s.cfg.JWT.RefreshExpiry)*time.Hour)
+	cache.Set(ctx, "blacklist:"+refreshToken, "1", time.Duration(s.cfg.JWT.RefreshExpiry)*20)
 
 	logger.Info("token refreshed", "userId", user.ID)
 
@@ -290,7 +290,7 @@ func (s *service) RefreshToken(ctx context.Context, refreshToken string) (*authd
 func (s *service) Logout(ctx context.Context, userID, refreshToken string) error {
 	// Blacklist refresh token
 	if refreshToken != "" {
-		cache.Set(ctx, "blacklist:"+refreshToken, "1", time.Duration(s.cfg.JWT.RefreshExpiry)*time.Hour)
+		cache.Set(ctx, "blacklist:"+refreshToken, "1", time.Duration(s.cfg.JWT.RefreshExpiry)*20)
 	}
 
 	// Clear user cache

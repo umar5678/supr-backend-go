@@ -6,6 +6,10 @@ import (
 	driverdto "github.com/umar5678/go-backend/internal/modules/drivers/dto"
 )
 
+// ============================================================================
+// RESPONSE DTOs
+// ============================================================================
+
 type LocationResponse struct {
 	Latitude  float64   `json:"latitude"`
 	Longitude float64   `json:"longitude"`
@@ -28,4 +32,18 @@ type NearbyDriversResponse struct {
 	RadiusKm       float64                  `json:"radiusKm"`
 	Drivers        []DriverLocationResponse `json:"drivers"`
 	Count          int                      `json:"count"`
+}
+
+// NEW: Polyline response
+type PolylineResponse struct {
+	RideID    string    `json:"rideId,omitempty"`
+	Polyline  string    `json:"polyline"`
+	Points    int       `json:"points"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type PolylineStreamEvent struct {
+	RideID    string    `json:"rideId"`
+	Polyline  string    `json:"polyline"`
+	Timestamp time.Time `json:"timestamp"`
 }

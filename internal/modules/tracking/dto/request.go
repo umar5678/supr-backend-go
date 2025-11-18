@@ -1,6 +1,13 @@
 package dto
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
+
+// ============================================================================
+// REQUEST DTOs
+// ============================================================================
 
 type UpdateLocationRequest struct {
 	Latitude  float64 `json:"latitude" binding:"required,min=-90,max=90"`
@@ -32,6 +39,7 @@ type FindNearbyDriversRequest struct {
 	RadiusKm      float64 `form:"radiusKm" binding:"omitempty,min=0.1,max=50"`
 	VehicleTypeID string  `form:"vehicleTypeId" binding:"omitempty,uuid"`
 	Limit         int     `form:"limit" binding:"omitempty,min=1,max=50"`
+	OnlyAvailable bool    `form:"onlyAvailable"` // Filter only available drivers (not on active ride)
 }
 
 func (r *FindNearbyDriversRequest) SetDefaults() {
@@ -41,4 +49,16 @@ func (r *FindNearbyDriversRequest) SetDefaults() {
 	if r.Limit == 0 {
 		r.Limit = 20
 	}
+	// By default, only show available drivers
+	r.OnlyAvailable = true
+}
+
+type GetPolylineRequest struct {
+	RideID string `form:"rideId" binding:"required,uuid"`
+}
+
+type GeneratePolylineRequest struct {
+	DriverID string    `form:"driverId" binding:"required,uuid"`
+	From     time.Time `form:"from" binding:"required"`
+	To       time.Time `form:"to" binding:"required"`
 }

@@ -10,11 +10,11 @@ import (
 )
 
 type Repository interface {
-	SaveLocation(ctx context.Context, location *models.DriverLocationHistory) error
-	GetDriverLocation(ctx context.Context, driverID string) (*models.DriverLocationHistory, error)
-	GetLocationHistory(ctx context.Context, driverID string, from, to time.Time, limit int) ([]*models.DriverLocationHistory, error)
+	SaveLocation(ctx context.Context, location *models.DriverLocation) error
+	GetDriverLocation(ctx context.Context, driverID string) (*models.DriverLocation, error)
+	GetLocationHistory(ctx context.Context, driverID string, from, to time.Time, limit int) ([]*models.DriverLocation, error)
 	FindNearbyDrivers(ctx context.Context, lat, lon, radiusKm float64, vehicleTypeID string, limit int) ([]*models.DriverProfile, error)
-	BatchSaveLocations(ctx context.Context, locations []*models.DriverLocationHistory) error
+	BatchSaveLocations(ctx context.Context, locations []*models.DriverLocation) error
 }
 
 type repository struct {
@@ -25,8 +25,7 @@ func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-func (r *repository) SaveLocation(ctx context.Context, location *models.DriverLocationHistory) error {
-	// Store location in PostGIS format
+func (r *repository) SaveLocation(ctx context.Context, location *models.DriverLocation) error {
 	locationStr := fmt.Sprintf("POINT(%f %f)", location.Longitude, location.Latitude)
 
 	return r.db.WithContext(ctx).Exec(`
@@ -37,8 +36,8 @@ func (r *repository) SaveLocation(ctx context.Context, location *models.DriverLo
 		location.Heading, location.Speed, location.Accuracy, location.Timestamp).Error
 }
 
-func (r *repository) GetDriverLocation(ctx context.Context, driverID string) (*models.DriverLocationHistory, error) {
-	var location models.DriverLocationHistory
+func (r *repository) GetDriverLocation(ctx context.Context, driverID string) (*models.DriverLocation, error) {
+	var location models.DriverLocation
 
 	err := r.db.WithContext(ctx).
 		Where("driver_id = ?", driverID).
@@ -48,8 +47,8 @@ func (r *repository) GetDriverLocation(ctx context.Context, driverID string) (*m
 	return &location, err
 }
 
-func (r *repository) GetLocationHistory(ctx context.Context, driverID string, from, to time.Time, limit int) ([]*models.DriverLocationHistory, error) {
-	var locations []*models.DriverLocationHistory
+func (r *repository) GetLocationHistory(ctx context.Context, driverID string, from, to time.Time, limit int) ([]*models.DriverLocation, error) {
+	var locations []*models.DriverLocation
 
 	query := r.db.WithContext(ctx).
 		Where("driver_id = ?", driverID).
@@ -95,11 +94,10 @@ func (r *repository) FindNearbyDrivers(ctx context.Context, lat, lon, radiusKm f
 	return drivers, err
 }
 
-func (r *repository) BatchSaveLocations(ctx context.Context, locations []*models.DriverLocationHistory) error {
+func (r *repository) BatchSaveLocations(ctx context.Context, locations []*models.DriverLocation) error {
 	if len(locations) == 0 {
 		return nil
 	}
 
-	// Use batch insert for better performance
 	return r.db.WithContext(ctx).CreateInBatches(locations, 100).Error
 }

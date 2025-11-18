@@ -8,8 +8,12 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		// Driver location update (protected)
 		tracking.POST("/location", authMiddleware, handler.UpdateLocation)
 
-		// Public/internal endpoints
+		// Location queries
 		tracking.GET("/driver/:driverId", handler.GetDriverLocation)
 		tracking.GET("/nearby", handler.FindNearbyDrivers)
+
+		// // Polyline endpoints (protected)
+		// tracking.GET("/polyline/ride/:rideId", authMiddleware, handler.GetRidePolyline)
+		// tracking.GET("/polyline/driver/:driverId", authMiddleware, handler.GeneratePolyline)
 	}
 }
