@@ -18,7 +18,7 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		// --- Customer Protected Routes ---
 		customer := services.Group("/orders")
 		customer.Use(authMiddleware)
-		customer.Use(middleware.RequireRole("customer")) // Only customers can book
+		customer.Use(middleware.RequireRole("rider")) // Only customers can book
 		{
 			customer.POST("", handler.CreateOrder)
 			customer.GET("", handler.GetMyOrders)

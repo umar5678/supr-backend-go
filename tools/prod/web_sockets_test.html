@@ -1,0 +1,391 @@
+<!-- tools/websocket_test.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Client</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .panel { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .status { padding: 10px; border-radius: 5px; margin: 5px 0; }
+        .connected { background: #d4edda; border: 1px solid #c3e6cb; }
+        .disconnected { background: #f8d7da; border: 1px solid #f5c6cb; }
+        .message { background: #e2e3e5; border: 1px solid #d6d8db; padding: 8px; margin: 5px 0; border-radius: 3px; }
+        button { padding: 8px 15px; margin: 5px; cursor: pointer; }
+        input, textarea { width: 100%; padding: 8px; margin: 5px 0; }
+        .log { height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Test Client</h1>
+        
+        <!-- Connection Panel -->
+        <div class="panel">
+            <h3>Connection</h3>
+            <div>
+                <input type="text" id="token" placeholder="JWT Token" style="width: 70%;">
+                <input type="text" id="userId" placeholder="User ID" style="width: 25%;">
+            </div>
+            <div>
+                <button onclick="connect()">Connect</button>
+                <button onclick="disconnect()">Disconnect</button>
+                <span id="connectionStatus" class="status disconnected">Disconnected</span>
+            </div>
+        </div>
+
+        <!-- Send Message Panel -->
+        <div class="panel">
+            <h3>Send Test Message</h3>
+            <div>
+                <input type="text" id="targetUserId" placeholder="Target User ID">
+                <select id="messageType">
+                    <option value="ping">Ping</option>
+                    <option value="notification">Notification</option>
+                    <option value="ride_requested">Ride Requested</option>
+                    <option value="ride_accepted">Ride Accepted</option>
+                    <option value="ride_location">Ride Location</option>
+                    <option value="ride_status_update">Ride Status Update</option>
+                    <option value="system">System Message</option>
+                </select>
+            </div>
+            <textarea id="messageData" placeholder='Message Data (JSON) e.g. {"message": "Hello!"}' rows="3"></textarea>
+            <button onclick="sendTestMessage()">Send to User</button>
+            <button onclick="sendBroadcast()">Broadcast to All</button>
+        </div>
+
+        <!-- Test Scenarios Panel -->
+        <div class="panel">
+            <h3>Test Scenarios</h3>
+            <button onclick="testRideRequest()">Test Ride Request</button>
+            <button onclick="testRideAccepted()">Test Ride Accepted</button>
+            <button onclick="testLocationUpdate()">Test Location Update</button>
+            <button onclick="testStatusUpdate()">Test Status Update</button>
+            <button onclick="getStats()">Get Stats</button>
+        </div>
+
+        <!-- Messages Log -->
+        <div class="panel">
+            <h3>Messages Log</h3>
+            <div id="messageLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        const baseURL = 'https://api.pittapizzahusrev.be/go' 
+
+        function logMessage(message, type = 'info') {
+            const log = document.getElementById('messageLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            log.appendChild(messageDiv);
+            log.scrollTop = log.scrollHeight;
+        }
+
+          function connect() {
+        const token = document.getElementById('token').value;
+        const userId = document.getElementById('userId').value;
+        
+        if (!token) {
+            alert('Please enter a JWT token');
+            return;
+        }
+
+        // Close existing connection
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close();
+        }
+
+        const wsURL = `wss://api.pittapizzahusrev.be/go/ws?token=${encodeURIComponent(token)}`;
+        
+        try {
+            ws = new WebSocket(wsURL);
+            
+            ws.onopen = function() {
+                document.getElementById('connectionStatus').className = 'status connected';
+                document.getElementById('connectionStatus').textContent = 'Connected';
+                logMessage('WebSocket connection established');
+            };
+
+            ws.onmessage = function(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    logMessage(`RECEIVED: ${message.type} - ${JSON.stringify(message.data)}`, 'received');
+                } catch (e) {
+                    logMessage(`RECEIVED: ${event.data}`, 'received');
+                }
+            };
+
+            ws.onclose = function(event) {
+                document.getElementById('connectionStatus').className = 'status disconnected';
+                document.getElementById('connectionStatus').textContent = 'Disconnected';
+                if (event.code !== 1000) {
+                    logMessage(`WebSocket connection closed: ${event.code} - ${event.reason}`, 'error');
+                } else {
+                    logMessage('WebSocket connection closed normally');
+                }
+            };
+
+            ws.onerror = function(error) {
+                logMessage(`WebSocket error: ${error}`, 'error');
+                document.getElementById('connectionStatus').className = 'status disconnected';
+                document.getElementById('connectionStatus').textContent = 'Connection Failed';
+            };
+
+        } catch (error) {
+            logMessage(`Connection error: ${error}`, 'error');
+        }
+    }
+       
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+            // Add these new functions
+    function getDebugInfo() {
+        fetch(`${baseURL}/test/websocket/debug`)
+            .then(response => response.json())
+            .then(debug => {
+                logMessage(`DEBUG: ${JSON.stringify(debug.data, null, 2)}`);
+            })
+            .catch(error => {
+                logMessage(`Error getting debug info: ${error}`, 'error');
+            });
+    }
+
+    function sendDirectMessage() {
+        const targetUserId = document.getElementById('targetUserId').value;
+        const messageType = document.getElementById('messageType').value;
+        const messageData = document.getElementById('messageData').value;
+        
+        if (!targetUserId) {
+            alert('Please enter target user ID');
+            return;
+        }
+
+        let data = {};
+        try {
+            data = messageData ? JSON.parse(messageData) : {};
+        } catch (e) {
+            alert('Invalid JSON data');
+            return;
+        }
+
+        fetch(`${baseURL}/test/websocket/send-direct`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: targetUserId,
+                type: messageType,
+                data: data
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            logMessage(`SENT DIRECT: ${messageType} to ${targetUserId}`);
+            console.log('Send direct result:', result);
+        })
+        .catch(error => {
+            logMessage(`Error sending direct message: ${error}`, 'error');
+        });
+    }
+
+    // Update the test scenarios panel
+    function updateTestScenarios() {
+        const scenariosHtml = `
+            <div class="panel">
+                <h3>Test Scenarios</h3>
+                <button onclick="testRideRequest()">Test Ride Request</button>
+                <button onclick="testRideAccepted()">Test Ride Accepted</button>
+                <button onclick="testLocationUpdate()">Test Location Update</button>
+                <button onclick="testStatusUpdate()">Test Status Update</button>
+                <button onclick="getStats()">Get Stats</button>
+                <button onclick="getDebugInfo()">Debug Info</button>
+                <button onclick="sendDirectMessage()">Send Direct</button>
+            </div>
+        `;
+        // Replace the test scenarios panel
+        document.querySelector('.panel:nth-child(4)').outerHTML = scenariosHtml;
+    }
+
+    // Call this when the page loads
+    updateTestScenarios();
+
+        function sendTestMessage() {
+            const targetUserId = document.getElementById('targetUserId').value;
+            const messageType = document.getElementById('messageType').value;
+            const messageData = document.getElementById('messageData').value;
+            
+            if (!targetUserId) {
+                alert('Please enter target user ID');
+                return;
+            }
+
+            let data = {};
+            try {
+                data = messageData ? JSON.parse(messageData) : {};
+            } catch (e) {
+                alert('Invalid JSON data');
+                return;
+            }
+
+            // Send via HTTP API (for testing without WebSocket connection)
+            fetch(`${baseURL}/test/websocket/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: targetUserId,
+                    type: messageType,
+                    data: data
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                logMessage(`SENT via API: ${messageType} to ${targetUserId}`);
+                console.log('Send result:', result);
+            })
+            .catch(error => {
+                logMessage(`Error sending message: ${error}`, 'error');
+            });
+        }
+
+        function sendBroadcast() {
+            const messageType = document.getElementById('messageType').value;
+            const messageData = document.getElementById('messageData').value;
+            
+            let data = {};
+            try {
+                data = messageData ? JSON.parse(messageData) : {};
+            } catch (e) {
+                alert('Invalid JSON data');
+                return;
+            }
+
+            fetch(`${baseURL}/test/websocket/broadcast`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: messageType,
+                    data: data
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                logMessage(`BROADCAST via API: ${messageType}`);
+                console.log('Broadcast result:', result);
+            })
+            .catch(error => {
+                logMessage(`Error broadcasting: ${error}`, 'error');
+            });
+        }
+
+        // Test Scenarios
+        function testRideRequest() {
+            document.getElementById('messageType').value = 'ride_requested';
+            document.getElementById('messageData').value = JSON.stringify({
+                "rideId": "test-ride-123",
+                "riderId": "rider-123",
+                "pickup": {
+                    "lat": 40.7128,
+                    "lon": -74.0060,
+                    "address": "123 Main St, New York, NY"
+                },
+                "dropoff": {
+                    "lat": 40.7589,
+                    "lon": -73.9851,
+                    "address": "Times Square, New York, NY"
+                },
+                "estimatedFare": 25.50,
+                "distance": 5.2,
+                "eta": 15,
+                "expiresIn": 30
+            }, null, 2);
+        }
+
+        function testRideAccepted() {
+            document.getElementById('messageType').value = 'ride_accepted';
+            document.getElementById('messageData').value = JSON.stringify({
+                "rideId": "test-ride-123",
+                "driverId": "driver-456",
+                "driver": {
+                    "name": "John Driver",
+                    "phone": "+1234567890",
+                    "rating": 4.8
+                },
+                "vehicle": {
+                    "type": "Premium",
+                    "model": "Toyota Camry",
+                    "color": "White",
+                    "plate": "ABC123"
+                },
+                "message": "Driver is on the way!",
+                "eta": 10
+            }, null, 2);
+        }
+
+        function testLocationUpdate() {
+            document.getElementById('messageType').value = 'ride_location';
+            document.getElementById('messageData').value = JSON.stringify({
+                "rideId": "test-ride-123",
+                "location": {
+                    "lat": 40.7128,
+                    "lon": -74.0060,
+                    "speed": 45,
+                    "bearing": 90,
+                    "timestamp": new Date().toISOString()
+                }
+            }, null, 2);
+        }
+
+        function testStatusUpdate() {
+            document.getElementById('messageType').value = 'ride_status_update';
+            document.getElementById('messageData').value = JSON.stringify({
+                "rideId": "test-ride-123",
+                "status": "arrived",
+                "message": "Driver has arrived at pickup location",
+                "timestamp": new Date().toISOString()
+            }, null, 2);
+        }
+
+        function getStats() {
+            fetch(`${baseURL}/test/websocket/stats`)
+                .then(response => response.json())
+                .then(stats => {
+                    logMessage(`STATS: ${JSON.stringify(stats.data)}`);
+                })
+                .catch(error => {
+                    logMessage(`Error getting stats: ${error}`, 'error');
+                });
+        }
+
+        // Auto-populate with sample data for testing
+        document.getElementById('token').value = localStorage.getItem('test_token') || '';
+        document.getElementById('userId').value = localStorage.getItem('test_user_id') || '';
+        
+        // Save token/userId when changed
+        document.getElementById('token').addEventListener('change', function() {
+            localStorage.setItem('test_token', this.value);
+        });
+        document.getElementById('userId').addEventListener('change', function() {
+            localStorage.setItem('test_user_id', this.value);
+        });
+
+        logMessage('WebSocket Test Client Ready. Enter your JWT token and User ID to connect.');
+    </script>
+</body>
+</html>
