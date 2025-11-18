@@ -340,6 +340,118 @@ definitions:
       totalEarnings:
         type: number
     type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.AddOnResponse:
+    properties:
+      categoryId:
+        type: integer
+      description:
+        type: string
+      durationMinutes:
+        type: integer
+      id:
+        type: integer
+      imageUrl:
+        type: string
+      isActive:
+        type: boolean
+      originalPrice:
+        type: number
+      price:
+        type: number
+      sortOrder:
+        type: integer
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryBasicResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryWithTabsResponse:
+    properties:
+      bannerImage:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      highlights:
+        items:
+          type: string
+        type: array
+      iconUrl:
+        type: string
+      id:
+        type: integer
+      isActive:
+        type: boolean
+      name:
+        type: string
+      sortOrder:
+        type: integer
+      tabs:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceTabResponse'
+        type: array
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateAddOnRequest:
+    properties:
+      categoryId:
+        minimum: 1
+        type: integer
+      description:
+        maxLength: 500
+        type: string
+      durationMinutes:
+        minimum: 0
+        type: integer
+      imageUrl:
+        type: string
+      isActive:
+        type: boolean
+      originalPrice:
+        type: number
+      price:
+        type: number
+      sortOrder:
+        type: integer
+      title:
+        maxLength: 150
+        minLength: 2
+        type: string
+    required:
+    - categoryId
+    - price
+    - title
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateCategoryRequest:
+    properties:
+      bannerImage:
+        type: string
+      description:
+        maxLength: 1000
+        type: string
+      highlights:
+        items:
+          type: string
+        type: array
+      iconUrl:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        maxLength: 150
+        minLength: 2
+        type: string
+      sortOrder:
+        type: integer
+    required:
+    - description
+    - name
+    type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateOrderItemRequest:
     properties:
       selectedOptions:
@@ -354,6 +466,10 @@ definitions:
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateOrderRequest:
     properties:
+      addOnIds:
+        items:
+          type: integer
+        type: array
       address:
         maxLength: 500
         minLength: 5
@@ -405,16 +521,26 @@ definitions:
         type: string
       imageUrl:
         type: string
+      isFeatured:
+        type: boolean
+      maxQuantity:
+        minimum: 1
+        type: integer
       name:
         maxLength: 150
         minLength: 3
         type: string
+      originalPrice:
+        type: number
       pricingModel:
         enum:
         - fixed
         - hourly
         - per_unit
         type: string
+      tabId:
+        minimum: 1
+        type: integer
     required:
     - baseDurationMinutes
     - basePrice
@@ -422,6 +548,48 @@ definitions:
     - description
     - name
     - pricingModel
+    - tabId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateTabRequest:
+    properties:
+      bannerDescription:
+        maxLength: 500
+        type: string
+      bannerImage:
+        type: string
+      bannerTitle:
+        maxLength: 150
+        type: string
+      categoryId:
+        minimum: 1
+        type: integer
+      description:
+        maxLength: 500
+        type: string
+      iconUrl:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        maxLength: 150
+        minLength: 2
+        type: string
+      sortOrder:
+        type: integer
+    required:
+    - categoryId
+    - name
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderAddOnResponse:
+    properties:
+      addOnId:
+        type: integer
+      id:
+        type: integer
+      price:
+        type: number
+      title:
+        type: string
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderItemResponse:
     properties:
@@ -462,6 +630,10 @@ definitions:
     properties:
       acceptedAt:
         type: string
+      addOns:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderAddOnResponse'
+        type: array
       address:
         type: string
       code:
@@ -546,6 +718,47 @@ definitions:
       sortOrder:
         type: integer
     type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceDetailResponse:
+    properties:
+      baseDurationMinutes:
+        type: integer
+      basePrice:
+        type: number
+      category:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryBasicResponse'
+      categoryId:
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      discountPercentage:
+        type: integer
+      id:
+        type: integer
+      imageUrl:
+        type: string
+      isActive:
+        type: boolean
+      isFeatured:
+        type: boolean
+      maxQuantity:
+        type: integer
+      name:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionResponse'
+        type: array
+      originalPrice:
+        type: number
+      pricingModel:
+        type: string
+      tab:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.TabBasicResponse'
+      tabId:
+        type: integer
+    type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceListResponse:
     properties:
       basePrice:
@@ -554,14 +767,24 @@ definitions:
         type: integer
       createdAt:
         type: string
+      discountPercentage:
+        type: integer
+      durationMinutes:
+        type: integer
       id:
         type: integer
       imageUrl:
         type: string
       isActive:
         type: boolean
+      isFeatured:
+        type: boolean
       name:
         type: string
+      originalPrice:
+        type: number
+      tabId:
+        type: integer
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionChoiceResponse:
     properties:
@@ -607,6 +830,8 @@ definitions:
         type: string
       description:
         type: string
+      discountPercentage:
+        type: integer
       id:
         type: integer
       imageUrl:
@@ -619,7 +844,43 @@ definitions:
         items:
           $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionResponse'
         type: array
+      originalPrice:
+        type: number
       pricingModel:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceTabResponse:
+    properties:
+      bannerDescription:
+        type: string
+      bannerImage:
+        type: string
+      bannerTitle:
+        type: string
+      categoryId:
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      iconUrl:
+        type: string
+      id:
+        type: integer
+      isActive:
+        type: boolean
+      name:
+        type: string
+      servicesCount:
+        type: integer
+      sortOrder:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.TabBasicResponse:
+    properties:
+      id:
+        type: integer
+      name:
         type: string
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.UpdateServiceRequest:
@@ -868,8 +1129,10 @@ definitions:
       vehicleTypeId:
         type: string
     required:
+    - dropoffAddress
     - dropoffLat
     - dropoffLon
+    - pickupAddress
     - pickupLat
     - pickupLon
     - vehicleTypeId
@@ -2125,7 +2388,7 @@ paths:
             - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceResponse'
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceDetailResponse'
               type: object
         "404":
           description: Not Found
@@ -2134,6 +2397,90 @@ paths:
       summary: Get service details
       tags:
       - home-services
+  /services/addons:
+    get:
+      description: Get all available add-ons for a category
+      parameters:
+      - description: Category ID
+        in: query
+        name: categoryId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.AddOnResponse'
+                  type: array
+              type: object
+      summary: List add-ons
+      tags:
+      - home-services
+  /services/admin/addons:
+    post:
+      consumes:
+      - application/json
+      description: Create a new service add-on (admin only)
+      parameters:
+      - description: Add-on details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateAddOnRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.AddOnResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create an add-on
+      tags:
+      - home-services-admin
+  /services/admin/categories:
+    post:
+      consumes:
+      - application/json
+      description: Create a new service category (admin only)
+      parameters:
+      - description: Category details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryWithTabsResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a category
+      tags:
+      - home-services-admin
   /services/admin/services:
     post:
       consumes:
@@ -2225,6 +2572,35 @@ paths:
       summary: Update a service
       tags:
       - home-services-admin
+  /services/admin/tabs:
+    post:
+      consumes:
+      - application/json
+      description: Create a new service tab/subcategory (admin only)
+      parameters:
+      - description: Tab details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateTabRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceTabResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a tab
+      tags:
+      - home-services-admin
   /services/categories:
     get:
       description: Get all active service categories
@@ -2243,6 +2619,34 @@ paths:
                   type: array
               type: object
       summary: List service categories
+      tags:
+      - home-services
+  /services/categories/{id}:
+    get:
+      description: Get detailed category information with all tabs
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryWithTabsResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get category with tabs
       tags:
       - home-services
   /services/orders:
@@ -2765,6 +3169,10 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: 'Filter only available drivers (default: true)'
+        in: query
+        name: onlyAvailable
+        type: boolean
       produces:
       - application/json
       responses:

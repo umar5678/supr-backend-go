@@ -1443,6 +1443,152 @@ const docTemplate = `{
                 }
             }
         },
+        "/services/addons": {
+            "get": {
+                "description": "Get all available add-ons for a category",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "home-services"
+                ],
+                "summary": "List add-ons",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Category ID",
+                        "name": "categoryId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.AddOnResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/services/admin/addons": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new service add-on (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "home-services-admin"
+                ],
+                "summary": "Create an add-on",
+                "parameters": [
+                    {
+                        "description": "Add-on details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateAddOnRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.AddOnResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/services/admin/categories": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new service category (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "home-services-admin"
+                ],
+                "summary": "Create a category",
+                "parameters": [
+                    {
+                        "description": "Category details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryWithTabsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/services/admin/services": {
             "post": {
                 "security": [
@@ -1594,6 +1740,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/services/admin/tabs": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new service tab/subcategory (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "home-services-admin"
+                ],
+                "summary": "Create a tab",
+                "parameters": [
+                    {
+                        "description": "Tab details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateTabRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceTabResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/services/categories": {
             "get": {
                 "description": "Get all active service categories",
@@ -1624,6 +1821,53 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/services/categories/{id}": {
+            "get": {
+                "description": "Get detailed category information with all tabs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "home-services"
+                ],
+                "summary": "Get category with tabs",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Category ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryWithTabsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
                         }
                     }
                 }
@@ -2187,7 +2431,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceResponse"
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceDetailResponse"
                                         }
                                     }
                                 }
@@ -2539,6 +2783,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Maximum results",
                         "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter only available drivers (default: true)",
+                        "name": "onlyAvailable",
                         "in": "query"
                     }
                 ],
@@ -3632,6 +3882,171 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.AddOnResponse": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "durationMinutes": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "originalPrice": {
+                    "type": "number"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryBasicResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryWithTabsResponse": {
+            "type": "object",
+            "properties": {
+                "bannerImage": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "tabs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceTabResponse"
+                    }
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateAddOnRequest": {
+            "type": "object",
+            "required": [
+                "categoryId",
+                "price",
+                "title"
+            ],
+            "properties": {
+                "categoryId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "durationMinutes": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "originalPrice": {
+                    "type": "number"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "minLength": 2
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateCategoryRequest": {
+            "type": "object",
+            "required": [
+                "description",
+                "name"
+            ],
+            "properties": {
+                "bannerImage": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "minLength": 2
+                },
+                "sortOrder": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateOrderItemRequest": {
             "type": "object",
             "required": [
@@ -3660,6 +4075,12 @@ const docTemplate = `{
                 "serviceDate"
             ],
             "properties": {
+                "addOnIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "address": {
                     "type": "string",
                     "maxLength": 500,
@@ -3709,7 +4130,8 @@ const docTemplate = `{
                 "categoryId",
                 "description",
                 "name",
-                "pricingModel"
+                "pricingModel",
+                "tabId"
             ],
             "properties": {
                 "baseDurationMinutes": {
@@ -3730,10 +4152,20 @@ const docTemplate = `{
                 "imageUrl": {
                     "type": "string"
                 },
+                "isFeatured": {
+                    "type": "boolean"
+                },
+                "maxQuantity": {
+                    "type": "integer",
+                    "minimum": 1
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 150,
                     "minLength": 3
+                },
+                "originalPrice": {
+                    "type": "number"
                 },
                 "pricingModel": {
                     "type": "string",
@@ -3742,6 +4174,69 @@ const docTemplate = `{
                         "hourly",
                         "per_unit"
                     ]
+                },
+                "tabId": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateTabRequest": {
+            "type": "object",
+            "required": [
+                "categoryId",
+                "name"
+            ],
+            "properties": {
+                "bannerDescription": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "bannerImage": {
+                    "type": "string"
+                },
+                "bannerTitle": {
+                    "type": "string",
+                    "maxLength": 150
+                },
+                "categoryId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "minLength": 2
+                },
+                "sortOrder": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderAddOnResponse": {
+            "type": "object",
+            "properties": {
+                "addOnId": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "title": {
+                    "type": "string"
                 }
             }
         },
@@ -3803,6 +4298,12 @@ const docTemplate = `{
             "properties": {
                 "acceptedAt": {
                     "type": "string"
+                },
+                "addOns": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.OrderAddOnResponse"
+                    }
                 },
                 "address": {
                     "type": "string"
@@ -3930,6 +4431,68 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceDetailResponse": {
+            "type": "object",
+            "properties": {
+                "baseDurationMinutes": {
+                    "type": "integer"
+                },
+                "basePrice": {
+                    "type": "number"
+                },
+                "category": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CategoryBasicResponse"
+                },
+                "categoryId": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discountPercentage": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "isFeatured": {
+                    "type": "boolean"
+                },
+                "maxQuantity": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionResponse"
+                    }
+                },
+                "originalPrice": {
+                    "type": "number"
+                },
+                "pricingModel": {
+                    "type": "string"
+                },
+                "tab": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.TabBasicResponse"
+                },
+                "tabId": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceListResponse": {
             "type": "object",
             "properties": {
@@ -3942,6 +4505,12 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "discountPercentage": {
+                    "type": "integer"
+                },
+                "durationMinutes": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -3951,8 +4520,17 @@ const docTemplate = `{
                 "isActive": {
                     "type": "boolean"
                 },
+                "isFeatured": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
+                },
+                "originalPrice": {
+                    "type": "number"
+                },
+                "tabId": {
+                    "type": "integer"
                 }
             }
         },
@@ -4023,6 +4601,9 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "discountPercentage": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -4041,7 +4622,62 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceOptionResponse"
                     }
                 },
+                "originalPrice": {
+                    "type": "number"
+                },
                 "pricingModel": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.ServiceTabResponse": {
+            "type": "object",
+            "properties": {
+                "bannerDescription": {
+                    "type": "string"
+                },
+                "bannerImage": {
+                    "type": "string"
+                },
+                "bannerTitle": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "servicesCount": {
+                    "type": "integer"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.TabBasicResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -4363,8 +4999,10 @@ const docTemplate = `{
         "github_com_umar5678_go-backend_internal_modules_rides_dto.CreateRideRequest": {
             "type": "object",
             "required": [
+                "dropoffAddress",
                 "dropoffLat",
                 "dropoffLon",
+                "pickupAddress",
                 "pickupLat",
                 "pickupLon",
                 "vehicleTypeId"
