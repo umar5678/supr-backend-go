@@ -88,7 +88,7 @@ func ToDriverProfileResponse(driver *models.DriverProfile) *DriverProfileRespons
 	}
 
 	// Parse location if exists
-	if driver.CurrentLocation != "" {
+	if driver.CurrentLocation != nil && *driver.CurrentLocation != "" {
 		// Location is stored as "POINT(longitude latitude)"
 		// You'll need to parse this - for now using placeholder
 		resp.CurrentLocation = &LocationResponse{

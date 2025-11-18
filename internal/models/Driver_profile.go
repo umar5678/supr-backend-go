@@ -11,7 +11,7 @@ type DriverProfile struct {
 	UserID           string         `gorm:"type:uuid;uniqueIndex;not null" json:"userId"`
 	LicenseNumber    string         `gorm:"type:varchar(100);uniqueIndex;not null" json:"licenseNumber"`
 	Status           string         `gorm:"type:varchar(50);default:'offline'" json:"status"` // offline, online, busy, on_trip
-	CurrentLocation  string         `gorm:"type:geometry(Point,4326)" json:"currentLocation"`
+	CurrentLocation  *string        `gorm:"type:geometry(Point,4326)" json:"currentLocation"`
 	Heading          int            `gorm:"default:0" json:"heading"` // 0-360 degrees
 	Rating           float64        `gorm:"type:decimal(3,2);default:5.0" json:"rating"`
 	TotalTrips       int            `gorm:"default:0" json:"totalTrips"`
