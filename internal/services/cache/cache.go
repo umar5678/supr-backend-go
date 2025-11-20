@@ -12,7 +12,7 @@ import (
 
 // Global Redis clients
 var (
-	MainClient    *redis.Client // DB 0 - General purpose
+	// MainClient    *redis.Client // DB 0 - General purpose
 	CacheClient   *redis.Client // DB 3 - Cache operations
 	SessionClient *redis.Client // DB 4 - Sessions & presence
 	PubSubClient  *redis.Client // DB 1 - WebSocket Pub/Sub

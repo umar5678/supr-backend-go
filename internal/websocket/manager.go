@@ -1,5 +1,6 @@
 package websocket
 
+// websocket/manager.go
 import (
 	"context"
 	"sync"

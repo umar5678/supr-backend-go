@@ -69,7 +69,7 @@ func (s *Service) GetOnlineUsers() (int, int) {
 
 // SendRideRequest sends ride request to driver
 func (s *Service) SendRideRequest(driverID string, rideDetails map[string]interface{}) error {
-	return s.SendToUser(driverID, websocket.TypeRideRequested, rideDetails)
+	return s.SendToUser(driverID, websocket.TypeRideRequest, rideDetails)
 }
 
 // SendRideAccepted notifies rider that driver accepted

@@ -1,5 +1,6 @@
 package websocket
 
+// websocket/messages.go
 import "time"
 
 // MessageType defines different WebSocket message types
@@ -24,12 +25,25 @@ const (
 	TypeUserOffline MessageType = "user_offline"
 	TypePresence    MessageType = "presence"
 
+	// ✅ RIDE-SPECIFIC EVENTS
+	TypeRideRequest          MessageType = "ride_request"           // New ride request to driver
+	TypeRideRequestAccepted  MessageType = "ride_request_accepted"  // Driver accepted
+	TypeRideRequestRejected  MessageType = "ride_request_rejected"  // Driver rejected
+	TypeRideStatusUpdate     MessageType = "ride_status_update"     // Status changed
+	TypeRideDriverArriving   MessageType = "ride_driver_arriving"   // Driver approaching
+	TypeRideDriverArrived    MessageType = "ride_driver_arrived"    // Driver at pickup
+	TypeRideStarted          MessageType = "ride_started"           // Ride in progress
+	TypeRideCompleted        MessageType = "ride_completed"         // Ride finished
+	TypeRideCancelled        MessageType = "ride_cancelled"         // Ride cancelled
+	TypeDriverLocationUpdate MessageType = "driver_location_update" // Driver location
+
 	// System
 	TypeSystemMessage MessageType = "system"
 	TypeError         MessageType = "error"
 	TypePing          MessageType = "ping"
 	TypePong          MessageType = "pong"
 	TypeAck           MessageType = "ack"
+	TypeConnectionAck MessageType = "connection_ack" // ✅ NEW - Connection confirmation
 )
 
 // Message represents a WebSocket message
@@ -39,6 +53,10 @@ type Message struct {
 	Data         map[string]interface{} `json:"data"`
 	Timestamp    time.Time              `json:"timestamp"`
 	RequestID    string                 `json:"requestId,omitempty"` // For request/response correlation
+	// ✅ NEW - Delivery tracking
+	RequireAck bool   `json:"requireAck,omitempty"` // Message needs acknowledgment
+	RetryCount int    `json:"-"`                    // Internal retry counter
+	MessageID  string `json:"messageId,omitempty"`  // Unique message ID
 }
 
 // NewMessage creates a new broadcast message

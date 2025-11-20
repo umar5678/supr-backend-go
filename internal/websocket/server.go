@@ -44,6 +44,12 @@ func (s *Server) HandleConnection() gin.HandlerFunc {
 
 		userIDStr := userID.(string)
 
+		// 🔍 Log the incoming attempt
+		logger.Info("⏳ Incoming WebSocket Connection Request",
+			"userID", userIDStr,
+			"ip", c.ClientIP(),
+		)
+
 		// Get optional reconnection token
 		reconnectToken := c.Query("reconnect_token")
 

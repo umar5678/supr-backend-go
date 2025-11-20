@@ -19,11 +19,21 @@ const (
 	maxMessageSize = 512 * 1024 // 512KB
 )
 
+// ✅ User roles
+type UserRole string
+
+const (
+	RoleDriver UserRole = "driver"
+	RoleRider  UserRole = "rider"
+	RoleAdmin  UserRole = "admin"
+)
+
 // Client represents a WebSocket connection
 type Client struct {
 	ID             string
 	UserID         string
 	UserAgent      string
+	Role           UserRole // ✅ NEW - User role (driver/rider)
 	hub            *Hub
 	manager        *Manager
 	conn           *websocket.Conn
@@ -32,6 +42,9 @@ type Client struct {
 	lastHeartbeat  time.Time
 	connectedAt    time.Time
 	mu             sync.RWMutex
+
+	// ✅ NEW - Pending acknowledgments
+	pendingAcks map[string]*Message // messageID -> message awaiting ACK
 }
 
 // NewClient creates a new WebSocket client
@@ -53,8 +66,32 @@ func (c *Client) Manager() *Manager {
 }
 
 // ReadPump pumps messages from WebSocket to hub
+// internal/websocket/client.go
+
+// ReadPump pumps messages from WebSocket to hub
 func (c *Client) ReadPump() {
+	// 1. Define a variable to capture the disconnect reason
+	var closeErr error
+
 	defer func() {
+		// 2. Log the specific reason for disconnection
+		if closeErr != nil {
+			// Connection broke (WiFi lost, timeout, error)
+			logger.Warn("🔌 Connection BROKEN",
+				"userID", c.UserID,
+				"role", c.Role,
+				"clientID", c.ID,
+				"error", closeErr.Error(),
+			)
+		} else {
+			// Normal closure (User navigated away or closed app gracefully)
+			logger.Info("🔌 Connection closed normally",
+				"userID", c.UserID,
+				"role", c.Role,
+				"clientID", c.ID,
+			)
+		}
+
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
@@ -69,15 +106,18 @@ func (c *Client) ReadPump() {
 
 	for {
 		var msg Message
+		// 3. Capture the error if reading fails
 		if err := c.conn.ReadJSON(&msg); err != nil {
+			closeErr = err // Save the error for the defer log
+
+			// Filter out normal close errors for the "unexpected" check
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logger.Error("websocket read error",
+				logger.Error("❌ WebSocket unexpected close error",
 					"error", err,
 					"userID", c.UserID,
-					"clientID", c.ID,
 				)
 			}
-			break
+			break // Break the loop, triggering the defer
 		}
 
 		// Update heartbeat on any message
@@ -110,8 +150,18 @@ func (c *Client) WritePump() {
 					"error", err,
 					"userID", c.UserID,
 					"clientID", c.ID,
+					"role", c.Role,
+					"messageType", message.Type,
 				)
 				return
+			}
+
+			// ✅ Track messages requiring acknowledgment
+			if message.RequireAck && message.MessageID != "" {
+				c.pendingAcks[message.MessageID] = message
+
+				// Set timeout for ACK
+				go c.waitForAck(message.MessageID, 10*time.Second)
 			}
 
 		case <-ticker.C:
@@ -119,6 +169,37 @@ func (c *Client) WritePump() {
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
+		}
+	}
+}
+
+// ✅ NEW - Wait for message acknowledgment
+func (c *Client) waitForAck(messageID string, timeout time.Duration) {
+	time.Sleep(timeout)
+
+	if msg, exists := c.pendingAcks[messageID]; exists {
+		logger.Warn("message acknowledgment timeout",
+			"messageID", messageID,
+			"userID", c.UserID,
+			"role", c.Role,
+			"type", msg.Type,
+		)
+
+		// Retry critical messages (max 3 times)
+		if msg.RetryCount < 3 {
+			msg.RetryCount++
+			logger.Info("retrying message delivery",
+				"messageID", messageID,
+				"retryCount", msg.RetryCount,
+			)
+			c.send <- msg
+		} else {
+			logger.Error("message delivery failed after retries",
+				"messageID", messageID,
+				"userID", c.UserID,
+				"type", msg.Type,
+			)
+			delete(c.pendingAcks, messageID)
 		}
 	}
 }
@@ -150,16 +231,77 @@ func (c *Client) handleIncomingMessage(msg *Message) {
 	switch msg.Type {
 	case TypePing:
 		c.handlePing(msg)
+	case TypeAck:
+		c.handleAck(msg)
 	case TypeTyping:
 		c.handleTyping(msg)
 	case TypeReadReceipt:
 		c.handleReadReceipt(msg)
+	case TypeDriverLocationUpdate:
+		c.handleDriverLocation(msg)
 	default:
 		logger.Warn("unhandled message type",
 			"type", msg.Type,
 			"userID", c.UserID,
+			"role", c.Role,
 		)
 		c.SendError("Unhandled message type", msg.RequestID)
+	}
+}
+
+// ✅ NEW - Handle driver location updates
+func (c *Client) handleDriverLocation(msg *Message) {
+	if c.Role != RoleDriver {
+		c.SendError("Only drivers can send location updates", msg.RequestID)
+		return
+	}
+
+	latitude, latOk := msg.Data["latitude"].(float64)
+	longitude, lonOk := msg.Data["longitude"].(float64)
+
+	if !latOk || !lonOk {
+		c.SendError("latitude and longitude required", msg.RequestID)
+		return
+	}
+
+	logger.Info("driver location update",
+		"driverID", c.UserID,
+		"latitude", latitude,
+		"longitude", longitude,
+	)
+
+	// Broadcast to hub for processing (e.g., updating nearby riders)
+	locationMsg := NewMessage(TypeDriverLocationUpdate, map[string]interface{}{
+		"driverId":  c.UserID,
+		"latitude":  latitude,
+		"longitude": longitude,
+		"timestamp": time.Now().UTC(),
+	})
+
+	// You might want to broadcast this to specific riders or store in Redis
+	c.hub.BroadcastToAll(locationMsg)
+
+	// Send ack
+	c.send <- NewAckMessage(msg.RequestID, map[string]interface{}{
+		"success": true,
+	})
+}
+
+// ✅ NEW - Handle acknowledgment
+func (c *Client) handleAck(msg *Message) {
+	messageID, ok := msg.Data["messageId"].(string)
+	if !ok {
+		logger.Warn("ack without messageId", "userID", c.UserID)
+		return
+	}
+
+	if _, exists := c.pendingAcks[messageID]; exists {
+		logger.Info("message acknowledged",
+			"messageID", messageID,
+			"userID", c.UserID,
+			"role", c.Role,
+		)
+		delete(c.pendingAcks, messageID)
 	}
 }
 
@@ -258,199 +400,3 @@ func (c *Client) GetConnectionDuration() time.Duration {
 func (c *Client) IsHealthy() bool {
 	return time.Since(c.GetLastHeartbeat()) < pongWait
 }
-
-// package websocket
-
-// import (
-// 	"time"
-
-// 	"github.com/google/uuid"
-// 	"github.com/gorilla/websocket"
-// 	"github.com/umar5678/go-backend/internal/utils/logger"
-// )
-
-// const (
-// 	// Time allowed to write a message to the peer
-// 	writeWait = 10 * time.Second
-
-// 	// Time allowed to read the next pong message from the peer
-// 	pongWait = 60 * time.Second
-
-// 	// Send pings to peer with this period (must be less than pongWait)
-// 	pingPeriod = (pongWait * 9) / 10
-
-// 	// Maximum message size allowed from peer
-// 	maxMessageSize = 512 * 1024 // 512KB
-// )
-
-// // Client represents a WebSocket connection
-// type Client struct {
-// 	ID        string          // Unique client ID
-// 	UserID    string          // User ID from authentication
-// 	UserAgent string          // User agent string
-// 	hub       *Hub            // Reference to hub
-// 	conn      *websocket.Conn // WebSocket connection
-// 	send      chan *Message   // Buffered channel of outbound messages
-// }
-
-// // NewClient creates a new WebSocket client
-// func NewClient(hub *Hub, conn *websocket.Conn, userID, userAgent string) *Client {
-// 	return &Client{
-// 		ID:        uuid.New().String(),
-// 		UserID:    userID,
-// 		UserAgent: userAgent,
-// 		hub:       hub,
-// 		conn:      conn,
-// 		send:      make(chan *Message, 256),
-// 	}
-// }
-
-// // ReadPump pumps messages from the WebSocket connection to the hub
-// func (c *Client) ReadPump() {
-// 	defer func() {
-// 		c.hub.unregister <- c
-// 		c.conn.Close()
-// 	}()
-
-// 	c.conn.SetReadLimit(maxMessageSize)
-// 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-// 	c.conn.SetPongHandler(func(string) error {
-// 		c.conn.SetReadDeadline(time.Now().Add(pongWait))
-// 		return nil
-// 	})
-
-// 	for {
-// 		var msg Message
-// 		if err := c.conn.ReadJSON(&msg); err != nil {
-// 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-// 				logger.Error("websocket read error",
-// 					"error", err,
-// 					"userID", c.UserID,
-// 					"clientID", c.ID,
-// 				)
-// 			}
-// 			break
-// 		}
-
-// 		// Handle incoming message
-// 		c.handleIncomingMessage(&msg)
-// 	}
-// }
-
-// // WritePump pumps messages from the hub to the WebSocket connection
-// func (c *Client) WritePump() {
-// 	ticker := time.NewTicker(pingPeriod)
-// 	defer func() {
-// 		ticker.Stop()
-// 		c.conn.Close()
-// 	}()
-
-// 	for {
-// 		select {
-// 		case message, ok := <-c.send:
-// 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-// 			if !ok {
-// 				// Hub closed the channel
-// 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-// 				return
-// 			}
-
-// 			if err := c.conn.WriteJSON(message); err != nil {
-// 				logger.Error("websocket write error",
-// 					"error", err,
-// 					"userID", c.UserID,
-// 					"clientID", c.ID,
-// 				)
-// 				return
-// 			}
-
-// 		case <-ticker.C:
-// 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-// 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-// 				return
-// 			}
-// 		}
-// 	}
-// }
-
-// // handleIncomingMessage processes messages received from the client
-// func (c *Client) handleIncomingMessage(msg *Message) {
-// 	switch msg.Type {
-// 	case TypePing:
-// 		c.handlePing(msg)
-// 	case TypeTyping:
-// 		c.handleTyping(msg)
-// 	case TypeReadReceipt:
-// 		c.handleReadReceipt(msg)
-// 	default:
-// 		logger.Warn("unknown message type received",
-// 			"type", msg.Type,
-// 			"userID", c.UserID,
-// 		)
-// 		c.sendError("Unknown message type", msg.RequestID)
-// 	}
-// }
-
-// // handlePing responds with pong
-// func (c *Client) handlePing(msg *Message) {
-// 	pong := NewMessage(TypePong, map[string]interface{}{
-// 		"timestamp": msg.Timestamp,
-// 	})
-// 	pong.RequestID = msg.RequestID
-// 	c.send <- pong
-// }
-
-// // handleTyping broadcasts typing indicator
-// func (c *Client) handleTyping(msg *Message) {
-// 	receiverID, ok := msg.Data["receiverId"].(string)
-// 	if !ok {
-// 		c.sendError("receiverId required", msg.RequestID)
-// 		return
-// 	}
-
-// 	isTyping, _ := msg.Data["isTyping"].(bool)
-
-// 	typingMsg := NewTargetedMessage(TypeTyping, receiverID, map[string]interface{}{
-// 		"senderId": c.UserID,
-// 		"isTyping": isTyping,
-// 	})
-
-// 	c.hub.SendToUser(receiverID, typingMsg)
-
-// 	// Send ack
-// 	c.send <- NewAckMessage(msg.RequestID, map[string]interface{}{
-// 		"success": true,
-// 	})
-// }
-
-// // handleReadReceipt sends read receipt to sender
-// func (c *Client) handleReadReceipt(msg *Message) {
-// 	senderID, ok := msg.Data["senderId"].(string)
-// 	if !ok {
-// 		c.sendError("senderId required", msg.RequestID)
-// 		return
-// 	}
-
-// 	messageIDs, ok := msg.Data["messageIds"].([]interface{})
-// 	if !ok {
-// 		c.sendError("messageIds required", msg.RequestID)
-// 		return
-// 	}
-
-// 	receiptMsg := NewTargetedMessage(TypeReadReceipt, senderID, map[string]interface{}{
-// 		"readBy":     c.UserID,
-// 		"messageIds": messageIDs,
-// 	})
-
-// 	c.hub.SendToUser(senderID, receiptMsg)
-
-// 	// Send ack
-// 	c.send <- NewAckMessage(msg.RequestID, map[string]interface{}{
-// 		"success": true,
-// 	})
-// }
-
-// // sendError sends error message to client
-// func (c *Client) sendError(errMsg, requestID string) {
-// 	c.send <- NewErrorMessage(errMsg, requestID)
-// }

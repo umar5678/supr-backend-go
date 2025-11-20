@@ -67,7 +67,7 @@ func (s *service) RegisterDriver(ctx context.Context, userID string, req driverd
 	driver := &models.DriverProfile{
 		UserID:        userID,
 		LicenseNumber: req.LicenseNumber,
-		Status:        "offline",
+		Status:        "online",
 		Rating:        5.0,
 		IsVerified:    true, // Auto-approve (no document verification needed)
 	}
@@ -305,8 +305,12 @@ func (s *service) UpdateLocation(ctx context.Context, userID string, req driverd
 	}
 
 	// Only allow location updates if driver is online
-	if driver.Status != "online" && driver.Status != "busy" && driver.Status != "on_trip" {
-		return response.BadRequest("Driver must be online to update location")
+	// if driver.Status != "online" && driver.Status != "busy" && driver.Status != "on_trip" {
+	// 	return response.BadRequest("Driver must be online to update location")
+	// }
+	// log.Printf()
+	if driver.Status != "online" && driver.Status != "busy" {
+		return response.BadRequest("Driver must be online to update location ok")
 	}
 
 	// Update location in database

@@ -7,8 +7,10 @@ import (
 
 // RegisterAllHandlers registers all WebSocket handlers
 func RegisterAllHandlers(manager *websocket.Manager) {
+	// Register Ride Handlers
 	RegisterRideHandlers(manager)
-	// Register other handler groups here
-	// RegisterNotificationHandlers(manager)
+
+	// Add others as you build them:
 	// RegisterChatHandlers(manager)
+	// RegisterNotificationHandlers(manager)
 }

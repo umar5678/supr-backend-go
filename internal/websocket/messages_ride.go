@@ -6,14 +6,10 @@ import "time"
 // Ride-specific message types
 const (
 	// Ride Management
-	TypeRideRequested    MessageType = "ride_requested"
-	TypeRideAccepted     MessageType = "ride_accepted"
-	TypeRideRejected     MessageType = "ride_rejected"
-	TypeRideStarted      MessageType = "ride_started"
-	TypeRideCompleted    MessageType = "ride_completed"
-	TypeRideCancelled    MessageType = "ride_cancelled"
-	TypeRideLocation     MessageType = "ride_location"
-	TypeRideStatusUpdate MessageType = "ride_status_update"
+	// TypeRideRequested MessageType = "ride_requested"
+	TypeRideAccepted MessageType = "ride_accepted"
+	TypeRideRejected MessageType = "ride_rejected"
+	TypeRideLocation MessageType = "ride_location"
 
 	// Driver Management
 	TypeDriverAvailable   MessageType = "driver_available"
