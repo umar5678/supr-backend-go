@@ -1,5 +1,7 @@
 package tracking
 
+// internal/module/tracking/repository .go
+
 import (
 	"context"
 	"fmt"
@@ -15,6 +17,8 @@ type Repository interface {
 	GetLocationHistory(ctx context.Context, driverID string, from, to time.Time, limit int) ([]*models.DriverLocation, error)
 	FindNearbyDrivers(ctx context.Context, lat, lon, radiusKm float64, vehicleTypeID string, limit int) ([]*models.DriverProfile, error)
 	BatchSaveLocations(ctx context.Context, locations []*models.DriverLocation) error
+
+	GetDB() *gorm.DB
 }
 
 type repository struct {
@@ -23,6 +27,10 @@ type repository struct {
 
 func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
+}
+
+func (r *repository) GetDB() *gorm.DB {
+	return r.db
 }
 
 func (r *repository) SaveLocation(ctx context.Context, location *models.DriverLocation) error {

@@ -46,7 +46,7 @@ func (s *service) RegisterDriver(ctx context.Context, userID string, req driverd
 		return nil, response.BadRequest("User is already registered as a driver")
 	}
 
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Error("failed to check existing driver", "error", err, "userID", userID)
 		return nil, response.InternalServerError("Failed to check driver status", err)
 	}
@@ -294,6 +294,8 @@ func (s *service) UpdateStatus(ctx context.Context, userID string, req driverdto
 	return driverdto.ToDriverProfileResponse(driver), nil
 }
 
+// internal/modules/drivers/service.go
+
 func (s *service) UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error {
 	if err := req.Validate(); err != nil {
 		return response.BadRequest(err.Error())
@@ -304,13 +306,9 @@ func (s *service) UpdateLocation(ctx context.Context, userID string, req driverd
 		return response.NotFoundError("Driver profile")
 	}
 
-	// Only allow location updates if driver is online
-	// if driver.Status != "online" && driver.Status != "busy" && driver.Status != "on_trip" {
-	// 	return response.BadRequest("Driver must be online to update location")
-	// }
-	// log.Printf()
-	if driver.Status != "online" && driver.Status != "busy" {
-		return response.BadRequest("Driver must be online to update location ok")
+	// ✅ FIXED: Allow location updates for online, busy, AND on_trip drivers
+	if driver.Status != "online" && driver.Status != "busy" && driver.Status != "on_trip" {
+		return response.BadRequest("Driver must be online to update location")
 	}
 
 	// Update location in database
@@ -335,6 +333,8 @@ func (s *service) UpdateLocation(ctx context.Context, userID string, req driverd
 
 	logger.Debug("driver location updated",
 		"driverID", driver.ID,
+		"userID", userID,
+		"status", driver.Status,
 		"lat", req.Latitude,
 		"lng", req.Longitude,
 	)

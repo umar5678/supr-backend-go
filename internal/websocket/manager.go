@@ -232,7 +232,7 @@ func (m *Manager) monitorHeartbeats() {
 
 // collectMetrics periodically collects and logs metrics
 func (m *Manager) collectMetrics() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -241,10 +241,10 @@ func (m *Manager) collectMetrics() {
 			return
 		case <-ticker.C:
 			stats := m.GetStats()
-			logger.Info("websocket metrics",
-				"connected_users", stats.ConnectedUsers,
-				"total_connections", stats.TotalConnections,
-				"avg_connections_per_user", stats.AvgConnectionsPerUser,
+			logger.Info("WS metrics",
+				"conn_users", stats.ConnectedUsers,
+				"total", stats.TotalConnections,
+				"avg", stats.AvgConnectionsPerUser,
 			)
 		}
 	}

@@ -47,6 +47,8 @@ type RideResponse struct {
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+
+	DriverLocation *LocationDTO `json:"driverLocation,omitempty"`
 }
 
 type RideListResponse struct {
@@ -113,4 +115,14 @@ func ToRideListResponse(ride *models.Ride) *RideListResponse {
 		EstimatedFare:  ride.EstimatedFare,
 		RequestedAt:    ride.RequestedAt,
 	}
+}
+
+// type RideResponse struct {
+//     // ... existing fields ...
+//     DriverLocation *LocationDTO `json:"driverLocation,omitempty"`
+// }
+
+type LocationDTO struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }

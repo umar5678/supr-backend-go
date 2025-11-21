@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,7 +74,6 @@ func NewService(
 	}
 }
 
-// ✅ FIX: Get rider user ID for WebSocket
 func (s *service) CreateRide(ctx context.Context, riderID string, req dto.CreateRideRequest) (*dto.RideResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
@@ -93,7 +93,6 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 		return nil, err
 	}
 
-	// Generate ride ID first
 	rideID := uuid.New().String()
 
 	// 2. Hold funds with ReferenceID
@@ -131,7 +130,6 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 	}
 
 	if err := s.repo.CreateRide(ctx, ride); err != nil {
-		// Release hold if ride creation fails
 		s.walletService.ReleaseHold(ctx, riderID, walletdto.ReleaseHoldRequest{HoldID: holdResp.ID})
 		logger.Error("failed to create ride", "error", err, "riderID", riderID)
 		return nil, response.InternalServerError("Failed to create ride", err)
@@ -147,6 +145,24 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 		if err := s.FindDriverForRide(bgCtx, rideID); err != nil {
 			logger.Error("failed to find driver", "error", err, "rideID", rideID)
 
+			// ✅ CRITICAL FIX: Check ride status before canceling
+			currentRide, statusErr := s.repo.FindRideByID(bgCtx, rideID)
+			if statusErr != nil {
+				logger.Error("failed to fetch ride status", "error", statusErr, "rideID", rideID)
+				return
+			}
+
+			// ✅ If ride is already accepted/arrived/started, don't cancel
+			if currentRide.Status != "searching" {
+				logger.Info("ride already accepted by driver, not canceling",
+					"rideID", rideID,
+					"currentStatus", currentRide.Status,
+					"driverID", currentRide.DriverID,
+				)
+				return
+			}
+
+			// Only cancel if still searching
 			if err := s.repo.UpdateRideStatus(bgCtx, rideID, "cancelled"); err != nil {
 				logger.Error("failed to update ride status", "error", err, "rideID", rideID)
 			}
@@ -155,12 +171,11 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 				logger.Error("failed to release hold", "error", err, "rideID", rideID)
 			}
 
-			// ✅ FIX: riderID is already user ID, so this is OK
 			s.wsHelper.SendRideStatusToBoth(bgCtx, riderID, "", rideID, "cancelled", "No drivers available. Your payment has been refunded.")
 		}
 	}()
 
-	// 6. Notify rider via WebSocket (riderID is user ID, so OK)
+	// 6. Notify rider via WebSocket
 	s.wsHelper.SendRideStatusToBoth(ctx, riderID, "", rideID, "searching", "Searching for nearby drivers...")
 
 	logger.Info("ride created",
@@ -244,7 +259,6 @@ func (s *service) FindDriverForRide(ctx context.Context, rideID string) error {
 	}
 }
 
-// ✅ FIXED: Get driver user ID for WebSocket
 func (s *service) sendRideRequestToDriver(
 	ctx context.Context,
 	ride *models.Ride,
@@ -255,7 +269,6 @@ func (s *service) sendRideRequestToDriver(
 	requestID := uuid.New().String()
 	expiresAt := time.Now().Add(10 * time.Second)
 
-	// ✅ FIX: Fetch driver details to get USER ID
 	driverDetails, err := s.driversRepo.FindDriverByID(ctx, driver.DriverID)
 	if err != nil {
 		logger.Error("failed to fetch driver details",
@@ -266,13 +279,12 @@ func (s *service) sendRideRequestToDriver(
 		return
 	}
 
-	// ✅ CRITICAL: Use user ID for WebSocket, not driver ID
 	userIDForWebSocket := driverDetails.UserID
 
 	rideRequest := &models.RideRequest{
 		ID:        requestID,
 		RideID:    ride.ID,
-		DriverID:  driver.DriverID, // Still use driver ID for database
+		DriverID:  driver.DriverID,
 		Status:    "pending",
 		SentAt:    time.Now(),
 		ExpiresAt: expiresAt,
@@ -308,7 +320,6 @@ func (s *service) sendRideRequestToDriver(
 		"riderNotes":    ride.RiderNotes,
 	}
 
-	// ✅ FIX: Send to USER ID, not driver ID
 	if err := s.wsHelper.SendRideRequest(userIDForWebSocket, rideDetails); err != nil {
 		logger.Error("failed to send ride request via WebSocket",
 			"error", err,
@@ -343,6 +354,19 @@ func (s *service) sendRideRequestToDriver(
 			return
 
 		case <-ticker.C:
+			// ✅ CRITICAL FIX: Check ride status first
+			currentRide, err := s.repo.FindRideByID(ctx, ride.ID)
+			if err == nil && currentRide.Status != "searching" {
+				logger.Info("ride already accepted by another driver, stopping polling",
+					"requestID", requestID,
+					"driverID", driver.DriverID,
+					"driverName", driverDetails.User.Name,
+					"rideID", ride.ID,
+					"rideStatus", currentRide.Status,
+				)
+				return
+			}
+
 			updatedRequest, err := s.repo.FindRideRequestByID(ctx, requestID)
 			if err != nil {
 				continue
@@ -393,9 +417,36 @@ func (s *service) sendRideRequestToDriver(
 	}
 }
 
-func (s *service) AcceptRide(ctx context.Context, driverID, rideID string) (*dto.RideResponse, error) {
+// ✅ FIXED: Accept userID and fetch driver profile first
+func (s *service) AcceptRide(ctx context.Context, userID, rideID string) (*dto.RideResponse, error) {
+	// ✅ STEP 1: Fetch driver profile using user ID
+	driver, err := s.driversRepo.FindDriverByUserID(ctx, userID)
+	if err != nil {
+		logger.Error("driver profile not found for user",
+			"error", err,
+			"userID", userID,
+		)
+		return nil, response.NotFoundError("Driver profile not found")
+	}
+
+	driverID := driver.ID // ✅ Now we have the actual driver profile ID
+
+	logger.Info("driver attempting to accept ride",
+		"userID", userID,
+		"driverID", driverID,
+		"driverName", driver.User.Name,
+		"rideID", rideID,
+	)
+
+	// ✅ STEP 2: Find ride request using driver profile ID
 	rideRequest, err := s.repo.FindRideRequestByRideAndDriver(ctx, rideID, driverID)
 	if err != nil {
+		logger.Error("ride request not found",
+			"error", err,
+			"rideID", rideID,
+			"driverID", driverID,
+			"userID", userID,
+		)
 		return nil, response.NotFoundError("Ride request not found")
 	}
 
@@ -407,6 +458,7 @@ func (s *service) AcceptRide(ctx context.Context, driverID, rideID string) (*dto
 		return nil, response.BadRequest("Ride request has expired")
 	}
 
+	// ✅ STEP 3: Validate ride status
 	ride, err := s.repo.FindRideByID(ctx, rideID)
 	if err != nil {
 		return nil, response.NotFoundError("Ride")
@@ -416,11 +468,7 @@ func (s *service) AcceptRide(ctx context.Context, driverID, rideID string) (*dto
 		return nil, response.BadRequest("Ride is no longer available")
 	}
 
-	driver, err := s.driversRepo.FindDriverByID(ctx, driverID)
-	if err != nil {
-		return nil, response.NotFoundError("Driver profile")
-	}
-
+	// ✅ STEP 4: Validate driver status
 	if driver.Status != "online" {
 		return nil, response.BadRequest("Driver must be online to accept rides")
 	}
@@ -428,27 +476,32 @@ func (s *service) AcceptRide(ctx context.Context, driverID, rideID string) (*dto
 	logger.Info("driver attempting to accept ride request",
 		"rideID", rideID,
 		"driverID", driverID,
+		"userID", userID,
 		"driverName", driver.User.Name,
 		"requestID", rideRequest.ID,
 		"riderID", ride.RiderID,
 	)
 
+	// ✅ STEP 5: Update ride request status
 	if err := s.repo.UpdateRideRequestStatus(ctx, rideRequest.ID, "accepted", nil); err != nil {
 		logger.Error("failed to update ride request status",
 			"error", err,
 			"requestID", rideRequest.ID,
 			"driverID", driverID,
+			"userID", userID,
 			"driverName", driver.User.Name,
 		)
 		return nil, response.InternalServerError("Failed to accept ride", err)
 	}
 
+	// ✅ STEP 6: Assign driver to ride
 	if err := s.assignDriverToRide(ctx, rideID, driverID); err != nil {
 		s.repo.UpdateRideRequestStatus(ctx, rideRequest.ID, "pending", nil)
 		logger.Error("failed to assign driver to ride",
 			"error", err,
 			"rideID", rideID,
 			"driverID", driverID,
+			"userID", userID,
 			"driverName", driver.User.Name,
 		)
 		return nil, err
@@ -457,6 +510,7 @@ func (s *service) AcceptRide(ctx context.Context, driverID, rideID string) (*dto
 	logger.Info("ride successfully accepted by driver",
 		"rideID", rideID,
 		"driverID", driverID,
+		"userID", userID,
 		"driverName", driver.User.Name,
 		"driverPhone", driver.User.Phone,
 		"vehicleType", driver.Vehicle.VehicleType.Name,
@@ -468,97 +522,29 @@ func (s *service) AcceptRide(ctx context.Context, driverID, rideID string) (*dto
 	return dto.ToRideResponse(ride), nil
 }
 
-// ✅ FIX: Get rider user ID for WebSocket (riderID is already user ID, so OK)
-func (s *service) assignDriverToRide(ctx context.Context, rideID, driverID string) error {
-	// Atomic update: only one driver can change status from "searching" to "accepted"
-	err := s.repo.UpdateRideStatusAndDriver(ctx, rideID, "accepted", "searching", driverID)
+// ✅ FIXED: Accept userID and fetch driver profile first
+func (s *service) RejectRide(ctx context.Context, userID, rideID string, req dto.RejectRideRequest) error {
+	// ✅ STEP 1: Fetch driver profile using user ID
+	driver, err := s.driversRepo.FindDriverByUserID(ctx, userID)
 	if err != nil {
-		logger.Warn("failed to assign driver - ride may be already accepted",
+		logger.Error("driver profile not found for user",
+			"error", err,
+			"userID", userID,
+		)
+		return response.NotFoundError("Driver profile not found")
+	}
+
+	driverID := driver.ID // ✅ Now we have the actual driver profile ID
+
+	// ✅ STEP 2: Find ride request using driver profile ID
+	rideRequest, err := s.repo.FindRideRequestByRideAndDriver(ctx, rideID, driverID)
+	if err != nil {
+		logger.Error("ride request not found",
 			"error", err,
 			"rideID", rideID,
 			"driverID", driverID,
+			"userID", userID,
 		)
-		return response.BadRequest("Ride already accepted by another driver")
-	}
-
-	// Cancel all other pending requests for this ride
-	go s.repo.CancelPendingRequestsExcept(context.Background(), rideID, driverID)
-
-	// Update driver status
-	s.driversRepo.UpdateDriverStatus(ctx, driverID, "busy")
-
-	// Mark driver as busy in cache
-	busyKey := fmt.Sprintf("driver:busy:%s", driverID)
-	cache.Set(ctx, busyKey, "true", 30*time.Minute)
-
-	// Update cache
-	ride, _ := s.repo.FindRideByID(ctx, rideID)
-	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
-	cache.SetJSON(ctx, cacheKey, ride, 30*time.Minute)
-
-	// Get driver details for notification
-	driver, err := s.driversRepo.FindDriverByID(ctx, driverID)
-	if err != nil {
-		logger.Error("failed to fetch driver details for notification",
-			"error", err,
-			"driverID", driverID,
-		)
-		return nil
-	}
-
-	// Safely check if vehicle exists before accessing
-	if driver.Vehicle == nil {
-		logger.Warn("driver has no vehicle assigned",
-			"driverID", driverID,
-			"driverName", driver.User.Name,
-		)
-		return nil
-	}
-
-	rideDetails := map[string]interface{}{
-		"rideId":   rideID,
-		"driverId": driver.ID,
-		"driver": map[string]interface{}{
-			"name":   driver.User.Name,
-			"phone":  driver.User.Phone,
-			"rating": driver.Rating,
-		},
-		"vehicle": map[string]interface{}{
-			"type":  driver.Vehicle.VehicleType.Name,
-			"model": driver.Vehicle.Model,
-			"color": driver.Vehicle.Color,
-			"plate": driver.Vehicle.LicensePlate,
-		},
-		"message": "Driver is on the way!",
-		"eta":     10,
-	}
-
-	// ✅ ride.RiderID is user ID, so this is OK
-	if err := s.wsHelper.SendRideAccepted(ride.RiderID, rideDetails); err != nil {
-		logger.Error("failed to send ride acceptance notification",
-			"error", err,
-			"riderID", ride.RiderID,
-			"driverID", driverID,
-			"driverName", driver.User.Name,
-		)
-	}
-
-	logger.Info("ride assigned to driver successfully",
-		"rideID", rideID,
-		"driverID", driverID,
-		"driverName", driver.User.Name,
-		"driverPhone", driver.User.Phone,
-		"vehicleType", driver.Vehicle.VehicleType.Name,
-		"vehiclePlate", driver.Vehicle.LicensePlate,
-		"riderID", ride.RiderID,
-	)
-
-	return nil
-}
-
-func (s *service) RejectRide(ctx context.Context, driverID, rideID string, req dto.RejectRideRequest) error {
-	rideRequest, err := s.repo.FindRideRequestByRideAndDriver(ctx, rideID, driverID)
-	if err != nil {
 		return response.NotFoundError("Ride request not found")
 	}
 
@@ -566,47 +552,49 @@ func (s *service) RejectRide(ctx context.Context, driverID, rideID string, req d
 		return response.BadRequest("Ride request is no longer available")
 	}
 
-	// Fetch driver details for logging
-	driver, err := s.driversRepo.FindDriverByID(ctx, driverID)
-	if err != nil {
-		logger.Error("failed to fetch driver details",
-			"error", err,
-			"driverID", driverID,
-		)
-		// Continue with rejection even if we can't get driver details
-	}
-
 	if err := s.repo.UpdateRideRequestStatus(ctx, rideRequest.ID, "rejected", &req.Reason); err != nil {
 		return response.InternalServerError("Failed to reject ride", err)
 	}
 
-	if driver != nil {
-		logger.Info("ride rejected by driver",
-			"rideID", rideID,
-			"driverID", driverID,
-			"driverName", driver.User.Name,
-			"requestID", rideRequest.ID,
-			"reason", req.Reason,
-		)
-	} else {
-		logger.Info("ride rejected by driver",
-			"rideID", rideID,
-			"driverID", driverID,
-			"requestID", rideRequest.ID,
-			"reason", req.Reason,
-		)
-	}
+	logger.Info("ride rejected by driver",
+		"rideID", rideID,
+		"driverID", driverID,
+		"userID", userID,
+		"driverName", driver.User.Name,
+		"requestID", rideRequest.ID,
+		"reason", req.Reason,
+	)
 
 	return nil
 }
 
-func (s *service) MarkArrived(ctx context.Context, driverID, rideID string) (*dto.RideResponse, error) {
+// ✅ FIXED: Accept userID and fetch driver profile first
+func (s *service) MarkArrived(ctx context.Context, userID, rideID string) (*dto.RideResponse, error) {
+	// ✅ STEP 1: Fetch driver profile using user ID
+	driver, err := s.driversRepo.FindDriverByUserID(ctx, userID)
+	if err != nil {
+		logger.Error("driver profile not found for user",
+			"error", err,
+			"userID", userID,
+		)
+		return nil, response.NotFoundError("Driver profile not found")
+	}
+
+	driverID := driver.ID // ✅ Now we have the actual driver profile ID
+
+	// ✅ STEP 2: Fetch ride and validate authorization
 	ride, err := s.repo.FindRideByID(ctx, rideID)
 	if err != nil {
 		return nil, response.NotFoundError("Ride")
 	}
 
 	if ride.DriverID == nil || *ride.DriverID != driverID {
+		logger.Warn("unauthorized attempt to mark arrived",
+			"userID", userID,
+			"driverID", driverID,
+			"rideDriverID", ride.DriverID,
+			"rideID", rideID,
+		)
 		return nil, response.ForbiddenError("Not authorized")
 	}
 
@@ -614,18 +602,11 @@ func (s *service) MarkArrived(ctx context.Context, driverID, rideID string) (*dt
 		return nil, response.BadRequest("Invalid ride status")
 	}
 
-	// Get driver details for logging
-	driver, err := s.driversRepo.FindDriverByID(ctx, driverID)
-	var driverName string
-	if err == nil && driver != nil {
-		driverName = driver.User.Name
-	}
-
 	if err := s.repo.UpdateRideStatus(ctx, rideID, "arrived"); err != nil {
 		return nil, response.InternalServerError("Failed to update status", err)
 	}
 
-	// ✅ Notify rider via WebSocket (ride.RiderID is user ID, so OK)
+	// ✅ Notify rider via WebSocket (ride.RiderID is user ID)
 	websocketutil.SendToUser(ride.RiderID, websocket.TypeRideStatusUpdate, map[string]interface{}{
 		"rideId":    rideID,
 		"status":    "arrived",
@@ -636,7 +617,8 @@ func (s *service) MarkArrived(ctx context.Context, driverID, rideID string) (*dt
 	logger.Info("driver arrived at pickup location",
 		"rideID", rideID,
 		"driverID", driverID,
-		"driverName", driverName,
+		"userID", userID,
+		"driverName", driver.User.Name,
 		"riderID", ride.RiderID,
 	)
 
@@ -644,42 +626,59 @@ func (s *service) MarkArrived(ctx context.Context, driverID, rideID string) (*dt
 	return dto.ToRideResponse(ride), nil
 }
 
-// ✅ FIX: Get driver user ID for WebSocket
-func (s *service) StartRide(ctx context.Context, driverID, rideID string) (*dto.RideResponse, error) {
+// ✅ FIXED: Accept userID and fetch driver profile first
+func (s *service) StartRide(ctx context.Context, userID, rideID string) (*dto.RideResponse, error) {
+	// ✅ STEP 1: Fetch driver profile using user ID
+	driver, err := s.driversRepo.FindDriverByUserID(ctx, userID)
+	if err != nil {
+		logger.Error("driver profile not found for user",
+			"error", err,
+			"userID", userID,
+		)
+		return nil, response.NotFoundError("Driver profile not found")
+	}
+
+	driverID := driver.ID         // ✅ Driver profile ID
+	driverUserID := driver.UserID // ✅ Driver user ID for WebSocket
+
+	// ✅ STEP 2: Fetch ride and validate authorization
 	ride, err := s.repo.FindRideByID(ctx, rideID)
 	if err != nil {
 		return nil, response.NotFoundError("Ride")
 	}
 
 	if ride.DriverID == nil || *ride.DriverID != driverID {
+		logger.Warn("unauthorized attempt to start ride",
+			"userID", userID,
+			"driverID", driverID,
+			"rideDriverID", ride.DriverID,
+			"rideID", rideID,
+		)
 		return nil, response.ForbiddenError("Not authorized")
 	}
 
-	if ride.Status != "arrived" {
-		return nil, response.BadRequest("Driver must arrive at pickup first")
+	// ✅ FIXED: Allow both "accepted" and "arrived" status
+	if ride.Status != "accepted" && ride.Status != "arrived" {
+		return nil, response.BadRequest("Ride must be accepted or arrived to start")
 	}
 
-	// ✅ FIX: Get driver details to fetch user ID for WebSocket
-	driver, err := s.driversRepo.FindDriverByID(ctx, driverID)
-	if err != nil {
-		logger.Error("failed to fetch driver details",
-			"error", err,
-			"driverID", driverID,
-		)
-		return nil, response.InternalServerError("Failed to fetch driver details", err)
-	}
+	// ✅ FIXED: Update ride status AND set StartedAt timestamp
+	ride.Status = "started"
+	startedAt := time.Now()
+	ride.StartedAt = &startedAt
 
-	driverUserID := driver.UserID // ✅ This is the user ID for WebSocket
-
-	if err := s.repo.UpdateRideStatus(ctx, rideID, "started"); err != nil {
+	if err := s.repo.UpdateRide(ctx, ride); err != nil {
 		return nil, response.InternalServerError("Failed to start ride", err)
 	}
 
-	// Update driver status
-	s.driversRepo.UpdateDriverStatus(ctx, *ride.DriverID, "on_trip")
+	// ✅ Update driver status to on_trip
+	s.driversRepo.UpdateDriverStatus(ctx, driverID, "on_trip")
 
-	// ✅ FIX: Use user IDs for both rider and driver
-	// ride.RiderID is already user ID, driverUserID is the driver's user ID
+	// ✅ NEW: Update ride cache
+	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
+	cache.SetJSON(ctx, cacheKey, ride, 30*time.Minute)
+
+	// ✅ Notify both parties via WebSocket using user IDs
 	websocketutil.SendRideStatusUpdate(ride.RiderID, driverUserID, map[string]interface{}{
 		"rideId":    rideID,
 		"status":    "started",
@@ -690,43 +689,55 @@ func (s *service) StartRide(ctx context.Context, driverID, rideID string) (*dto.
 	logger.Info("ride started",
 		"rideID", rideID,
 		"driverID", driverID,
+		"userID", userID,
 		"driverUserID", driverUserID,
 		"driverName", driver.User.Name,
 		"riderID", ride.RiderID,
 		"pickup", ride.PickupAddress,
 		"dropoff", ride.DropoffAddress,
+		"startedAt", startedAt,
 	)
 
+	// ✅ Refresh ride from DB to get all updated fields
 	ride, _ = s.repo.FindRideByID(ctx, rideID)
 	return dto.ToRideResponse(ride), nil
 }
 
-// ✅ FIX: Get driver user ID for WebSocket
-func (s *service) CompleteRide(ctx context.Context, driverID, rideID string, req dto.CompleteRideRequest) (*dto.RideResponse, error) {
+// ✅ FIXED: Accept userID and fetch driver profile first
+// ✅ UPDATED CompleteRide with tracking cache cleanup
+func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req dto.CompleteRideRequest) (*dto.RideResponse, error) {
+	// ✅ STEP 1: Fetch driver profile using user ID
+	driver, err := s.driversRepo.FindDriverByUserID(ctx, userID)
+	if err != nil {
+		logger.Error("driver profile not found for user",
+			"error", err,
+			"userID", userID,
+		)
+		return nil, response.NotFoundError("Driver profile not found")
+	}
+
+	driverID := driver.ID         // ✅ Driver profile ID
+	driverUserID := driver.UserID // ✅ Driver user ID for WebSocket and wallet
+
+	// ✅ STEP 2: Fetch ride and validate authorization
 	ride, err := s.repo.FindRideByID(ctx, rideID)
 	if err != nil {
 		return nil, response.NotFoundError("Ride")
 	}
 
 	if ride.DriverID == nil || *ride.DriverID != driverID {
+		logger.Warn("unauthorized attempt to complete ride",
+			"userID", userID,
+			"driverID", driverID,
+			"rideDriverID", ride.DriverID,
+			"rideID", rideID,
+		)
 		return nil, response.ForbiddenError("Not authorized")
 	}
 
 	if ride.Status != "started" {
 		return nil, response.BadRequest("Ride must be started first")
 	}
-
-	// ✅ FIX: Get driver details to fetch user ID for WebSocket
-	driver, err := s.driversRepo.FindDriverByID(ctx, driverID)
-	if err != nil {
-		logger.Error("failed to fetch driver details",
-			"error", err,
-			"driverID", driverID,
-		)
-		return nil, response.InternalServerError("Failed to fetch driver details", err)
-	}
-
-	driverUserID := driver.UserID // ✅ This is the user ID for WebSocket
 
 	// Calculate actual fare
 	actualFareReq := pricingdto.CalculateActualFareRequest{
@@ -766,6 +777,7 @@ func (s *service) CompleteRide(ctx context.Context, driverID, rideID string, req
 				"error", err,
 				"rideID", rideID,
 				"driverID", driverID,
+				"userID", userID,
 				"driverUserID", driverUserID,
 				"driverName", driver.User.Name,
 			)
@@ -775,7 +787,7 @@ func (s *service) CompleteRide(ctx context.Context, driverID, rideID string, req
 	// Credit driver (80% commission)
 	driverEarnings := actualFareResp.TotalFare * 0.80
 
-	// ✅ FIX: Use driver user ID for wallet credit
+	// ✅ Use driver user ID for wallet credit
 	s.walletService.CreditWallet(
 		ctx,
 		driverUserID, // ✅ Use driver's user ID, not driver profile ID
@@ -790,22 +802,27 @@ func (s *service) CompleteRide(ctx context.Context, driverID, rideID string, req
 	)
 
 	// Update stats
-	s.driversRepo.IncrementTrips(ctx, *ride.DriverID)
-	s.driversRepo.UpdateEarnings(ctx, *ride.DriverID, driverEarnings)
+	s.driversRepo.IncrementTrips(ctx, driverID)
+	s.driversRepo.UpdateEarnings(ctx, driverID, driverEarnings)
 	s.ridersRepo.IncrementTotalRides(ctx, ride.RiderID)
 
 	// Update driver status back to online
-	s.driversRepo.UpdateDriverStatus(ctx, *ride.DriverID, "online")
+	s.driversRepo.UpdateDriverStatus(ctx, driverID, "online")
 
-	// Clear driver busy flag from cache
-	busyKey := fmt.Sprintf("driver:busy:%s", *ride.DriverID)
+	// ✅ CLEANUP: Clear all driver/ride caches
+	// Clear driver busy flag
+	busyKey := fmt.Sprintf("driver:busy:%s", driverID)
 	cache.Delete(ctx, busyKey)
 
-	// Clear ride cache
-	cache.Delete(ctx, fmt.Sprintf("ride:active:%s", rideID))
+	// ✅ NEW: Clear active ride tracking cache
+	activeRideCacheKey := fmt.Sprintf("driver:active:ride:%s", driverID)
+	cache.Delete(ctx, activeRideCacheKey)
 
-	// ✅ FIX: Notify both parties via WebSocket using user IDs
-	// Notify rider (ride.RiderID is user ID, so OK)
+	// Clear ride cache
+	rideCacheKey := fmt.Sprintf("ride:active:%s", rideID)
+	cache.Delete(ctx, rideCacheKey)
+
+	// ✅ Notify both parties via WebSocket using user IDs
 	websocketutil.SendToUser(ride.RiderID, websocket.TypeRideCompleted, map[string]interface{}{
 		"rideId":     rideID,
 		"actualFare": actualFareResp.TotalFare,
@@ -813,7 +830,6 @@ func (s *service) CompleteRide(ctx context.Context, driverID, rideID string, req
 		"timestamp":  time.Now().UTC(),
 	})
 
-	// ✅ FIX: Notify driver using user ID, not driver profile ID
 	websocketutil.SendToUser(driverUserID, websocket.TypeRideCompleted, map[string]interface{}{
 		"rideId":    rideID,
 		"earnings":  driverEarnings,
@@ -824,6 +840,7 @@ func (s *service) CompleteRide(ctx context.Context, driverID, rideID string, req
 	logger.Info("ride completed successfully",
 		"rideID", rideID,
 		"driverID", driverID,
+		"userID", userID,
 		"driverUserID", driverUserID,
 		"driverName", driver.User.Name,
 		"riderID", ride.RiderID,
@@ -833,9 +850,235 @@ func (s *service) CompleteRide(ctx context.Context, driverID, rideID string, req
 		"actualDuration", req.ActualDuration,
 	)
 
+	// Refresh ride data from DB
 	ride, _ = s.repo.FindRideByID(ctx, rideID)
+
 	return dto.ToRideResponse(ride), nil
 }
+
+// ✅ UPDATED assignDriverToRide with all status updates + improvements
+func (s *service) assignDriverToRide(ctx context.Context, rideID, driverID string) error {
+	fmt.Println("Run func: assignDriverToRide")
+
+	// Atomic update: only one driver can change status from "searching" to "accepted"
+	err := s.repo.UpdateRideStatusAndDriver(ctx, rideID, "accepted", "searching", driverID)
+	if err != nil {
+		logger.Warn("failed to assign driver - ride may be already accepted",
+			"error", err,
+			"rideID", rideID,
+			"driverID", driverID,
+		)
+		return response.BadRequest("Ride already accepted by another driver")
+	}
+
+	// Cancel all other pending requests for this ride
+	go s.repo.CancelPendingRequestsExcept(context.Background(), rideID, driverID)
+
+	// Update driver status
+	s.driversRepo.UpdateDriverStatus(ctx, driverID, "busy")
+
+	// Mark driver as busy in cache
+	busyKey := fmt.Sprintf("driver:busy:%s", driverID)
+	cache.Set(ctx, busyKey, "true", 30*time.Minute)
+
+	// Get ride for cache update and location calculation
+	ride, _ := s.repo.FindRideByID(ctx, rideID)
+
+	// Update cache
+	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
+	cache.SetJSON(ctx, cacheKey, ride, 30*time.Minute)
+
+	// Get driver details for notification
+	driver, err := s.driversRepo.FindDriverByID(ctx, driverID)
+	if err != nil {
+		logger.Error("failed to fetch driver details for notification",
+			"error", err,
+			"driverID", driverID,
+		)
+		return nil
+	}
+
+	// Safely check if vehicle exists before accessing
+	if driver.Vehicle == nil {
+		logger.Warn("driver has no vehicle assigned",
+			"driverID", driverID,
+			"driverName", driver.User.Name,
+		)
+		return nil
+	}
+
+	//  Cache active ride for tracking module
+	activeRideCacheKey := fmt.Sprintf("driver:active:ride:%s", driverID)
+	cache.SetJSON(ctx, activeRideCacheKey, map[string]string{
+		"rideID":  rideID,
+		"riderID": ride.RiderID,
+	}, 30*time.Minute)
+
+	// ✅ Get driver's current location
+	var driverLat, driverLon float64
+	var calculatedETA int
+
+	driverLocation, err := s.trackingService.GetDriverLocation(ctx, driverID)
+	if err == nil && driverLocation != nil {
+		driverLat = driverLocation.Latitude
+		driverLon = driverLocation.Longitude
+
+		// Calculate real ETA based on distance
+		distance := calculateDistance(driverLat, driverLon, ride.PickupLat, ride.PickupLon)
+		calculatedETA = int((distance / 30.0) * 60) // 30 km/h avg city speed
+		if calculatedETA < 1 {
+			calculatedETA = 1
+		}
+	} else {
+		// Fallback to pickup location and default ETA
+		driverLat = ride.PickupLat
+		driverLon = ride.PickupLon
+		calculatedETA = 10
+		logger.Warn("could not get driver location, using defaults",
+			"error", err,
+			"driverID", driverID,
+		)
+	}
+
+	// ✅ IMPROVED PAYLOAD with complete driver info
+	rideDetails := map[string]interface{}{
+		"rideId":   rideID,
+		"driverId": driver.ID,
+		"userId":   driver.UserID, // ✅ ADDED
+		"driver": map[string]interface{}{
+			"id":     driver.ID,
+			"userId": driver.UserID, // ✅ ADDED
+			"name":   driver.User.Name,
+			"phone":  driver.User.Phone,
+			"rating": driver.Rating,
+		},
+		"vehicle": map[string]interface{}{
+			"type":  driver.Vehicle.VehicleType.Name,
+			"model": driver.Vehicle.Model,
+			"color": driver.Vehicle.Color,
+			"plate": driver.Vehicle.LicensePlate,
+		},
+		"location": map[string]interface{}{ // ✅ ADDED
+			"latitude":  driverLat,
+			"longitude": driverLon,
+		},
+		"message": "Driver is on the way!",
+		"eta":     calculatedETA, // ✅ CALCULATED
+	}
+
+	// Send to rider via WebSocket
+	if err := s.wsHelper.SendRideAccepted(ride.RiderID, rideDetails); err != nil {
+		logger.Error("failed to send ride acceptance notification",
+			"error", err,
+			"riderID", ride.RiderID,
+			"driverID", driverID,
+			"driverName", driver.User.Name,
+		)
+	}
+
+	logger.Info("ride assigned to driver successfully",
+		"rideID", rideID,
+		"driverID", driverID,
+		"driverName", driver.User.Name,
+		"driverPhone", driver.User.Phone,
+		"vehicleType", driver.Vehicle.VehicleType.Name,
+		"vehiclePlate", driver.Vehicle.LicensePlate,
+		"riderID", ride.RiderID,
+		"calculatedETA", calculatedETA,
+	)
+
+	return nil
+}
+
+// ✅ FIX: Get rider user ID for WebSocket (riderID is already user ID, so OK)
+// func (s *service) assignDriverToRide(ctx context.Context, rideID, driverID string) error {
+
+// 	fmt.Println("Run func: assignDriverToRide ")
+// 	// Atomic update: only one driver can change status from "searching" to "accepted"
+// 	err := s.repo.UpdateRideStatusAndDriver(ctx, rideID, "accepted", "searching", driverID)
+// 	if err != nil {
+// 		logger.Warn("failed to assign driver - ride may be already accepted",
+// 			"error", err,
+// 			"rideID", rideID,
+// 			"driverID", driverID,
+// 		)
+// 		return response.BadRequest("Ride already accepted by another driver")
+// 	}
+
+// 	// Cancel all other pending requests for this ride
+// 	go s.repo.CancelPendingRequestsExcept(context.Background(), rideID, driverID)
+
+// 	// Update driver status
+// 	s.driversRepo.UpdateDriverStatus(ctx, driverID, "busy")
+
+// 	// Mark driver as busy in cache
+// 	busyKey := fmt.Sprintf("driver:busy:%s", driverID)
+// 	cache.Set(ctx, busyKey, "true", 30*time.Minute)
+
+// 	// Update cache
+// 	ride, _ := s.repo.FindRideByID(ctx, rideID)
+// 	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
+// 	cache.SetJSON(ctx, cacheKey, ride, 30*time.Minute)
+
+// 	// Get driver details for notification
+// 	driver, err := s.driversRepo.FindDriverByID(ctx, driverID)
+// 	if err != nil {
+// 		logger.Error("failed to fetch driver details for notification",
+// 			"error", err,
+// 			"driverID", driverID,
+// 		)
+// 		return nil
+// 	}
+
+// 	// Safely check if vehicle exists before accessing
+// 	if driver.Vehicle == nil {
+// 		logger.Warn("driver has no vehicle assigned",
+// 			"driverID", driverID,
+// 			"driverName", driver.User.Name,
+// 		)
+// 		return nil
+// 	}
+
+// 	rideDetails := map[string]interface{}{
+// 		"rideId":   rideID,
+// 		"driverId": driver.ID,
+// 		"driver": map[string]interface{}{
+// 			"name":   driver.User.Name,
+// 			"phone":  driver.User.Phone,
+// 			"rating": driver.Rating,
+// 		},
+// 		"vehicle": map[string]interface{}{
+// 			"type":  driver.Vehicle.VehicleType.Name,
+// 			"model": driver.Vehicle.Model,
+// 			"color": driver.Vehicle.Color,
+// 			"plate": driver.Vehicle.LicensePlate,
+// 		},
+// 		"message": "Driver is on the way!",
+// 		"eta":     10,
+// 	}
+
+// 	// ✅ ride.RiderID is user ID, so this is OK
+// 	if err := s.wsHelper.SendRideAccepted(ride.RiderID, rideDetails); err != nil {
+// 		logger.Error("failed to send ride acceptance notification",
+// 			"error", err,
+// 			"riderID", ride.RiderID,
+// 			"driverID", driverID,
+// 			"driverName", driver.User.Name,
+// 		)
+// 	}
+
+// 	logger.Info("ride assigned to driver successfully",
+// 		"rideID", rideID,
+// 		"driverID", driverID,
+// 		"driverName", driver.User.Name,
+// 		"driverPhone", driver.User.Phone,
+// 		"vehicleType", driver.Vehicle.VehicleType.Name,
+// 		"vehiclePlate", driver.Vehicle.LicensePlate,
+// 		"riderID", ride.RiderID,
+// 	)
+
+// 	return nil
+// }
 
 func (s *service) ProcessRideRequestTimeout(ctx context.Context, requestID string) error {
 	request, err := s.repo.FindRideRequestByID(ctx, requestID)
@@ -850,13 +1093,7 @@ func (s *service) ProcessRideRequestTimeout(ctx context.Context, requestID strin
 	return nil
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
+// ✅ UPDATED GetRide with driver location enrichment
 func (s *service) GetRide(ctx context.Context, userID, rideID string) (*dto.RideResponse, error) {
 	// Try cache first
 	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
@@ -866,7 +1103,20 @@ func (s *service) GetRide(ctx context.Context, userID, rideID string) (*dto.Ride
 	if err == nil {
 		// Verify user has access
 		if cached.RiderID == userID || (cached.DriverID != nil && *cached.DriverID == userID) {
-			return dto.ToRideResponse(&cached), nil
+			response := dto.ToRideResponse(&cached)
+
+			// ✅ Enrich with live driver location if ride is accepted
+			if cached.Status == "accepted" && cached.DriverID != nil {
+				driverLocation, locErr := s.trackingService.GetDriverLocation(ctx, *cached.DriverID)
+				if locErr == nil && driverLocation != nil {
+					response.DriverLocation = &dto.LocationDTO{
+						Latitude:  driverLocation.Latitude,
+						Longitude: driverLocation.Longitude,
+					}
+				}
+			}
+
+			return response, nil
 		}
 	}
 
@@ -884,8 +1134,51 @@ func (s *service) GetRide(ctx context.Context, userID, rideID string) (*dto.Ride
 		return nil, response.ForbiddenError("Not authorized to view this ride")
 	}
 
-	return dto.ToRideResponse(ride), nil
+	response := dto.ToRideResponse(ride)
+
+	// ✅ Enrich with live driver location if ride is accepted
+	if ride.Status == "accepted" && ride.DriverID != nil {
+		driverLocation, locErr := s.trackingService.GetDriverLocation(ctx, *ride.DriverID)
+		if locErr == nil && driverLocation != nil {
+			response.DriverLocation = &dto.LocationDTO{
+				Latitude:  driverLocation.Latitude,
+				Longitude: driverLocation.Longitude,
+			}
+		}
+	}
+
+	return response, nil
 }
+
+// func (s *service) GetRide(ctx context.Context, userID, rideID string) (*dto.RideResponse, error) {
+// 	// Try cache first
+// 	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
+// 	var cached models.Ride
+
+// 	err := cache.GetJSON(ctx, cacheKey, &cached)
+// 	if err == nil {
+// 		// Verify user has access
+// 		if cached.RiderID == userID || (cached.DriverID != nil && *cached.DriverID == userID) {
+// 			return dto.ToRideResponse(&cached), nil
+// 		}
+// 	}
+
+// 	// Get from database
+// 	ride, err := s.repo.FindRideByID(ctx, rideID)
+// 	if err != nil {
+// 		if errors.Is(err, gorm.ErrRecordNotFound) {
+// 			return nil, response.NotFoundError("Ride")
+// 		}
+// 		return nil, response.InternalServerError("Failed to fetch ride", err)
+// 	}
+
+// 	// Verify access
+// 	if ride.RiderID != userID && (ride.DriverID == nil || *ride.DriverID != userID) {
+// 		return nil, response.ForbiddenError("Not authorized to view this ride")
+// 	}
+
+// 	return dto.ToRideResponse(ride), nil
+// }
 
 func (s *service) ListRides(ctx context.Context, userID string, role string, req dto.ListRidesRequest) ([]*dto.RideListResponse, int64, error) {
 	req.SetDefaults()
@@ -911,18 +1204,40 @@ func (s *service) ListRides(ctx context.Context, userID string, role string, req
 	return result, total, nil
 }
 
-// ✅ FIX: Get driver user ID for WebSocket
+// ✅ FIXED: Handle both rider and driver authorization correctly
 func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto.CancelRideRequest) error {
 	ride, err := s.repo.FindRideByID(ctx, rideID)
 	if err != nil {
 		return response.NotFoundError("Ride")
 	}
 
-	// Check authorization
-	isRider := ride.RiderID == userID
-	isDriver := ride.DriverID != nil && *ride.DriverID == userID
+	// ✅ FIX: Check authorization properly
+	var isRider bool
+	var isDriver bool
+	var driverProfile *models.DriverProfile
+	var driverProfileID string
+
+	// Check if user is the rider (riderID is user ID)
+	isRider = ride.RiderID == userID
+
+	// ✅ Check if user is the driver (need to fetch driver profile first)
+	if ride.DriverID != nil {
+		// Try to fetch driver profile by user ID
+		driverProfile, err = s.driversRepo.FindDriverByUserID(ctx, userID)
+		if err == nil && driverProfile != nil {
+			// User has a driver profile - check if it matches the ride's driver
+			isDriver = driverProfile.ID == *ride.DriverID
+			driverProfileID = driverProfile.ID
+		}
+	}
 
 	if !isRider && !isDriver {
+		logger.Warn("unauthorized cancellation attempt",
+			"userID", userID,
+			"rideID", rideID,
+			"riderID", ride.RiderID,
+			"rideDriverID", ride.DriverID,
+		)
 		return response.ForbiddenError("Not authorized to cancel this ride")
 	}
 
@@ -960,6 +1275,16 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 		return response.InternalServerError("Failed to cancel ride", err)
 	}
 
+	logger.Info("ride cancellation initiated",
+		"rideID", rideID,
+		"cancelledBy", cancelledBy,
+		"userID", userID,
+		"isRider", isRider,
+		"isDriver", isDriver,
+		"driverProfileID", driverProfileID,
+		"cancellationFee", cancellationFee,
+	)
+
 	// Process wallet transactions
 	if ride.WalletHoldID != nil {
 		if cancellationFee > 0 {
@@ -969,18 +1294,34 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 				Amount:      &cancellationFee,
 				Description: "Cancellation fee",
 			}); err != nil {
-				logger.Error("failed to capture cancellation fee", "error", err)
+				logger.Error("failed to capture cancellation fee", "error", err, "rideID", rideID)
+			} else {
+				logger.Info("cancellation fee captured",
+					"rideID", rideID,
+					"amount", cancellationFee,
+					"riderID", ride.RiderID,
+				)
 			}
 
-			// ✅ FIX: Get driver user ID for wallet credit
+			// ✅ Credit driver with cancellation fee if assigned
 			if ride.DriverID != nil {
-				driver, err := s.driversRepo.FindDriverByID(ctx, *ride.DriverID)
-				if err != nil {
-					logger.Error("failed to fetch driver for cancellation fee credit",
-						"error", err,
-						"driverID", *ride.DriverID,
-					)
+				// If we already have driver profile from authorization, use it
+				// Otherwise, fetch it
+				var driver *models.DriverProfile
+				if driverProfile != nil && driverProfile.ID == *ride.DriverID {
+					driver = driverProfile
 				} else {
+					driver, err = s.driversRepo.FindDriverByID(ctx, *ride.DriverID)
+					if err != nil {
+						logger.Error("failed to fetch driver for cancellation fee credit",
+							"error", err,
+							"driverID", *ride.DriverID,
+							"rideID", rideID,
+						)
+					}
+				}
+
+				if driver != nil {
 					// ✅ Use driver's user ID for wallet credit
 					s.walletService.CreditWallet(
 						ctx,
@@ -991,6 +1332,14 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 						"Cancellation fee compensation",
 						nil,
 					)
+
+					logger.Info("cancellation fee credited to driver",
+						"rideID", rideID,
+						"driverID", driver.ID,
+						"driverUserID", driver.UserID,
+						"driverName", driver.User.Name,
+						"amount", cancellationFee,
+					)
 				}
 			}
 		} else {
@@ -998,60 +1347,358 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 			if err := s.walletService.ReleaseHold(ctx, ride.RiderID, walletdto.ReleaseHoldRequest{
 				HoldID: *ride.WalletHoldID,
 			}); err != nil {
-				logger.Error("failed to release hold", "error", err)
+				logger.Error("failed to release hold", "error", err, "rideID", rideID)
+			} else {
+				logger.Info("wallet hold released",
+					"rideID", rideID,
+					"riderID", ride.RiderID,
+				)
 			}
 		}
 	}
 
-	// ✅ FIX: Update driver status and notify via WebSocket using user ID
+	// ✅ CLEANUP: Update driver status and clear all caches if driver was assigned
 	if ride.DriverID != nil {
-		s.driversRepo.UpdateDriverStatus(ctx, *ride.DriverID, "online")
+		driverID := *ride.DriverID
 
-		// Clear driver busy flag from cache
-		busyKey := fmt.Sprintf("driver:busy:%s", *ride.DriverID)
+		// Update driver status to online
+		s.driversRepo.UpdateDriverStatus(ctx, driverID, "online")
+
+		// ✅ Clear driver busy flag from cache
+		busyKey := fmt.Sprintf("driver:busy:%s", driverID)
 		cache.Delete(ctx, busyKey)
 
-		// ✅ FIX: Get driver user ID for WebSocket notification
-		driver, err := s.driversRepo.FindDriverByID(ctx, *ride.DriverID)
-		if err != nil {
-			logger.Error("failed to fetch driver for cancellation notification",
-				"error", err,
-				"driverID", *ride.DriverID,
-			)
-		} else {
-			// ✅ Notify driver via WebSocket using user ID
-			websocketutil.SendToUser(driver.UserID, websocket.TypeRideCancelled, map[string]interface{}{
-				"rideId":    rideID,
-				"message":   "Ride was cancelled by rider",
-				"timestamp": time.Now().UTC(),
-			})
+		// ✅ NEW: Clear active ride tracking cache
+		activeRideCacheKey := fmt.Sprintf("driver:active:ride:%s", driverID)
+		cache.Delete(ctx, activeRideCacheKey)
 
-			logger.Info("notified driver of cancellation",
-				"rideID", rideID,
-				"driverID", *ride.DriverID,
-				"driverUserID", driver.UserID,
-				"driverName", driver.User.Name,
-			)
+		logger.Debug("driver caches cleared",
+			"driverID", driverID,
+			"rideID", rideID,
+			"clearedKeys", []string{busyKey, activeRideCacheKey},
+		)
+
+		// ✅ Get driver details for WebSocket notification
+		// If we already have driver profile from authorization, use it
+		// Otherwise, fetch it
+		var driver *models.DriverProfile
+		if driverProfile != nil && driverProfile.ID == driverID {
+			driver = driverProfile
+		} else {
+			driver, err = s.driversRepo.FindDriverByID(ctx, driverID)
+			if err != nil {
+				logger.Error("failed to fetch driver for cancellation notification",
+					"error", err,
+					"driverID", driverID,
+					"rideID", rideID,
+				)
+			}
+		}
+
+		if driver != nil {
+			// ✅ Notify driver via WebSocket using user ID (only if driver didn't cancel)
+			if !isDriver {
+				websocketutil.SendToUser(driver.UserID, websocket.TypeRideCancelled, map[string]interface{}{
+					"rideId":    rideID,
+					"message":   "Ride was cancelled by rider",
+					"reason":    req.Reason,
+					"timestamp": time.Now().UTC(),
+				})
+
+				logger.Info("driver notified of cancellation",
+					"rideID", rideID,
+					"driverID", driver.ID,
+					"driverUserID", driver.UserID,
+					"driverName", driver.User.Name,
+					"cancelledBy", "rider",
+				)
+			}
 		}
 	}
 
-	// Clear cache
-	cache.Delete(ctx, fmt.Sprintf("ride:active:%s", rideID))
+	// ✅ Clear ride cache
+	rideCacheKey := fmt.Sprintf("ride:active:%s", rideID)
+	cache.Delete(ctx, rideCacheKey)
 
 	// ✅ Notify rider via WebSocket (ride.RiderID is user ID, so OK)
 	if isDriver {
 		websocketutil.SendToUser(ride.RiderID, websocket.TypeRideCancelled, map[string]interface{}{
 			"rideId":    rideID,
 			"message":   "Ride was cancelled by driver",
+			"reason":    req.Reason,
 			"timestamp": time.Now().UTC(),
 		})
+
+		logger.Info("rider notified of cancellation",
+			"rideID", rideID,
+			"riderID", ride.RiderID,
+			"cancelledBy", "driver",
+		)
 	}
 
-	logger.Info("ride cancelled",
+	logger.Info("ride cancelled successfully",
 		"rideID", rideID,
 		"cancelledBy", cancelledBy,
+		"userID", userID,
 		"cancellationFee", cancellationFee,
+		"driverID", ride.DriverID,
+		"status", "success",
 	)
 
 	return nil
 }
+
+// func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto.CancelRideRequest) error {
+// 	ride, err := s.repo.FindRideByID(ctx, rideID)
+// 	if err != nil {
+// 		return response.NotFoundError("Ride")
+// 	}
+
+// 	// ✅ FIX: Check authorization properly
+// 	var isRider bool
+// 	var isDriver bool
+// 	var driverProfile *models.DriverProfile
+// 	var driverProfileID string
+
+// 	// Check if user is the rider (riderID is user ID)
+// 	isRider = ride.RiderID == userID
+
+// 	// ✅ Check if user is the driver (need to fetch driver profile first)
+// 	if ride.DriverID != nil {
+// 		// Try to fetch driver profile by user ID
+// 		driverProfile, err = s.driversRepo.FindDriverByUserID(ctx, userID)
+// 		if err == nil && driverProfile != nil {
+// 			// User has a driver profile - check if it matches the ride's driver
+// 			isDriver = driverProfile.ID == *ride.DriverID
+// 			driverProfileID = driverProfile.ID
+// 		}
+// 	}
+
+// 	if !isRider && !isDriver {
+// 		logger.Warn("unauthorized cancellation attempt",
+// 			"userID", userID,
+// 			"rideID", rideID,
+// 			"riderID", ride.RiderID,
+// 			"rideDriverID", ride.DriverID,
+// 		)
+// 		return response.ForbiddenError("Not authorized to cancel this ride")
+// 	}
+
+// 	// Check if ride can be cancelled
+// 	if ride.Status == "completed" || ride.Status == "cancelled" {
+// 		return response.BadRequest("Cannot cancel a completed or already cancelled ride")
+// 	}
+
+// 	if ride.Status == "started" {
+// 		return response.BadRequest("Cannot cancel an ongoing ride")
+// 	}
+
+// 	// Determine cancellation fee
+// 	var cancellationFee float64
+// 	cancelledBy := "rider"
+// 	if isDriver {
+// 		cancelledBy = "driver"
+// 	}
+
+// 	// Apply cancellation fee rules
+// 	if ride.Status == "accepted" || ride.Status == "arrived" {
+// 		if isRider {
+// 			cancellationFee = 2.0 // $2 cancellation fee for rider
+// 		}
+// 	}
+
+// 	// Update ride
+// 	ride.Status = "cancelled"
+// 	ride.CancellationReason = req.Reason
+// 	ride.CancelledBy = &cancelledBy
+// 	ride.CancelledAt = &time.Time{}
+// 	*ride.CancelledAt = time.Now()
+
+// 	if err := s.repo.UpdateRide(ctx, ride); err != nil {
+// 		return response.InternalServerError("Failed to cancel ride", err)
+// 	}
+
+// 	logger.Info("ride cancellation initiated",
+// 		"rideID", rideID,
+// 		"cancelledBy", cancelledBy,
+// 		"userID", userID,
+// 		"isRider", isRider,
+// 		"isDriver", isDriver,
+// 		"driverProfileID", driverProfileID,
+// 		"cancellationFee", cancellationFee,
+// 	)
+
+// 	// Process wallet transactions
+// 	if ride.WalletHoldID != nil {
+// 		if cancellationFee > 0 {
+// 			// Capture cancellation fee, release rest
+// 			if _, err := s.walletService.CaptureHold(ctx, ride.RiderID, walletdto.CaptureHoldRequest{
+// 				HoldID:      *ride.WalletHoldID,
+// 				Amount:      &cancellationFee,
+// 				Description: "Cancellation fee",
+// 			}); err != nil {
+// 				logger.Error("failed to capture cancellation fee", "error", err, "rideID", rideID)
+// 			} else {
+// 				logger.Info("cancellation fee captured",
+// 					"rideID", rideID,
+// 					"amount", cancellationFee,
+// 					"riderID", ride.RiderID,
+// 				)
+// 			}
+
+// 			// ✅ Credit driver with cancellation fee if assigned
+// 			if ride.DriverID != nil {
+// 				// If we already have driver profile from authorization, use it
+// 				// Otherwise, fetch it
+// 				var driver *models.DriverProfile
+// 				if driverProfile != nil && driverProfile.ID == *ride.DriverID {
+// 					driver = driverProfile
+// 				} else {
+// 					driver, err = s.driversRepo.FindDriverByID(ctx, *ride.DriverID)
+// 					if err != nil {
+// 						logger.Error("failed to fetch driver for cancellation fee credit",
+// 							"error", err,
+// 							"driverID", *ride.DriverID,
+// 							"rideID", rideID,
+// 						)
+// 					}
+// 				}
+
+// 				if driver != nil {
+// 					// ✅ Use driver's user ID for wallet credit
+// 					s.walletService.CreditWallet(
+// 						ctx,
+// 						driver.UserID, // ✅ Use user ID, not driver profile ID
+// 						cancellationFee,
+// 						"cancellation_fee",
+// 						rideID,
+// 						"Cancellation fee compensation",
+// 						nil,
+// 					)
+
+// 					logger.Info("cancellation fee credited to driver",
+// 						"rideID", rideID,
+// 						"driverID", driver.ID,
+// 						"driverUserID", driver.UserID,
+// 						"driverName", driver.User.Name,
+// 						"amount", cancellationFee,
+// 					)
+// 				}
+// 			}
+// 		} else {
+// 			// Release hold completely
+// 			if err := s.walletService.ReleaseHold(ctx, ride.RiderID, walletdto.ReleaseHoldRequest{
+// 				HoldID: *ride.WalletHoldID,
+// 			}); err != nil {
+// 				logger.Error("failed to release hold", "error", err, "rideID", rideID)
+// 			} else {
+// 				logger.Info("wallet hold released",
+// 					"rideID", rideID,
+// 					"riderID", ride.RiderID,
+// 				)
+// 			}
+// 		}
+// 	}
+
+// 	// ✅ Update driver status and notify via WebSocket using user ID
+// 	if ride.DriverID != nil {
+// 		// Update driver status to online
+// 		s.driversRepo.UpdateDriverStatus(ctx, *ride.DriverID, "online")
+
+// 		// Clear driver busy flag from cache
+// 		busyKey := fmt.Sprintf("driver:busy:%s", *ride.DriverID)
+// 		cache.Delete(ctx, busyKey)
+
+// 		// ✅ Get driver details for WebSocket notification
+// 		// If we already have driver profile from authorization, use it
+// 		// Otherwise, fetch it
+// 		var driver *models.DriverProfile
+// 		if driverProfile != nil && driverProfile.ID == *ride.DriverID {
+// 			driver = driverProfile
+// 		} else {
+// 			driver, err = s.driversRepo.FindDriverByID(ctx, *ride.DriverID)
+// 			if err != nil {
+// 				logger.Error("failed to fetch driver for cancellation notification",
+// 					"error", err,
+// 					"driverID", *ride.DriverID,
+// 					"rideID", rideID,
+// 				)
+// 			}
+// 		}
+
+// 		if driver != nil {
+// 			// ✅ Notify driver via WebSocket using user ID (only if driver didn't cancel)
+// 			if !isDriver {
+// 				websocketutil.SendToUser(driver.UserID, websocket.TypeRideCancelled, map[string]interface{}{
+// 					"rideId":    rideID,
+// 					"message":   "Ride was cancelled by rider",
+// 					"timestamp": time.Now().UTC(),
+// 				})
+
+// 				logger.Info("driver notified of cancellation",
+// 					"rideID", rideID,
+// 					"driverID", driver.ID,
+// 					"driverUserID", driver.UserID,
+// 					"driverName", driver.User.Name,
+// 					"cancelledBy", "rider",
+// 				)
+// 			}
+// 		}
+// 	}
+
+// 	// Clear cache
+// 	cache.Delete(ctx, fmt.Sprintf("ride:active:%s", rideID))
+
+// 	// ✅ Notify rider via WebSocket (ride.RiderID is user ID, so OK)
+// 	if isDriver {
+// 		websocketutil.SendToUser(ride.RiderID, websocket.TypeRideCancelled, map[string]interface{}{
+// 			"rideId":    rideID,
+// 			"message":   "Ride was cancelled by driver",
+// 			"timestamp": time.Now().UTC(),
+// 		})
+
+// 		logger.Info("rider notified of cancellation",
+// 			"rideID", rideID,
+// 			"riderID", ride.RiderID,
+// 			"cancelledBy", "driver",
+// 		)
+// 	}
+
+// 	logger.Info("ride cancelled successfully",
+// 		"rideID", rideID,
+// 		"cancelledBy", cancelledBy,
+// 		"userID", userID,
+// 		"cancellationFee", cancellationFee,
+// 		"status", "success",
+// 	)
+
+// 	return nil
+// }
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// ✅ HELPER FUNCTION: Calculate distance between two coordinates
+func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
+	// Haversine formula
+	const earthRadius = 6371.0 // kilometers
+
+	dLat := (lat2 - lat1) * (3.14159265359 / 180.0)
+	dLon := (lon2 - lon1) * (3.14159265359 / 180.0)
+
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1*(3.14159265359/180.0))*math.Cos(lat2*(3.14159265359/180.0))*
+			math.Sin(dLon/2)*math.Sin(dLon/2)
+
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return earthRadius * c
+}
+
+// func degreesToRadians(degrees float64) float64 {
+// 	return degrees * math.Pi / 180
+// }

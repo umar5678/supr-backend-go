@@ -106,9 +106,10 @@ func (h *Handler) ListRides(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/accept [post]
 func (h *Handler) AcceptRide(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get("userID") // ✅ This is user ID from JWT token, NOT driver profile ID
 	rideID := c.Param("id")
 
+	// ✅ Service will fetch driver profile using this userID
 	ride, err := h.service.AcceptRide(c.Request.Context(), userID.(string), rideID)
 	if err != nil {
 		c.Error(err)
@@ -129,21 +130,22 @@ func (h *Handler) AcceptRide(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Router /rides/{id}/reject [post]
 func (h *Handler) RejectRide(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get("userID") // ✅ User ID from JWT
 	rideID := c.Param("id")
 
 	var req dto.RejectRideRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		req = dto.RejectRideRequest{Reason: ""}
+		c.Error(response.BadRequest(err.Error()))
+		return
 	}
-	req.RideID = rideID
 
-	if err := h.service.RejectRide(c.Request.Context(), userID.(string), rideID, req); err != nil {
+	err := h.service.RejectRide(c.Request.Context(), userID.(string), rideID, req)
+	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	response.Success(c, nil, "Ride rejected")
+	response.Success(c, nil, "Ride rejected successfully")
 }
 
 // MarkArrived godoc
@@ -154,7 +156,7 @@ func (h *Handler) RejectRide(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/arrived [post]
 func (h *Handler) MarkArrived(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get("userID") // ✅ User ID from JWT
 	rideID := c.Param("id")
 
 	ride, err := h.service.MarkArrived(c.Request.Context(), userID.(string), rideID)
@@ -174,7 +176,7 @@ func (h *Handler) MarkArrived(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/start [post]
 func (h *Handler) StartRide(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get("userID") // ✅ User ID from JWT
 	rideID := c.Param("id")
 
 	ride, err := h.service.StartRide(c.Request.Context(), userID.(string), rideID)
@@ -183,7 +185,7 @@ func (h *Handler) StartRide(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, ride, "Ride started")
+	response.Success(c, ride, "Ride started successfully")
 }
 
 // CompleteRide godoc
@@ -197,12 +199,12 @@ func (h *Handler) StartRide(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/complete [post]
 func (h *Handler) CompleteRide(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get("userID") // ✅ User ID from JWT
 	rideID := c.Param("id")
 
 	var req dto.CompleteRideRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(response.BadRequest("Invalid request body"))
+		c.Error(response.BadRequest(err.Error()))
 		return
 	}
 

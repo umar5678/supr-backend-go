@@ -23,6 +23,9 @@ func NewHandler(service Service) *Handler {
 // @Param request body dto.UpdateLocationRequest true "Location data"
 // @Success 200 {object} response.Response
 // @Router /tracking/location [post]
+// internal/modules/tracking/handler.go
+
+// ✅ UPDATED: Auto-stream location to rider if driver is on active ride
 func (h *Handler) UpdateLocation(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	driverID := userID.(string)
@@ -33,13 +36,49 @@ func (h *Handler) UpdateLocation(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateDriverLocation(c.Request.Context(), driverID, req); err != nil {
-		c.Error(err)
-		return
+	// ✅ Check if driver has active ride
+	activeRide, riderID, err := h.service.GetDriverActiveRide(c.Request.Context(), driverID)
+
+	if err == nil && activeRide != "" && riderID != "" {
+		// ✅ Update location AND stream to rider
+		if err := h.service.UpdateDriverLocationWithStreaming(
+			c.Request.Context(),
+			driverID,
+			req,
+			activeRide,
+			riderID,
+		); err != nil {
+			c.Error(err)
+			return
+		}
+	} else {
+		// Just update location (no active ride)
+		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverID, req); err != nil {
+			c.Error(err)
+			return
+		}
 	}
 
 	response.Success(c, nil, "Location updated successfully")
 }
+
+// func (h *Handler) UpdateLocation(c *gin.Context) {
+// 	userID, _ := c.Get("userID")
+// 	driverID := userID.(string)
+
+// 	var req dto.UpdateLocationRequest
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		c.Error(response.BadRequest("Invalid request body"))
+// 		return
+// 	}
+
+// 	if err := h.service.UpdateDriverLocation(c.Request.Context(), driverID, req); err != nil {
+// 		c.Error(err)
+// 		return
+// 	}
+
+// 	response.Success(c, nil, "Location updated successfully")
+// }
 
 // GetDriverLocation godoc
 // @Summary Get driver's current location

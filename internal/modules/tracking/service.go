@@ -19,7 +19,9 @@ type Service interface {
 	GetDriverLocation(ctx context.Context, driverID string) (*dto.LocationResponse, error)
 	FindNearbyDrivers(ctx context.Context, req dto.FindNearbyDriversRequest) (*dto.NearbyDriversResponse, error)
 	StreamLocationToRider(ctx context.Context, rideID, driverID, riderID string) error
-
+	// ✅ NEW METHODS
+	GetDriverActiveRide(ctx context.Context, driverID string) (rideID, riderID string, err error)
+	UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error
 	// Polyline features
 	// GeneratePolyline(ctx context.Context, driverID string, from, to time.Time) (string, error)
 	// GetRidePolyline(ctx context.Context, rideID string) (string, error)
@@ -33,6 +35,8 @@ type service struct {
 func NewService(repo Repository) Service {
 	return &service{repo: repo}
 }
+
+// internal/modules/tracking/service.go
 
 func (s *service) UpdateDriverLocation(ctx context.Context, driverID string, req dto.UpdateLocationRequest) error {
 	if err := req.Validate(); err != nil {
@@ -263,6 +267,58 @@ func (s *service) FindNearbyDrivers(ctx context.Context, req dto.FindNearbyDrive
 	return result, nil
 }
 
+// ✅ IMPLEMENT: Get driver's active ride
+func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (string, string, error) {
+	// Check cache first
+	cacheKey := fmt.Sprintf("driver:active:ride:%s", driverID)
+	var rideData map[string]string
+
+	err := cache.GetJSON(ctx, cacheKey, &rideData)
+	if err == nil && rideData != nil {
+		return rideData["rideID"], rideData["riderID"], nil
+	}
+
+	// Query database
+	var ride struct {
+		ID      string
+		RiderID string
+	}
+
+	err = s.repo.GetDB().
+		Table("rides").
+		Select("id, rider_id").
+		Where("driver_id = ?", driverID).
+		Where("status IN (?)", []string{"accepted", "started"}).
+		First(&ride).Error
+
+	if err != nil {
+		return "", "", err
+	}
+
+	// Cache for 30 minutes
+	cache.SetJSON(ctx, cacheKey, map[string]string{
+		"rideID":  ride.ID,
+		"riderID": ride.RiderID,
+	}, 30*time.Minute)
+
+	return ride.ID, ride.RiderID, nil
+}
+
+// ✅ ALREADY EXISTS IN YOUR CODE (just verify it's there)
+func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
+	// Update location first
+	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
+		return err
+	}
+
+	// Stream to rider (non-blocking)
+	if activeRideID != "" && riderID != "" {
+		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
+	}
+
+	return nil
+}
+
 // // CRITICAL FIX: Implement OnlyAvailable filter
 // func (s *service) FindNearbyDrivers(ctx context.Context, req dto.FindNearbyDriversRequest) (*dto.NearbyDriversResponse, error) {
 // 	req.SetDefaults()
@@ -441,17 +497,17 @@ func (s *service) StartLocationStreaming(ctx context.Context, rideID, driverID, 
 }
 
 // Enhanced location update with streaming
-func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
-	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
-		return err
-	}
+// func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
+// 	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
+// 		return err
+// 	}
 
-	if activeRideID != "" && riderID != "" {
-		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
-	}
+// 	if activeRideID != "" && riderID != "" {
+// 		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // ============================================================================
 // POLYLINE FEATURES
