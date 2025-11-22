@@ -49,3 +49,5 @@ tmp/
 # Frontend build artifacts (if applicable, e.g., if Gin serves a frontend)
 dist/
 build/
+
+log
