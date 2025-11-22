@@ -4020,9 +4020,11 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "address",
+                "hoursOfService",
                 "items",
                 "latitude",
                 "longitude",
+                "quantityOfPros",
                 "serviceDate"
             ],
             "properties": {
@@ -4050,6 +4052,12 @@ const docTemplate = `{
                         "monthly"
                     ]
                 },
+                "hoursOfService": {
+                    "description": "✅ NEW: Hours of service required",
+                    "type": "number",
+                    "maximum": 24,
+                    "minimum": 0.5
+                },
                 "items": {
                     "type": "array",
                     "minItems": 1,
@@ -4066,6 +4074,12 @@ const docTemplate = `{
                 "notes": {
                     "type": "string",
                     "maxLength": 500
+                },
+                "quantityOfPros": {
+                    "description": "✅ NEW: Number of professionals needed",
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 1
                 },
                 "serviceDate": {
                     "description": "RFC3339 format",
@@ -4230,8 +4244,16 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "hoursOfService": {
+                    "description": "NEW",
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
+                },
+                "quantityOfPros": {
+                    "description": "NEW",
+                    "type": "integer"
                 },
                 "serviceDate": {
                     "type": "string"
@@ -4277,6 +4299,9 @@ const docTemplate = `{
                 "frequency": {
                     "type": "string"
                 },
+                "hoursOfService": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -4294,6 +4319,9 @@ const docTemplate = `{
                 },
                 "providerId": {
                     "type": "string"
+                },
+                "quantityOfPros": {
+                    "type": "integer"
                 },
                 "serviceDate": {
                     "type": "string"

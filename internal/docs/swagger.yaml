@@ -478,6 +478,11 @@ definitions:
         - weekly
         - monthly
         type: string
+      hoursOfService:
+        description: '✅ NEW: Hours of service required'
+        maximum: 24
+        minimum: 0.5
+        type: number
       items:
         items:
           $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateOrderItemRequest'
@@ -490,14 +495,21 @@ definitions:
       notes:
         maxLength: 500
         type: string
+      quantityOfPros:
+        description: '✅ NEW: Number of professionals needed'
+        maximum: 10
+        minimum: 1
+        type: integer
       serviceDate:
         description: RFC3339 format
         type: string
     required:
     - address
+    - hoursOfService
     - items
     - latitude
     - longitude
+    - quantityOfPros
     - serviceDate
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.CreateServiceRequest:
@@ -611,8 +623,14 @@ definitions:
         type: string
       createdAt:
         type: string
+      hoursOfService:
+        description: NEW
+        type: number
       id:
         type: string
+      quantityOfPros:
+        description: NEW
+        type: integer
       serviceDate:
         type: string
       status:
@@ -642,6 +660,8 @@ definitions:
         type: number
       frequency:
         type: string
+      hoursOfService:
+        type: number
       id:
         type: string
       items:
@@ -654,6 +674,8 @@ definitions:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderResponse'
       providerId:
         type: string
+      quantityOfPros:
+        type: integer
       serviceDate:
         type: string
       status:

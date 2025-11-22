@@ -4012,9 +4012,11 @@
             "type": "object",
             "required": [
                 "address",
+                "hoursOfService",
                 "items",
                 "latitude",
                 "longitude",
+                "quantityOfPros",
                 "serviceDate"
             ],
             "properties": {
@@ -4042,6 +4044,12 @@
                         "monthly"
                     ]
                 },
+                "hoursOfService": {
+                    "description": "✅ NEW: Hours of service required",
+                    "type": "number",
+                    "maximum": 24,
+                    "minimum": 0.5
+                },
                 "items": {
                     "type": "array",
                     "minItems": 1,
@@ -4058,6 +4066,12 @@
                 "notes": {
                     "type": "string",
                     "maxLength": 500
+                },
+                "quantityOfPros": {
+                    "description": "✅ NEW: Number of professionals needed",
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 1
                 },
                 "serviceDate": {
                     "description": "RFC3339 format",
@@ -4222,8 +4236,16 @@
                 "createdAt": {
                     "type": "string"
                 },
+                "hoursOfService": {
+                    "description": "NEW",
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
+                },
+                "quantityOfPros": {
+                    "description": "NEW",
+                    "type": "integer"
                 },
                 "serviceDate": {
                     "type": "string"
@@ -4269,6 +4291,9 @@
                 "frequency": {
                     "type": "string"
                 },
+                "hoursOfService": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -4286,6 +4311,9 @@
                 },
                 "providerId": {
                     "type": "string"
+                },
+                "quantityOfPros": {
+                    "type": "integer"
                 },
                 "serviceDate": {
                     "type": "string"
