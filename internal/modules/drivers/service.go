@@ -9,10 +9,13 @@ import (
 
 	"github.com/umar5678/go-backend/internal/models"
 	driverdto "github.com/umar5678/go-backend/internal/modules/drivers/dto"
+
+	// trackingDto "github.com/umar5678/go-backend/internal/modules/tracking/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/helpers"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
+	"github.com/umar5678/go-backend/internal/websocket/websocketutils"
 	"gorm.io/gorm"
 )
 
@@ -22,9 +25,16 @@ type Service interface {
 	UpdateProfile(ctx context.Context, userID string, req driverdto.UpdateDriverProfileRequest) (*driverdto.DriverProfileResponse, error)
 	UpdateVehicle(ctx context.Context, userID string, req driverdto.UpdateVehicleRequest) (*driverdto.VehicleResponse, error)
 	UpdateStatus(ctx context.Context, userID string, req driverdto.UpdateStatusRequest) (*driverdto.DriverProfileResponse, error)
-	UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error
+	// UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error
 	GetWallet(ctx context.Context, userID string) (*driverdto.WalletResponse, error)
 	GetDashboard(ctx context.Context, userID string) (*driverdto.DriverDashboardResponse, error)
+
+	// CreateDriverProfile(ctx context.Context, userID string, req driverdto.CreateDriverProfileRequest) (*driverdto.DriverProfileResponse, error)
+	// GetDriverProfile(ctx context.Context, userID string) (*driverdto.DriverProfileResponse, error)
+	// UpdateDriverProfile(ctx context.Context, userID string, req driverdto.UpdateDriverProfileRequest) (*driverdto.DriverProfileResponse, error)
+	// UpdateDriverStatus(ctx context.Context, userID string, req driverdto.UpdateDriverStatusRequest) (*driverdto.DriverProfileResponse, error)
+	UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error
+	// GetDriverStats(ctx context.Context, userID string) (*trackingDto.DriverStatsResponse, error)
 }
 
 type service struct {
@@ -296,51 +306,51 @@ func (s *service) UpdateStatus(ctx context.Context, userID string, req driverdto
 
 // internal/modules/drivers/service.go
 
-func (s *service) UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error {
-	if err := req.Validate(); err != nil {
-		return response.BadRequest(err.Error())
-	}
+// func (s *service) UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error {
+// 	if err := req.Validate(); err != nil {
+// 		return response.BadRequest(err.Error())
+// 	}
 
-	driver, err := s.repo.FindDriverByUserID(ctx, userID)
-	if err != nil {
-		return response.NotFoundError("Driver profile")
-	}
+// 	driver, err := s.repo.FindDriverByUserID(ctx, userID)
+// 	if err != nil {
+// 		return response.NotFoundError("Driver profile")
+// 	}
 
-	// ✅ FIXED: Allow location updates for online, busy, AND on_trip drivers
-	if driver.Status != "online" && driver.Status != "busy" && driver.Status != "on_trip" {
-		return response.BadRequest("Driver must be online to update location")
-	}
+// 	// ✅ FIXED: Allow location updates for online, busy, AND on_trip drivers
+// 	if driver.Status != "online" && driver.Status != "busy" && driver.Status != "on_trip" {
+// 		return response.BadRequest("Driver must be online to update location")
+// 	}
 
-	// Update location in database
-	if err := s.repo.UpdateDriverLocation(ctx, driver.ID, req.Latitude, req.Longitude, req.Heading); err != nil {
-		logger.Error("failed to update driver location", "error", err, "driverID", driver.ID)
-		return response.InternalServerError("Failed to update location", err)
-	}
+// 	// Update location in database
+// 	if err := s.repo.UpdateDriverLocation(ctx, driver.ID, req.Latitude, req.Longitude, req.Heading); err != nil {
+// 		logger.Error("failed to update driver location", "error", err, "driverID", driver.ID)
+// 		return response.InternalServerError("Failed to update location", err)
+// 	}
 
-	// Update location in Redis (for faster access)
-	locationKey := fmt.Sprintf("driver:location:%s", driver.ID)
-	locationData := map[string]interface{}{
-		"latitude":  req.Latitude,
-		"longitude": req.Longitude,
-		"heading":   req.Heading,
-		"timestamp": time.Now().Unix(),
-	}
-	cache.SetJSON(ctx, locationKey, locationData, 30*time.Second)
+// 	// Update location in Redis (for faster access)
+// 	locationKey := fmt.Sprintf("driver:location:%s", driver.ID)
+// 	locationData := map[string]interface{}{
+// 		"latitude":  req.Latitude,
+// 		"longitude": req.Longitude,
+// 		"heading":   req.Heading,
+// 		"timestamp": time.Now().Unix(),
+// 	}
+// 	cache.SetJSON(ctx, locationKey, locationData, 30*time.Second)
 
-	// Refresh online status TTL
-	onlineKey := fmt.Sprintf("driver:online:%s", driver.ID)
-	cache.Set(ctx, onlineKey, "true", 5*time.Minute)
+// 	// Refresh online status TTL
+// 	onlineKey := fmt.Sprintf("driver:online:%s", driver.ID)
+// 	cache.Set(ctx, onlineKey, "true", 5*time.Minute)
 
-	logger.Debug("driver location updated",
-		"driverID", driver.ID,
-		"userID", userID,
-		"status", driver.Status,
-		"lat", req.Latitude,
-		"lng", req.Longitude,
-	)
+// 	logger.Debug("driver location updated",
+// 		"driverID", driver.ID,
+// 		"userID", userID,
+// 		"status", driver.Status,
+// 		"lat", req.Latitude,
+// 		"lng", req.Longitude,
+// 	)
 
-	return nil
-}
+// 	return nil
+// }
 
 func (s *service) GetWallet(ctx context.Context, userID string) (*driverdto.WalletResponse, error) {
 	// Try cache first
@@ -392,3 +402,156 @@ func (s *service) GetDashboard(ctx context.Context, userID string) (*driverdto.D
 
 	return dashboard, nil
 }
+
+// ✅ UPDATED: UpdateLocation with location streaming to rider
+func (s *service) UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error {
+	logger.Info("=====================")
+	logger.Info("=============== 📍 DRIVERS MODULE: UpdateLocation CALLED",
+		"userID", userID,
+		"lat", req.Latitude,
+		"lng", req.Longitude,
+	)
+
+	if err := req.Validate(); err != nil {
+		logger.Error(" ================= ❌ Validation failed", "error", err)
+		return response.BadRequest(err.Error())
+	}
+
+	driver, err := s.repo.FindDriverByUserID(ctx, userID)
+	if err != nil {
+		logger.Error("====================== ❌ Driver profile not found", "userID", userID, "error", err)
+		return response.NotFoundError("Driver profile")
+	}
+
+	logger.Info("✅ Driver profile found",
+		"userID", userID,
+		"driverProfileID", driver.ID,
+		"driverStatus", driver.Status,
+	)
+
+	// Allow location updates for active drivers
+	if driver.Status != "online" && driver.Status != "busy" && driver.Status != "on_trip" {
+		logger.Warn("===================== ❌ Driver not in active status",
+			"driverID", driver.ID,
+			"status", driver.Status,
+		)
+		return response.BadRequest("Driver must be online to update location")
+	}
+
+	// Update location in database
+	logger.Info("💾 Updating location in database...")
+	if err := s.repo.UpdateDriverLocation(ctx, driver.ID, req.Latitude, req.Longitude, req.Heading); err != nil {
+		logger.Error("================= ❌ Failed to update driver location", "error", err, "driverID", driver.ID)
+		return response.InternalServerError("Failed to update location", err)
+	}
+
+	logger.Info("✅ Location saved to database")
+
+	// Update location in Redis (for faster access)
+	locationKey := fmt.Sprintf("driver:location:%s", driver.ID)
+	locationData := map[string]interface{}{
+		"latitude":  req.Latitude,
+		"longitude": req.Longitude,
+		"heading":   req.Heading,
+		"timestamp": time.Now().Unix(),
+	}
+	cache.SetJSON(ctx, locationKey, locationData, 30*time.Second)
+
+	logger.Info("✅ Location cached in Redis")
+
+	// Refresh online status TTL
+	onlineKey := fmt.Sprintf("driver:online:%s", driver.ID)
+	cache.Set(ctx, onlineKey, "true", 5*time.Minute)
+
+	// ✅ NEW: Check for active ride and stream location to rider
+	logger.Info("🔍 Checking for active ride...")
+	activeRideCacheKey := fmt.Sprintf("driver:active:ride:%s", driver.ID)
+	var rideData map[string]string
+
+	err = cache.GetJSON(ctx, activeRideCacheKey, &rideData)
+	if err != nil {
+		logger.Debug("⚠️ No active ride in cache",
+			"driverProfileID", driver.ID,
+			"cacheKey", activeRideCacheKey,
+			"error", err,
+		)
+	} else if rideData != nil {
+		rideID := rideData["rideID"]
+		riderID := rideData["riderID"]
+
+		if rideID != "" && riderID != "" {
+			logger.Info("✅ Active ride FOUND",
+				"driverProfileID", driver.ID,
+				"rideID", rideID,
+				"riderUserID", riderID,
+			)
+
+			logger.Info("📡 Starting location stream to rider...")
+
+			// Stream location to rider (non-blocking)
+			go func() {
+				logger.Info("🎯 Goroutine STARTED for location streaming")
+
+				locationUpdateData := map[string]interface{}{
+					"rideId":   rideID,
+					"driverId": driver.ID,
+					"location": map[string]interface{}{
+						"latitude":  req.Latitude,
+						"longitude": req.Longitude,
+						"heading":   req.Heading,
+						"speed":     0.0,
+						"accuracy":  0.0,
+						"timestamp": time.Now(),
+					},
+					"timestamp": time.Now().UTC(),
+				}
+
+				logger.Info("📤 Calling SendRideLocationUpdate",
+					"riderUserID", riderID,
+					"rideID", rideID,
+					"lat", req.Latitude,
+					"lng", req.Longitude,
+				)
+
+				if err := websocketutils.SendRideLocationUpdate(riderID, locationUpdateData); err != nil {
+					logger.Error("============= ❌ Failed to send location update to rider",
+						"error", err,
+						"riderUserID", riderID,
+						"rideID", rideID,
+						"driverID", driver.ID,
+					)
+				} else {
+					logger.Info("============= ✅ Location successfully streamed to rider",
+						"riderUserID", riderID,
+						"rideID", rideID,
+					)
+				}
+			}()
+		} else {
+			logger.Warn("================⚠️ Active ride data incomplete",
+				"rideID", rideID,
+				"riderID", riderID,
+			)
+		}
+	}
+
+	logger.Info("✅ UpdateLocation completed")
+	logger.Info("============================")
+
+	return nil
+}
+
+// func (s *service) GetDriverStats(ctx context.Context, userID string) (*dto.DriverStatsResponse, error) {
+// 	driver, err := s.repo.FindDriverByUserID(ctx, userID)
+// 	if err != nil {
+// 		return nil, response.NotFoundError("Driver profile")
+// 	}
+
+// 	return &driverdto.DriverStatsResponse{
+// 		TotalTrips:       driver.TotalTrips,
+// 		TotalEarnings:    driver.TotalEarnings,
+// 		Rating:           driver.Rating,
+// 		AcceptanceRate:   driver.AcceptanceRate,
+// 		CancellationRate: driver.CancellationRate,
+// 	}, nil
+// }
