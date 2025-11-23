@@ -158,6 +158,195 @@ func (s *service) GetDriverLocation(ctx context.Context, driverID string) (*dto.
 	}, nil
 }
 
+func (s *service) GetDriverProfileID(ctx context.Context, userID string) (string, error) {
+	logger.Info("🔍 GetDriverProfileID CALLED", "userID", userID)
+
+	cacheKey := fmt.Sprintf("user:driver_profile:%s", userID)
+	logger.Info("📦 Checking cache", "cacheKey", cacheKey)
+
+	profileID, err := cache.Get(ctx, cacheKey)
+	if err == nil && profileID != "" {
+		logger.Info("✅ Profile ID found in CACHE", "profileID", profileID)
+		return profileID, nil
+	}
+
+	logger.Info("⚠️ Not in cache, querying DATABASE")
+
+	var profile struct {
+		ID string
+	}
+
+	err = s.repo.GetDB().
+		Table("driver_profiles").
+		Select("id").
+		Where("user_id = ?", userID).
+		First(&profile).Error
+
+	if err != nil {
+		logger.Error("--------- ---------- - - ❌ Driver profile NOT found in database",
+			"userID", userID,
+			"error", err,
+		)
+		return "", err
+	}
+
+	logger.Info("---------- -------- ✅ Driver profile found in DATABASE",
+		"userID", userID,
+		"profileID", profile.ID,
+	)
+
+	cache.Set(ctx, cacheKey, profile.ID, 1*time.Hour)
+	return profile.ID, nil
+}
+
+func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (string, string, error) {
+	logger.Info("🔍 GetDriverActiveRide CALLED", "driverProfileID", driverID)
+
+	cacheKey := fmt.Sprintf("driver:active:ride:%s", driverID)
+	logger.Info("📦 Checking cache", "cacheKey", cacheKey)
+
+	var rideData map[string]string
+
+	err := cache.GetJSON(ctx, cacheKey, &rideData)
+	if err == nil && rideData != nil {
+		logger.Info("---- --- ---  ✅ Active ride found in CACHE",
+			"rideID", rideData["rideID"],
+			"riderID", rideData["riderID"],
+		)
+		return rideData["rideID"], rideData["riderID"], nil
+	}
+
+	logger.Warn("⚠️ Not in cache, querying DATABASE", "cacheError", err)
+
+	var ride struct {
+		ID      string
+		RiderID string
+	}
+
+	query := s.repo.GetDB().
+		Table("rides").
+		Select("id, rider_id").
+		Where("driver_id = ?", driverID).
+		Where("status IN (?)", []string{"accepted", "started"})
+
+	logger.Info("📊 Executing query", "driverID", driverID)
+
+	err = query.First(&ride).Error
+
+	if err != nil {
+		logger.Error("============ ❌ No active ride in DATABASE",
+			"driverProfileID", driverID,
+			"error", err,
+		)
+		return "", "", err
+	}
+
+	logger.Info("✅ Active ride found in DATABASE",
+		"rideID", ride.ID,
+		"riderID", ride.RiderID,
+	)
+
+	cache.SetJSON(ctx, cacheKey, map[string]string{
+		"rideID":  ride.ID,
+		"riderID": ride.RiderID,
+	}, 30*time.Minute)
+
+	return ride.ID, ride.RiderID, nil
+}
+
+func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
+	logger.Info("🚗 UpdateDriverLocationWithStreaming CALLED",
+		"driverProfileID", driverID,
+		"rideID", activeRideID,
+		"riderUserID", riderID,
+	)
+
+	// Update location first
+	logger.Info("📍 Updating driver location in database...")
+	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
+		logger.Error("========================= ❌ UpdateDriverLocation FAILED", "error", err)
+		return err
+	}
+	logger.Info("✅ Driver location updated in database")
+
+	// Validate IDs
+	if activeRideID == "" {
+		logger.Error("========================= ❌ Empty activeRideID, cannot stream")
+		return nil
+	}
+	if riderID == "" {
+		logger.Error("========================  ❌ Empty riderID, cannot stream")
+		return nil
+	}
+
+	// Stream to rider (non-blocking)
+	logger.Info("📡 Starting goroutine for StreamLocationToRider")
+	go func() {
+		logger.Info("🎯 Goroutine STARTED for location streaming")
+		if err := s.StreamLocationToRider(context.Background(), activeRideID, driverID, riderID); err != nil {
+			logger.Error("===================  ❌ StreamLocationToRider error in goroutine ==== ", "error", err)
+		}
+	}()
+
+	logger.Info("✅ UpdateDriverLocationWithStreaming completed (goroutine spawned)")
+	return nil
+}
+
+func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, riderID string) error {
+	logger.Info("===========================")
+	logger.Info("🎯 StreamLocationToRider STARTED",
+		"rideID", rideID,
+		"driverProfileID", driverID,
+		"riderUserID", riderID,
+	)
+
+	logger.Info("📍 Getting driver location...")
+	location, err := s.GetDriverLocation(ctx, driverID)
+	if err != nil {
+		logger.Error("❌ GetDriverLocation FAILED",
+			"error", err,
+			"driverID", driverID,
+		)
+		return err
+	}
+
+	logger.Info("✅ Driver location retrieved",
+		"lat", location.Latitude,
+		"lng", location.Longitude,
+	)
+
+	locationData := map[string]interface{}{
+		"rideId":   rideID,
+		"driverId": driverID,
+		"location": map[string]interface{}{
+			"latitude":  location.Latitude,
+			"longitude": location.Longitude,
+			"heading":   location.Heading,
+			"speed":     location.Speed,
+			"accuracy":  location.Accuracy,
+			"timestamp": location.Timestamp,
+		},
+		"timestamp": time.Now().UTC(),
+	}
+
+	logger.Info("📤 Calling SendRideLocationUpdate",
+		"riderUserID", riderID,
+		"locationData", locationData,
+	)
+
+	if err := websocketutil.SendRideLocationUpdate(riderID, locationData); err != nil {
+		logger.Error("============== ❌ SendRideLocationUpdate FAILED ==================",
+			"error", err,
+			"riderUserID", riderID,
+		)
+		return err
+	}
+
+	logger.Info("✅ StreamLocationToRider COMPLETED SUCCESSFULLY")
+	logger.Info("============================================================")
+	return nil
+}
+
 func (s *service) FindNearbyDrivers(ctx context.Context, req dto.FindNearbyDriversRequest) (*dto.NearbyDriversResponse, error) {
 	req.SetDefaults()
 
@@ -268,153 +457,153 @@ func (s *service) FindNearbyDrivers(ctx context.Context, req dto.FindNearbyDrive
 }
 
 // ✅ Enhanced GetDriverActiveRide
-func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (string, string, error) {
-	cacheKey := fmt.Sprintf("driver:active:ride:%s", driverID)
+// func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (string, string, error) {
+// 	cacheKey := fmt.Sprintf("driver:active:ride:%s", driverID)
 
-	logger.Info("🔍 Looking for active ride",
-		"driverProfileID", driverID,
-		"cacheKey", cacheKey,
-	)
+// 	logger.Info("🔍 Looking for active ride",
+// 		"driverProfileID", driverID,
+// 		"cacheKey", cacheKey,
+// 	)
 
-	var rideData map[string]string
+// 	var rideData map[string]string
 
-	err := cache.GetJSON(ctx, cacheKey, &rideData)
-	if err == nil && rideData != nil {
-		logger.Info("✅ Active ride found in CACHE",
-			"driverProfileID", driverID,
-			"rideID", rideData["rideID"],
-			"riderUserID", rideData["riderID"],
-		)
-		return rideData["rideID"], rideData["riderID"], nil
-	}
+// 	err := cache.GetJSON(ctx, cacheKey, &rideData)
+// 	if err == nil && rideData != nil {
+// 		logger.Info("✅ Active ride found in CACHE",
+// 			"driverProfileID", driverID,
+// 			"rideID", rideData["rideID"],
+// 			"riderUserID", rideData["riderID"],
+// 		)
+// 		return rideData["rideID"], rideData["riderID"], nil
+// 	}
 
-	logger.Warn("⚠️ No active ride in cache, checking DATABASE",
-		"driverProfileID", driverID,
-		"cacheError", err,
-	)
+// 	logger.Warn("⚠️ No active ride in cache, checking DATABASE",
+// 		"driverProfileID", driverID,
+// 		"cacheError", err,
+// 	)
 
-	// Query database
-	var ride struct {
-		ID      string
-		RiderID string
-	}
+// 	// Query database
+// 	var ride struct {
+// 		ID      string
+// 		RiderID string
+// 	}
 
-	err = s.repo.GetDB().
-		Table("rides").
-		Select("id, rider_id").
-		Where("driver_id = ?", driverID).
-		Where("status IN (?)", []string{"accepted", "started"}).
-		First(&ride).Error
+// 	err = s.repo.GetDB().
+// 		Table("rides").
+// 		Select("id, rider_id").
+// 		Where("driver_id = ?", driverID).
+// 		Where("status IN (?)", []string{"accepted", "started"}).
+// 		First(&ride).Error
 
-	if err != nil {
-		logger.Warn("❌ No active ride in DATABASE",
-			"driverProfileID", driverID,
-			"error", err,
-		)
-		return "", "", err
-	}
+// 	if err != nil {
+// 		logger.Warn("❌ No active ride in DATABASE",
+// 			"driverProfileID", driverID,
+// 			"error", err,
+// 		)
+// 		return "", "", err
+// 	}
 
-	logger.Info("✅ Active ride found in DATABASE",
-		"driverProfileID", driverID,
-		"rideID", ride.ID,
-		"riderUserID", ride.RiderID,
-	)
+// 	logger.Info("✅ Active ride found in DATABASE",
+// 		"driverProfileID", driverID,
+// 		"rideID", ride.ID,
+// 		"riderUserID", ride.RiderID,
+// 	)
 
-	// Cache for 30 minutes
-	cache.SetJSON(ctx, cacheKey, map[string]string{
-		"rideID":  ride.ID,
-		"riderID": ride.RiderID,
-	}, 30*time.Minute)
+// 	// Cache for 30 minutes
+// 	cache.SetJSON(ctx, cacheKey, map[string]string{
+// 		"rideID":  ride.ID,
+// 		"riderID": ride.RiderID,
+// 	}, 30*time.Minute)
 
-	return ride.ID, ride.RiderID, nil
-}
+// 	return ride.ID, ride.RiderID, nil
+// }
 
-// ✅ Enhanced UpdateDriverLocationWithStreaming
-func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
-	logger.Info("🚗 Updating location with streaming",
-		"driverProfileID", driverID,
-		"rideID", activeRideID,
-		"riderUserID", riderID,
-	)
+// // ✅ Enhanced UpdateDriverLocationWithStreaming
+// func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
+// 	logger.Info("🚗 Updating location with streaming",
+// 		"driverProfileID", driverID,
+// 		"rideID", activeRideID,
+// 		"riderUserID", riderID,
+// 	)
 
-	// Update location first
-	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
-		logger.Error("❌ Failed to update driver location", "error", err)
-		return err
-	}
+// 	// Update location first
+// 	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
+// 		logger.Error("❌ Failed to update driver location", "error", err)
+// 		return err
+// 	}
 
-	// Stream to rider (non-blocking)
-	if activeRideID != "" && riderID != "" {
-		logger.Info("📡 Starting location stream to rider",
-			"riderUserID", riderID,
-			"rideID", activeRideID,
-		)
+// 	// Stream to rider (non-blocking)
+// 	if activeRideID != "" && riderID != "" {
+// 		logger.Info("📡 Starting location stream to rider",
+// 			"riderUserID", riderID,
+// 			"rideID", activeRideID,
+// 		)
 
-		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
-	} else {
-		logger.Warn("⚠️ Empty rideID or riderID, skipping stream",
-			"rideID", activeRideID,
-			"riderID", riderID,
-		)
-	}
+// 		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
+// 	} else {
+// 		logger.Warn("⚠️ Empty rideID or riderID, skipping stream",
+// 			"rideID", activeRideID,
+// 			"riderID", riderID,
+// 		)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-// ✅ Enhanced StreamLocationToRider
-func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, riderID string) error {
-	logger.Info("🎯 StreamLocationToRider called",
-		"rideID", rideID,
-		"driverProfileID", driverID,
-		"riderUserID", riderID,
-	)
+// // ✅ Enhanced StreamLocationToRider
+// func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, riderID string) error {
+// 	logger.Info("🎯 StreamLocationToRider called",
+// 		"rideID", rideID,
+// 		"driverProfileID", driverID,
+// 		"riderUserID", riderID,
+// 	)
 
-	location, err := s.GetDriverLocation(ctx, driverID)
-	if err != nil {
-		logger.Error("❌ Failed to get driver location",
-			"error", err,
-			"driverID", driverID,
-		)
-		return err
-	}
+// 	location, err := s.GetDriverLocation(ctx, driverID)
+// 	if err != nil {
+// 		logger.Error("❌ Failed to get driver location",
+// 			"error", err,
+// 			"driverID", driverID,
+// 		)
+// 		return err
+// 	}
 
-	locationData := map[string]interface{}{
-		"rideId":   rideID,
-		"driverId": driverID,
-		"location": map[string]interface{}{
-			"latitude":  location.Latitude,
-			"longitude": location.Longitude,
-			"heading":   location.Heading,
-			"speed":     location.Speed,
-			"accuracy":  location.Accuracy,
-			"timestamp": location.Timestamp,
-		},
-		"timestamp": time.Now().UTC(),
-	}
+// 	locationData := map[string]interface{}{
+// 		"rideId":   rideID,
+// 		"driverId": driverID,
+// 		"location": map[string]interface{}{
+// 			"latitude":  location.Latitude,
+// 			"longitude": location.Longitude,
+// 			"heading":   location.Heading,
+// 			"speed":     location.Speed,
+// 			"accuracy":  location.Accuracy,
+// 			"timestamp": location.Timestamp,
+// 		},
+// 		"timestamp": time.Now().UTC(),
+// 	}
 
-	logger.Info("📤 Sending location to rider via WebSocket",
-		"riderUserID", riderID,
-		"lat", location.Latitude,
-		"lng", location.Longitude,
-		"rideID", rideID,
-	)
+// 	logger.Info("📤 Sending location to rider via WebSocket",
+// 		"riderUserID", riderID,
+// 		"lat", location.Latitude,
+// 		"lng", location.Longitude,
+// 		"rideID", rideID,
+// 	)
 
-	if err := websocketutil.SendRideLocationUpdate(riderID, locationData); err != nil {
-		logger.Error("❌ WebSocket send FAILED",
-			"error", err,
-			"riderUserID", riderID,
-			"rideID", rideID,
-		)
-		return err
-	}
+// 	if err := websocketutil.SendRideLocationUpdate(riderID, locationData); err != nil {
+// 		logger.Error("❌ WebSocket send FAILED",
+// 			"error", err,
+// 			"riderUserID", riderID,
+// 			"rideID", rideID,
+// 		)
+// 		return err
+// 	}
 
-	logger.Info("✅ Location successfully sent to rider",
-		"riderUserID", riderID,
-		"rideID", rideID,
-	)
+// 	logger.Info("✅ Location successfully sent to rider",
+// 		"riderUserID", riderID,
+// 		"rideID", rideID,
+// 	)
 
-	return nil
-}
+// 	return nil
+// }
 
 // func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (string, string, error) {
 // 	// Check cache first
@@ -531,35 +720,35 @@ func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, r
 // }
 
 // ✅ NEW: Get driver profile ID from user ID
-func (s *service) GetDriverProfileID(ctx context.Context, userID string) (string, error) {
-	// Check cache first
-	cacheKey := fmt.Sprintf("user:driver_profile:%s", userID)
-	var profileID string
+// func (s *service) GetDriverProfileID(ctx context.Context, userID string) (string, error) {
+// 	// Check cache first
+// 	cacheKey := fmt.Sprintf("user:driver_profile:%s", userID)
+// 	var profileID string
 
-	profileID, err := cache.Get(ctx, cacheKey)
-	if err == nil && profileID != "" {
-		return profileID, nil
-	}
-	// Query database
-	var profile struct {
-		ID string
-	}
+// 	profileID, err := cache.Get(ctx, cacheKey)
+// 	if err == nil && profileID != "" {
+// 		return profileID, nil
+// 	}
+// 	// Query database
+// 	var profile struct {
+// 		ID string
+// 	}
 
-	err = s.repo.GetDB().
-		Table("driver_profiles").
-		Select("id").
-		Where("user_id = ?", userID).
-		First(&profile).Error
+// 	err = s.repo.GetDB().
+// 		Table("driver_profiles").
+// 		Select("id").
+// 		Where("user_id = ?", userID).
+// 		First(&profile).Error
 
-	if err != nil {
-		return "", err
-	}
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	// Cache for 1 hour (profile ID doesn't change)
-	cache.Set(ctx, cacheKey, profile.ID, 1*time.Hour)
+// 	// Cache for 1 hour (profile ID doesn't change)
+// 	cache.Set(ctx, cacheKey, profile.ID, 1*time.Hour)
 
-	return profile.ID, nil
-}
+// 	return profile.ID, nil
+// }
 
 // Helper: Check if driver is truly available (not on an active ride)
 func (s *service) isDriverAvailable(ctx context.Context, driverID string) (bool, error) {

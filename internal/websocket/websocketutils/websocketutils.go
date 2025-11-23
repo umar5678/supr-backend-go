@@ -3,6 +3,7 @@ package websocketutils
 
 import (
 	"context"
+	"errors"
 
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/websocket"
@@ -19,25 +20,25 @@ func Initialize(manager *websocket.Manager) {
 }
 
 // SendToUser sends a message to a specific user
-func SendToUser(userID string, messageType websocket.MessageType, data map[string]interface{}) error {
-	if wsManager == nil {
-		logger.Warn("websocket manager not initialized")
-		return nil
-	}
+// func SendToUser(userID string, messageType websocket.MessageType, data map[string]interface{}) error {
+// 	if wsManager == nil {
+// 		logger.Warn("websocket manager not initialized")
+// 		return nil
+// 	}
 
-	if data == nil {
-		data = make(map[string]interface{})
-	}
+// 	if data == nil {
+// 		data = make(map[string]interface{})
+// 	}
 
-	msg := websocket.NewTargetedMessage(messageType, userID, data)
-	wsManager.Hub().SendToUser(userID, msg)
+// 	msg := websocket.NewTargetedMessage(messageType, userID, data)
+// 	wsManager.Hub().SendToUser(userID, msg)
 
-	logger.Debug("websocket message sent to user",
-		"userID", userID,
-		"type", messageType,
-	)
-	return nil
-}
+// 	logger.Debug("websocket message sent to user",
+// 		"userID", userID,
+// 		"type", messageType,
+// 	)
+// 	return nil
+// }
 
 // BroadcastToAll sends a message to all connected users
 func BroadcastToAll(messageType websocket.MessageType, data map[string]interface{}) error {
@@ -86,6 +87,63 @@ func GetOnlineUsers() (int, int) {
 
 // Ride-specific helper functions
 
+// SendRideLocationUpdate sends location update to rider
+func SendRideLocationUpdate(riderID string, locationData map[string]interface{}) error {
+	logger.Info("🎯 SendRideLocationUpdate CALLED",
+		"riderUserID", riderID,
+		"hasLocationData", locationData != nil,
+	)
+
+	if riderID == "" {
+		logger.Error("❌ SendRideLocationUpdate: empty riderID")
+		return errors.New("empty riderID")
+	}
+
+	err := SendToUser(riderID, websocket.TypeRideLocation, locationData)
+
+	if err != nil {
+		logger.Error("❌ SendRideLocationUpdate FAILED", "error", err, "riderID", riderID)
+	} else {
+		logger.Info("✅ SendRideLocationUpdate SUCCESS", "riderID", riderID)
+	}
+
+	return err
+}
+
+// SendToUser sends a message to a specific user
+func SendToUser(userID string, messageType websocket.MessageType, data map[string]interface{}) error {
+	logger.Info("📨 SendToUser CALLED",
+		"userID", userID,
+		"messageType", messageType,
+		"wsManagerInitialized", wsManager != nil,
+	)
+
+	if wsManager == nil {
+		logger.Error("❌ websocket manager NOT INITIALIZED")
+		return errors.New("websocket manager not initialized")
+	}
+
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	msg := websocket.NewTargetedMessage(messageType, userID, data)
+
+	logger.Info("📤 Calling Hub().SendToUser",
+		"userID", userID,
+		"messageType", messageType,
+		"msgData", msg,
+	)
+
+	wsManager.Hub().SendToUser(userID, msg)
+
+	logger.Info("✅ websocket message sent to user",
+		"userID", userID,
+		"type", messageType,
+	)
+	return nil
+}
+
 // SendRideRequest sends ride request to driver
 func SendRideRequest(driverID string, rideDetails map[string]interface{}) error {
 	return SendToUser(driverID, websocket.TypeRideRequest, rideDetails)
@@ -96,10 +154,10 @@ func SendRideAccepted(riderID string, rideDetails map[string]interface{}) error 
 	return SendToUser(riderID, websocket.TypeRideAccepted, rideDetails)
 }
 
-// SendRideLocationUpdate sends location update to rider
-func SendRideLocationUpdate(riderID string, locationData map[string]interface{}) error {
-	return SendToUser(riderID, websocket.TypeRideLocation, locationData)
-}
+// // SendRideLocationUpdate sends location update to rider
+// func SendRideLocationUpdate(riderID string, locationData map[string]interface{}) error {
+// 	return SendToUser(riderID, websocket.TypeRideLocation, locationData)
+// }
 
 // SendRideStatusUpdate sends status update to both rider and driver
 func SendRideStatusUpdate(riderID, driverID string, statusData map[string]interface{}) error {
