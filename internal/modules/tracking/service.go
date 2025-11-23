@@ -328,20 +328,58 @@ func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (str
 
 	return ride.ID, ride.RiderID, nil
 }
-
 func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
 	// Update location first
 	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
 		return err
 	}
 
-	// Stream to rider (non-blocking)
+	// ✅ Validate and verify rider user ID exists
 	if activeRideID != "" && riderID != "" {
+		// Verify rider user exists (optional but recommended)
+		var userExists bool
+		err := s.repo.GetDB().
+			Table("users").
+			Select("EXISTS(SELECT 1 FROM users WHERE id = ?)", riderID).
+			Scan(&userExists).Error
+
+		if err != nil || !userExists {
+			logger.Warn("rider user not found, skipping location stream",
+				"riderID", riderID,
+				"rideID", activeRideID,
+				"error", err,
+			)
+			return nil // Don't fail the location update
+		}
+
+		logger.Debug("streaming location to verified rider user",
+			"riderUserID", riderID,
+			"rideID", activeRideID,
+			"driverID", driverID,
+		)
+
+		// Stream to rider (non-blocking)
 		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
 	}
 
 	return nil
 }
+
+// func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
+// 	// Update location first
+// 	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
+// 		return err
+// 	}
+
+// 	// fetch user form rider id then send data to that user Id
+
+// 	// Stream to rider (non-blocking)
+// 	if activeRideID != "" && riderID != "" {
+// 		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
+// 	}
+
+// 	return nil
+// }
 
 // ✅ NEW: Get driver profile ID from user ID
 func (s *service) GetDriverProfileID(ctx context.Context, userID string) (string, error) {

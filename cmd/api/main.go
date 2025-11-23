@@ -28,7 +28,7 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/riders"
 	"github.com/umar5678/go-backend/internal/modules/rides"
 	"github.com/umar5678/go-backend/internal/modules/serviceproviders"
-	todos "github.com/umar5678/go-backend/internal/modules/todo"
+
 	"github.com/umar5678/go-backend/internal/modules/tracking"
 	"github.com/umar5678/go-backend/internal/modules/vehicles"
 	_ "github.com/umar5678/go-backend/internal/modules/vehicles/dto"
@@ -182,12 +182,6 @@ func main() {
 		authHandler := auth.NewHandler(authService)
 		authMiddleware := middleware.Auth(cfg)
 		auth.RegisterRoutes(v1, authHandler, authMiddleware)
-
-		// Todo Module
-		todoRepo := todos.NewRepository(db)
-		todoService := todos.NewService(*todoRepo)
-		todoHandler := todos.NewHandler(todoService)
-		todos.RegisterRoutes(v1, todoHandler, authMiddleware)
 
 		// Register riders routes
 		riders.RegisterRoutes(v1, ridersHandler, authMiddleware)
