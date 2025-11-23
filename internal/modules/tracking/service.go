@@ -19,7 +19,7 @@ type Service interface {
 	GetDriverLocation(ctx context.Context, driverID string) (*dto.LocationResponse, error)
 	FindNearbyDrivers(ctx context.Context, req dto.FindNearbyDriversRequest) (*dto.NearbyDriversResponse, error)
 	StreamLocationToRider(ctx context.Context, rideID, driverID, riderID string) error
-	// ✅ NEW METHODS
+	GetDriverProfileID(ctx context.Context, userID string) (string, error)
 	GetDriverActiveRide(ctx context.Context, driverID string) (rideID, riderID string, err error)
 	UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error
 	// Polyline features
@@ -267,16 +267,31 @@ func (s *service) FindNearbyDrivers(ctx context.Context, req dto.FindNearbyDrive
 	return result, nil
 }
 
-// ✅ IMPLEMENT: Get driver's active ride
 func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (string, string, error) {
 	// Check cache first
 	cacheKey := fmt.Sprintf("driver:active:ride:%s", driverID)
+
+	logger.Debug("🔍 Checking for active ride",
+		"cacheKey", cacheKey,
+		"driverID", driverID,
+	)
+
 	var rideData map[string]string
 
 	err := cache.GetJSON(ctx, cacheKey, &rideData)
 	if err == nil && rideData != nil {
+		logger.Info("✅ Active ride found in cache",
+			"driverID", driverID,
+			"rideID", rideData["rideID"],
+			"riderID", rideData["riderID"],
+		)
 		return rideData["rideID"], rideData["riderID"], nil
 	}
+
+	logger.Debug("❌ No active ride in cache, checking database",
+		"driverID", driverID,
+		"cacheError", err,
+	)
 
 	// Query database
 	var ride struct {
@@ -292,8 +307,18 @@ func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (str
 		First(&ride).Error
 
 	if err != nil {
+		logger.Debug("❌ No active ride in database",
+			"driverID", driverID,
+			"error", err,
+		)
 		return "", "", err
 	}
+
+	logger.Info("✅ Active ride found in database",
+		"driverID", driverID,
+		"rideID", ride.ID,
+		"riderID", ride.RiderID,
+	)
 
 	// Cache for 30 minutes
 	cache.SetJSON(ctx, cacheKey, map[string]string{
@@ -304,7 +329,6 @@ func (s *service) GetDriverActiveRide(ctx context.Context, driverID string) (str
 	return ride.ID, ride.RiderID, nil
 }
 
-// ✅ ALREADY EXISTS IN YOUR CODE (just verify it's there)
 func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
 	// Update location first
 	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
@@ -319,109 +343,36 @@ func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverI
 	return nil
 }
 
-// // CRITICAL FIX: Implement OnlyAvailable filter
-// func (s *service) FindNearbyDrivers(ctx context.Context, req dto.FindNearbyDriversRequest) (*dto.NearbyDriversResponse, error) {
-// 	req.SetDefaults()
+// ✅ NEW: Get driver profile ID from user ID
+func (s *service) GetDriverProfileID(ctx context.Context, userID string) (string, error) {
+	// Check cache first
+	cacheKey := fmt.Sprintf("user:driver_profile:%s", userID)
+	var profileID string
 
-// 	if err := location.ValidateCoordinates(req.Latitude, req.Longitude); err != nil {
-// 		return nil, response.BadRequest(err.Error())
-// 	}
+	profileID, err := cache.Get(ctx, cacheKey)
+	if err == nil && profileID != "" {
+		return profileID, nil
+	}
+	// Query database
+	var profile struct {
+		ID string
+	}
 
-// 	// Try cache first (but only if not filtering by availability)
-// 	cacheKey := fmt.Sprintf("nearby:drivers:%f:%f:%f:%s:%v",
-// 		req.Latitude, req.Longitude, req.RadiusKm, req.VehicleTypeID, req.OnlyAvailable)
+	err = s.repo.GetDB().
+		Table("driver_profiles").
+		Select("id").
+		Where("user_id = ?", userID).
+		First(&profile).Error
 
-// 	var cached dto.NearbyDriversResponse
-// 	err := cache.GetJSON(ctx, cacheKey, &cached)
-// 	if err == nil {
-// 		logger.Debug("nearby drivers cache hit", "lat", req.Latitude, "lng", req.Longitude)
-// 		return &cached, nil
-// 	}
+	if err != nil {
+		return "", err
+	}
 
-// 	// Find nearby drivers from database
-// 	drivers, err := s.repo.FindNearbyDrivers(
-// 		ctx,
-// 		req.Latitude,
-// 		req.Longitude,
-// 		req.RadiusKm,
-// 		req.VehicleTypeID,
-// 		req.Limit,
-// 	)
+	// Cache for 1 hour (profile ID doesn't change)
+	cache.Set(ctx, cacheKey, profile.ID, 1*time.Hour)
 
-// 	if err != nil {
-// 		logger.Error("failed to find nearby drivers", "error", err)
-// 		return nil, response.InternalServerError("Failed to find drivers", err)
-// 	}
-
-// 	// Build response
-// 	searchPoint := location.Point{
-// 		Latitude:  req.Latitude,
-// 		Longitude: req.Longitude,
-// 	}
-
-// 	driverResponses := make([]dto.DriverLocationResponse, 0, len(drivers))
-
-// 	for _, driver := range drivers {
-// 		// CRITICAL: Filter by availability if requested
-// 		if req.OnlyAvailable {
-// 			// Check if driver is truly available (not busy with another ride)
-// 			isAvailable, err := s.isDriverAvailable(ctx, driver.ID)
-// 			if err != nil || !isAvailable {
-// 				logger.Debug("skipping busy driver", "driverID", driver.ID)
-// 				continue
-// 			}
-// 		}
-
-// 		// Get driver's current location from Redis
-// 		driverLoc, err := s.GetDriverLocation(ctx, driver.ID)
-// 		if err != nil {
-// 			continue // Skip if location not available
-// 		}
-
-// 		// Calculate distance
-// 		driverPoint := location.Point{
-// 			Latitude:  driverLoc.Latitude,
-// 			Longitude: driverLoc.Longitude,
-// 		}
-// 		distance := location.CalculateDistance(searchPoint, driverPoint)
-
-// 		// Calculate ETA
-// 		speed := driverLoc.Speed
-// 		if speed == 0 {
-// 			speed = 40 // Default 40 km/h
-// 		}
-// 		eta := location.CalculateETA(distance, speed)
-
-// 		driverResponses = append(driverResponses, dto.DriverLocationResponse{
-// 			DriverID: driver.ID,
-// 			Location: *driverLoc,
-// 			Distance: distance,
-// 			ETA:      eta,
-// 		})
-// 	}
-
-// 	result := &dto.NearbyDriversResponse{
-// 		SearchLocation: dto.LocationResponse{
-// 			Latitude:  req.Latitude,
-// 			Longitude: req.Longitude,
-// 			Timestamp: time.Now(),
-// 		},
-// 		RadiusKm: req.RadiusKm,
-// 		Drivers:  driverResponses,
-// 		Count:    len(driverResponses),
-// 	}
-
-// 	// Cache for 5 seconds (short TTL for availability accuracy)
-// 	cache.SetJSON(ctx, cacheKey, result, 5*time.Second)
-
-// 	logger.Info("nearby drivers found",
-// 		"count", len(driverResponses),
-// 		"radiusKm", req.RadiusKm,
-// 		"onlyAvailable", req.OnlyAvailable,
-// 	)
-
-// 	return result, nil
-// }
+	return profile.ID, nil
+}
 
 // Helper: Check if driver is truly available (not on an active ride)
 func (s *service) isDriverAvailable(ctx context.Context, driverID string) (bool, error) {
@@ -439,6 +390,11 @@ func (s *service) isDriverAvailable(ctx context.Context, driverID string) (bool,
 func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, riderID string) error {
 	location, err := s.GetDriverLocation(ctx, driverID)
 	if err != nil {
+		logger.Error("failed to get driver location for streaming",
+			"error", err,
+			"driverID", driverID,
+			"rideID", rideID,
+		)
 		return err
 	}
 
@@ -456,8 +412,16 @@ func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, r
 		"timestamp": time.Now().UTC(),
 	}
 
+	logger.Info("🚗 Streaming location to rider",
+		"rideID", rideID,
+		"driverID", driverID,
+		"riderID", riderID,
+		"lat", location.Latitude,
+		"lng", location.Longitude,
+	)
+
 	if err := websocketutil.SendRideLocationUpdate(riderID, locationData); err != nil {
-		logger.Error("failed to send driver location update to rider",
+		logger.Error("❌ failed to send driver location update to rider",
 			"error", err,
 			"riderID", riderID,
 			"driverID", driverID,
@@ -466,7 +430,7 @@ func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, r
 		return err
 	}
 
-	logger.Debug("driver location streamed to rider",
+	logger.Info("✅ Driver location successfully streamed to rider",
 		"rideID", rideID,
 		"driverID", driverID,
 		"riderID", riderID,
@@ -475,7 +439,6 @@ func (s *service) StreamLocationToRider(ctx context.Context, rideID, driverID, r
 	return nil
 }
 
-// Continuous location streaming
 func (s *service) StartLocationStreaming(ctx context.Context, rideID, driverID, riderID string, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -495,138 +458,3 @@ func (s *service) StartLocationStreaming(ctx context.Context, rideID, driverID, 
 		}
 	}
 }
-
-// Enhanced location update with streaming
-// func (s *service) UpdateDriverLocationWithStreaming(ctx context.Context, driverID string, req dto.UpdateLocationRequest, activeRideID, riderID string) error {
-// 	if err := s.UpdateDriverLocation(ctx, driverID, req); err != nil {
-// 		return err
-// 	}
-
-// 	if activeRideID != "" && riderID != "" {
-// 		go s.StreamLocationToRider(ctx, activeRideID, driverID, riderID)
-// 	}
-
-// 	return nil
-// }
-
-// ============================================================================
-// POLYLINE FEATURES
-// ============================================================================
-
-// // GeneratePolyline creates an encoded polyline from location history
-// func (s *service) GeneratePolyline(ctx context.Context, driverID string, from, to time.Time) (string, error) {
-// 	history, err := s.repo.GetLocationHistory(ctx, driverID, from, to, 0)
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	if len(history) == 0 {
-// 		return "", response.NotFoundError("No location history found")
-// 	}
-
-// 	points := make([]location.Point, len(history))
-// 	for i, loc := range history {
-// 		points[i] = location.Point{
-// 			Latitude:  loc.Latitude,
-// 			Longitude: loc.Longitude,
-// 		}
-// 	}
-
-// 	polyline := location.EncodePolyline(points)
-
-// 	logger.Info("polyline generated",
-// 		"driverID", driverID,
-// 		"points", len(points),
-// 		"from", from,
-// 		"to", to,
-// 	)
-// 	points := make([]location.Point, len(allHistory))
-// 	for i, loc := range allHistory {
-// 		points[i] = location.Point{
-// 			Latitude:  loc.Latitude,
-// 			Longitude: loc.Longitude,
-// 		}
-// 	}
-
-// 	polyline := location.EncodePolyline(points)
-// 	cache.SetJSON(ctx, cacheKey, polyline, 30*time.Second)
-
-// 	return polyline, nil
-// }
-
-// // GetRidePolyline retrieves polyline for an active/completed ride
-// func (s *service) GetRidePolyline(ctx context.Context, rideID string) (string, error) {
-// 	// Get ride details from cache first
-// 	cacheKey := fmt.Sprintf("ride:polyline:%s", rideID)
-// 	var cachedPolyline string
-// 	if err := cache.Get(ctx, cacheKey); err == nil {
-// 		return cachedPolyline, nil
-// 	}
-
-// 	// Fetch ride to get driver and timestamps
-// 	ride, err := s.repo.GetRideForPolyline(ctx, rideID)
-// 	if err != nil {
-// 		return "", response.NotFoundError("Ride")
-// 	}
-
-// 	if ride.DriverID == nil {
-// 		return "", response.BadRequest("No driver assigned to this ride")
-// 	}
-
-// 	// Determine time range
-// 	from := ride.AcceptedAt
-// 	if from == nil {
-// 		from = &ride.RequestedAt
-// 	}
-
-// 	to := ride.CompletedAt
-// 	if to == nil {
-// 		now := time.Now()
-// 		to = &now
-// 	}
-
-// 	polyline, err := s.GeneratePolyline(ctx, *ride.DriverID, *from, *to)
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	// Cache completed ride polylines for longer
-// 	if ride.Status == "completed" {
-// 		cache.Set(ctx, cacheKey, polyline, 24*time.Hour)
-// 	} else {
-// 		cache.Set(ctx, cacheKey, polyline, 30*time.Second)
-// 	}
-
-// 	return polyline, nil
-// }
-
-// // StreamPolylineToRider pushes updated polyline during trip
-// func (s *service) StreamPolylineToRider(ctx context.Context, rideID, driverID, riderID string, interval time.Duration) {
-// 	ticker := time.NewTicker(interval)
-// 	defer ticker.Stop()
-
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			logger.Info("polyline streaming stopped", "rideID", rideID)
-// 			return
-
-// 		case <-ticker.C:
-// 			polyline, err := s.GetRidePolyline(ctx, rideID)
-// 			if err != nil {
-// 				logger.Warn("failed to generate polyline", "error", err, "rideID", rideID)
-// 				continue
-// 			}
-
-// 			data := map[string]interface{}{
-// 				"rideId":    rideID,
-// 				"polyline":  polyline,
-// 				"timestamp": time.Now().UTC(),
-// 			}
-
-// 			if err := websocketutil.SendRideLocationUpdate(riderID, data); err != nil {
-// 				logger.Warn("failed to send polyline update", "error", err, "rideID", rideID)
-// 			}
-// 		}
-// 	}
-// }

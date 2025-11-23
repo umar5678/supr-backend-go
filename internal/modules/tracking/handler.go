@@ -3,6 +3,7 @@ package tracking
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/umar5678/go-backend/internal/modules/tracking/dto"
+	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
@@ -23,12 +24,9 @@ func NewHandler(service Service) *Handler {
 // @Param request body dto.UpdateLocationRequest true "Location data"
 // @Success 200 {object} response.Response
 // @Router /tracking/location [post]
-// internal/modules/tracking/handler.go
-
-// ✅ UPDATED: Auto-stream location to rider if driver is on active ride
 func (h *Handler) UpdateLocation(c *gin.Context) {
 	userID, _ := c.Get("userID")
-	driverID := userID.(string)
+	driverUserID := userID.(string) // This is the driver's USER ID
 
 	var req dto.UpdateLocationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -36,14 +34,37 @@ func (h *Handler) UpdateLocation(c *gin.Context) {
 		return
 	}
 
-	// ✅ Check if driver has active ride
-	activeRide, riderID, err := h.service.GetDriverActiveRide(c.Request.Context(), driverID)
+	// ✅ FIX: Convert user ID to driver profile ID first
+	driverProfileID, err := h.service.GetDriverProfileID(c.Request.Context(), driverUserID)
+	if err != nil {
+		logger.Warn("driver profile not found for user",
+			"userID", driverUserID,
+			"error", err,
+		)
+		// Still update location even if not a driver
+		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverUserID, req); err != nil {
+			c.Error(err)
+			return
+		}
+		response.Success(c, nil, "Location updated successfully")
+		return
+	}
+
+	// ✅ Check if driver has active ride using PROFILE ID
+	activeRide, riderID, err := h.service.GetDriverActiveRide(c.Request.Context(), driverProfileID)
 
 	if err == nil && activeRide != "" && riderID != "" {
+		logger.Debug("driver has active ride, streaming location",
+			"driverProfileID", driverProfileID,
+			"driverUserID", driverUserID,
+			"rideID", activeRide,
+			"riderID", riderID,
+		)
+
 		// ✅ Update location AND stream to rider
 		if err := h.service.UpdateDriverLocationWithStreaming(
 			c.Request.Context(),
-			driverID,
+			driverProfileID, // Use profile ID for location storage
 			req,
 			activeRide,
 			riderID,
@@ -52,8 +73,14 @@ func (h *Handler) UpdateLocation(c *gin.Context) {
 			return
 		}
 	} else {
+		logger.Debug("no active ride found, updating location only",
+			"driverProfileID", driverProfileID,
+			"driverUserID", driverUserID,
+			"error", err,
+		)
+
 		// Just update location (no active ride)
-		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverID, req); err != nil {
+		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverProfileID, req); err != nil {
 			c.Error(err)
 			return
 		}
