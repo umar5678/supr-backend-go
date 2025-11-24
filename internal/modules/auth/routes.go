@@ -17,8 +17,8 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		// Email-based authentication (other roles)
 		email := auth.Group("/email")
 		{
-			email.POST("/signup", handler.EmailSignup)
-			email.POST("/login", handler.EmailLogin)
+			email.PUT("/signup", handler.EmailSignup)
+			email.PUT("/login", handler.EmailLogin)
 		}
 
 		// Common endpoints
