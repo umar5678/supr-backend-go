@@ -42,6 +42,7 @@ type CORSConfig struct {
 	AllowedMethods   []string
 	AllowedHeaders   []string
 	AllowCredentials bool
+	Enabled          bool // NEW: Toggle CORS middleware on/off
 }
 
 // RateLimitConfig holds rate limiting settings.
