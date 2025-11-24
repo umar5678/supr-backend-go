@@ -2,6 +2,7 @@ package homeservices
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -42,6 +43,7 @@ type Service interface {
 
 	// Provider - Orders
 	GetProviderOrders(ctx context.Context, providerID string, query homeservicedto.ListOrdersQuery) ([]*homeservicedto.OrderListResponse, *response.PaginationMeta, error)
+	RegisterProvider(ctx context.Context, userID string, req homeservicedto.RegisterProviderRequest) (*homeservicedto.ProviderProfileResponse, error)
 	AcceptOrder(ctx context.Context, providerID, orderID string) error
 	RejectOrder(ctx context.Context, providerID, orderID string) error
 	StartOrder(ctx context.Context, providerID, orderID string) error
@@ -154,6 +156,85 @@ func (s *service) ListAddOns(ctx context.Context, categoryID uint) ([]*homeservi
 	}
 
 	return responses, nil
+}
+
+// RegisterProvider registers a new service provider
+func (s *service) RegisterProvider(ctx context.Context, userID string, req homeservicedto.RegisterProviderRequest) (*homeservicedto.ProviderProfileResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, response.BadRequest(err.Error())
+	}
+
+	// 1. Check if user is already a provider
+	_, err := s.repo.FindProviderByUserID(ctx, userID)
+	if err == nil {
+		return nil, response.BadRequest("User is already registered as a service provider")
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.Error("failed to check existing provider", "error", err, "userID", userID)
+		return nil, response.InternalServerError("Failed to check provider status", err)
+	}
+
+	// 2. Verify all services exist and are active
+	services, err := s.repo.GetServicesByIDs(ctx, req.ServiceIDs)
+	if err != nil {
+		logger.Error("failed to fetch services", "error", err, "serviceIDs", req.ServiceIDs)
+		return nil, response.InternalServerError("Failed to verify services", err)
+	}
+
+	if len(services) != len(req.ServiceIDs) {
+		return nil, response.BadRequest("One or more service IDs are invalid")
+	}
+
+	// 3. Create provider profile
+	providerID := uuid.New().String()
+	provider := &models.ServiceProvider{
+		ID:            providerID,
+		UserID:        userID,
+		Photo:         req.Photo,
+		Status:        "available",
+		Rating:        5.0,
+		IsVerified:    true, // Auto-approve for now
+		TotalJobs:     0,
+		CompletedJobs: 0,
+	}
+
+	if err := s.repo.CreateProvider(ctx, provider, req.Latitude, req.Longitude); err != nil {
+		logger.Error("failed to create provider profile", "error", err, "userID", userID)
+		return nil, response.InternalServerError("Failed to create provider profile", err)
+	}
+
+	// 4. Assign qualified services
+	for _, serviceID := range req.ServiceIDs {
+		if err := s.repo.AssignServiceToProvider(ctx, providerID, serviceID); err != nil {
+			logger.Error("failed to assign service to provider",
+				"error", err,
+				"providerID", providerID,
+				"serviceID", serviceID)
+			// Continue with other services even if one fails
+		}
+	}
+
+	logger.Info("provider registered successfully",
+		"providerID", providerID,
+		"userID", userID,
+		"services", len(req.ServiceIDs),
+	)
+
+	// 5. Fetch complete profile for response
+	provider, _ = s.repo.GetProviderByID(ctx, providerID)
+
+	return &homeservicedto.ProviderProfileResponse{
+		ID:            provider.ID,
+		UserID:        provider.UserID,
+		Status:        provider.Status,
+		IsVerified:    provider.IsVerified,
+		Rating:        provider.Rating,
+		CompletedJobs: provider.CompletedJobs,
+		IsAvailable:   provider.Status == "available",
+		Currency:      "USD",
+		CreatedAt:     provider.CreatedAt,
+		UpdatedAt:     provider.UpdatedAt,
+	}, nil
 }
 
 // --- Customer - Orders ---

@@ -15,6 +15,345 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/dashboard/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve statistical data for the admin dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Get admin dashboard statistics",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard statistics retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.DashboardStatsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/service-providers/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Approve a pending service provider registration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Approve a service provider (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service Provider ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Service provider approved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Service provider not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of users with optional filtering by role and status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "List all users (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by user role (e.g., admin, service_provider, customer)",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user status (e.g., active, pending, suspended)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Users retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.ListUsersResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/status": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Change the status of a user account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Update user status (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New user status",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.UpdateUserStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User status updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - Invalid status",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/suspend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Suspend a user account with a reason",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Suspend a user (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Suspension reason",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.SuspendUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User suspended successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/email/login": {
             "post": {
                 "consumes": [
@@ -2400,6 +2739,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/services/provider/register": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Register authenticated user as a home service provider",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "home-services-provider"
+                ],
+                "summary": "Register as service provider",
+                "parameters": [
+                    {
+                        "description": "Provider registration details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.RegisterProviderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderProfileResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/services/{id}": {
             "get": {
                 "description": "Get detailed service information including options",
@@ -2447,224 +2849,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/todos": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "todos"
-                ],
-                "summary": "Get all todos",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "todos"
-                ],
-                "summary": "Create new todo",
-                "parameters": [
-                    {
-                        "description": "Create Todo",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.CreateTodoRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/todos/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "todos"
-                ],
-                "summary": "Get todo by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Todo ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "todos"
-                ],
-                "summary": "Update todo",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Todo ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Update Todo",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.UpdateTodoRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "todos"
-                ],
-                "summary": "Delete todo",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Todo ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/tracking/driver/{driverId}": {
             "get": {
                 "produces": [
@@ -2700,6 +2884,44 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/tracking/location": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracking"
+                ],
+                "summary": "Update driver location (called by driver app)",
+                "parameters": [
+                    {
+                        "description": "Location data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.UpdateLocationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
                         }
                     }
                 }
@@ -3420,13 +3642,26 @@ const docTemplate = `{
                 "active",
                 "suspended",
                 "banned",
-                "pending_verification"
+                "pending_verification",
+                "pending_approval"
+            ],
+            "x-enum-comments": {
+                "StatusPendingApproval": "ADDED for service providers",
+                "StatusPendingVerification": "ADDED for Drivers"
+            },
+            "x-enum-descriptions": [
+                "",
+                "",
+                "",
+                "ADDED for Drivers",
+                "ADDED for service providers"
             ],
             "x-enum-varnames": [
                 "StatusActive",
                 "StatusSuspended",
                 "StatusBanned",
-                "StatusPendingVerification"
+                "StatusPendingVerification",
+                "StatusPendingApproval"
             ]
         },
         "github_com_umar5678_go-backend_internal_models.WalletType": {
@@ -3434,13 +3669,175 @@ const docTemplate = `{
             "enum": [
                 "rider",
                 "driver",
-                "platform"
+                "platform",
+                "service_provider"
+            ],
+            "x-enum-comments": {
+                "WalletTypeServiceProvider": "✅ For handyman, delivery_person, service_provider"
+            },
+            "x-enum-descriptions": [
+                "",
+                "",
+                "",
+                "✅ For handyman, delivery_person, service_provider"
             ],
             "x-enum-varnames": [
                 "WalletTypeRider",
                 "WalletTypeDriver",
-                "WalletTypePlatform"
+                "WalletTypePlatform",
+                "WalletTypeServiceProvider"
             ]
+        },
+        "github_com_umar5678_go-backend_internal_modules_admin_dto.DashboardStatsResponse": {
+            "type": "object",
+            "properties": {
+                "totalUsers": {
+                    "type": "integer",
+                    "example": 1500
+                },
+                "usersByRole": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.RoleCountResponse"
+                    }
+                },
+                "usersByStatus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.StatusCountResponse"
+                    }
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_admin_dto.ListUsersResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.UserResponse"
+                    }
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_admin_dto.RoleCountResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "example": 250
+                },
+                "role": {
+                    "type": "string",
+                    "example": "service_provider"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_admin_dto.StatusCountResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "example": 1200
+                },
+                "status": {
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_admin_dto.SuspendUserRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "example": "Violation of terms of service"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_admin_dto.UpdateUserStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus"
+                        }
+                    ],
+                    "example": "active"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_admin_dto.UserResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string",
+                    "example": "2024-01-01T00:00:00Z"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "john@example.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "lastLoginAt": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+1234567890"
+                },
+                "profilePhotoUrl": {
+                    "type": "string",
+                    "example": "https://example.com/photo.jpg"
+                },
+                "role": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserRole"
+                        }
+                    ],
+                    "example": "service_provider"
+                },
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus"
+                        }
+                    ],
+                    "example": "active"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "example": "2024-01-15T12:00:00Z"
+                }
+            }
         },
         "github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse": {
             "type": "object",
@@ -4343,6 +4740,80 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderProfileResponse": {
+            "type": "object",
+            "properties": {
+                "businessName": {
+                    "description": "Business Information",
+                    "type": "string"
+                },
+                "completedJobs": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "hourlyRate": {
+                    "description": "Financial",
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isAvailable": {
+                    "description": "Availability",
+                    "type": "boolean"
+                },
+                "isVerified": {
+                    "type": "boolean"
+                },
+                "rating": {
+                    "description": "Ratings \u0026 Performance",
+                    "type": "number"
+                },
+                "serviceAreas": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "serviceCategory": {
+                    "description": "delivery, handyman, general_service",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Verification \u0026 Documents",
+                    "type": "string"
+                },
+                "totalReviews": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "verificationDocs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workingHours": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderResponse": {
             "type": "object",
             "properties": {
@@ -4360,6 +4831,41 @@ const docTemplate = `{
                 },
                 "rating": {
                     "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_homeservices_dto.RegisterProviderRequest": {
+            "type": "object",
+            "required": [
+                "latitude",
+                "longitude",
+                "serviceIds"
+            ],
+            "properties": {
+                "businessName": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "photo": {
+                    "type": "string"
+                },
+                "serviceIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -5177,62 +5683,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_umar5678_go-backend_internal_modules_todo_dto.CreateTodoRequest": {
-            "type": "object",
-            "required": [
-                "title"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string",
-                    "minLength": 3
-                }
-            }
-        },
-        "github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse": {
-            "type": "object",
-            "properties": {
-                "completed": {
-                    "type": "boolean"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_umar5678_go-backend_internal_modules_todo_dto.UpdateTodoRequest": {
-            "type": "object",
-            "properties": {
-                "completed": {
-                    "type": "boolean"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string",
-                    "minLength": 3
-                }
-            }
-        },
         "github_com_umar5678_go-backend_internal_modules_tracking_dto.DriverLocationResponse": {
             "type": "object",
             "properties": {
@@ -5295,6 +5745,39 @@ const docTemplate = `{
                 },
                 "searchLocation": {
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.LocationResponse"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_tracking_dto.UpdateLocationRequest": {
+            "type": "object",
+            "required": [
+                "latitude",
+                "longitude"
+            ],
+            "properties": {
+                "accuracy": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "heading": {
+                    "type": "integer",
+                    "maximum": 360,
+                    "minimum": 0
+                },
+                "latitude": {
+                    "type": "number",
+                    "maximum": 90,
+                    "minimum": -90
+                },
+                "longitude": {
+                    "type": "number",
+                    "maximum": 180,
+                    "minimum": -180
+                },
+                "speed": {
+                    "type": "number",
+                    "maximum": 300,
+                    "minimum": 0
                 }
             }
         },
@@ -5467,6 +5950,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "referenceId": {
+                    "description": "now varchar instead of uuid",
                     "type": "string"
                 },
                 "referenceType": {

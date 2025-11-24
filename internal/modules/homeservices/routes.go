@@ -31,6 +31,7 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		provider.Use(authMiddleware)
 		provider.Use(middleware.RequireRole("provider")) // Only providers
 		{
+			provider.POST("/register", handler.RegisterProvider)
 			provider.GET("/orders", handler.GetProviderOrders)
 			provider.POST("/orders/:id/accept", handler.AcceptOrder)
 			provider.POST("/orders/:id/reject", handler.RejectOrder)

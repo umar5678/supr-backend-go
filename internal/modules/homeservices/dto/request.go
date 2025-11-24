@@ -209,3 +209,20 @@ type CreateOptionChoiceRequest struct {
 	PriceModifier           float64 `json:"priceModifier"`
 	DurationModifierMinutes int     `json:"durationModifierMinutes"`
 }
+
+// RegisterProviderRequest for new provider registration
+type RegisterProviderRequest struct {
+	ServiceIDs   []uint  `json:"serviceIds" binding:"required,min=1,dive,min=1"`
+	Latitude     float64 `json:"latitude" binding:"required,latitude"`
+	Longitude    float64 `json:"longitude" binding:"required,longitude"`
+	Photo        *string `json:"photo" binding:"omitempty,url"`
+	BusinessName *string `json:"businessName" binding:"omitempty,min=2,max=255"`
+	Description  *string `json:"description" binding:"omitempty,max=1000"`
+}
+
+func (r *RegisterProviderRequest) Validate() error {
+	if len(r.ServiceIDs) == 0 {
+		return errors.New("at least one service qualification is required")
+	}
+	return nil
+}

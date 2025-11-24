@@ -40,6 +40,9 @@ type Repository interface {
 	UpdateOrderStatus(ctx context.Context, orderID, status string) error
 	AssignProviderToOrder(ctx context.Context, providerID, orderID string) error
 
+	// Provider Registeration
+	FindProviderByUserID(ctx context.Context, userID string) (*models.ServiceProvider, error)
+
 	// Provider Matching
 	FindNearestAvailableProviders(ctx context.Context, serviceIDs []uint, lat, lon float64, radiusMeters int) ([]models.ServiceProvider, error)
 	GetProviderByID(ctx context.Context, providerID string) (*models.ServiceProvider, error)
@@ -429,6 +432,15 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*models.Us
 // 		First(&provider).Error
 // 	return &provider, err
 // }
+
+// Find provider by user ID
+func (r *repository) FindProviderByUserID(ctx context.Context, userID string) (*models.ServiceProvider, error) {
+	var provider models.ServiceProvider
+	err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		First(&provider).Error
+	return &provider, err
+}
 
 func (r *repository) UpdateProviderStatus(ctx context.Context, providerID, status string) error {
 	return r.db.WithContext(ctx).

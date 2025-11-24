@@ -4,7 +4,41 @@ import (
 	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
+	authdto "github.com/umar5678/go-backend/internal/modules/auth/dto"
 )
+
+type ProviderProfileResponse struct {
+	ID     string                `json:"id"`
+	UserID string                `json:"userId"`
+	User   *authdto.UserResponse `json:"user,omitempty"`
+
+	// Business Information
+	BusinessName    *string `json:"businessName,omitempty"`
+	Description     *string `json:"description,omitempty"`
+	ServiceCategory string  `json:"serviceCategory"` // delivery, handyman, general_service
+
+	// Verification & Documents
+	Status           string   `json:"status"`
+	IsVerified       bool     `json:"isVerified"`
+	VerificationDocs []string `json:"verificationDocs,omitempty"`
+
+	// Ratings & Performance
+	Rating        float64 `json:"rating"`
+	TotalReviews  int     `json:"totalReviews"`
+	CompletedJobs int     `json:"completedJobs"`
+
+	// Availability
+	IsAvailable  bool     `json:"isAvailable"`
+	WorkingHours *string  `json:"workingHours,omitempty"`
+	ServiceAreas []string `json:"serviceAreas,omitempty"`
+
+	// Financial
+	HourlyRate *float64 `json:"hourlyRate,omitempty"`
+	Currency   string   `json:"currency"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
 
 // CategoryWithTabsResponse - Complete category with tabs
 type CategoryWithTabsResponse struct {

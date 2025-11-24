@@ -53,22 +53,142 @@ definitions:
     - suspended
     - banned
     - pending_verification
+    - pending_approval
     type: string
+    x-enum-comments:
+      StatusPendingApproval: ADDED for service providers
+      StatusPendingVerification: ADDED for Drivers
+    x-enum-descriptions:
+    - ""
+    - ""
+    - ""
+    - ADDED for Drivers
+    - ADDED for service providers
     x-enum-varnames:
     - StatusActive
     - StatusSuspended
     - StatusBanned
     - StatusPendingVerification
+    - StatusPendingApproval
   github_com_umar5678_go-backend_internal_models.WalletType:
     enum:
     - rider
     - driver
     - platform
+    - service_provider
     type: string
+    x-enum-comments:
+      WalletTypeServiceProvider: ✅ For handyman, delivery_person, service_provider
+    x-enum-descriptions:
+    - ""
+    - ""
+    - ""
+    - ✅ For handyman, delivery_person, service_provider
     x-enum-varnames:
     - WalletTypeRider
     - WalletTypeDriver
     - WalletTypePlatform
+    - WalletTypeServiceProvider
+  github_com_umar5678_go-backend_internal_modules_admin_dto.DashboardStatsResponse:
+    properties:
+      totalUsers:
+        example: 1500
+        type: integer
+      usersByRole:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.RoleCountResponse'
+        type: array
+      usersByStatus:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.StatusCountResponse'
+        type: array
+    type: object
+  github_com_umar5678_go-backend_internal_modules_admin_dto.ListUsersResponse:
+    properties:
+      limit:
+        example: 20
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total:
+        example: 100
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.UserResponse'
+        type: array
+    type: object
+  github_com_umar5678_go-backend_internal_modules_admin_dto.RoleCountResponse:
+    properties:
+      count:
+        example: 250
+        type: integer
+      role:
+        example: service_provider
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_admin_dto.StatusCountResponse:
+    properties:
+      count:
+        example: 1200
+        type: integer
+      status:
+        example: active
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_admin_dto.SuspendUserRequest:
+    properties:
+      reason:
+        example: Violation of terms of service
+        type: string
+    required:
+    - reason
+    type: object
+  github_com_umar5678_go-backend_internal_modules_admin_dto.UpdateUserStatusRequest:
+    properties:
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus'
+        example: active
+    required:
+    - status
+    type: object
+  github_com_umar5678_go-backend_internal_modules_admin_dto.UserResponse:
+    properties:
+      createdAt:
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      email:
+        example: john@example.com
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      lastLoginAt:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      name:
+        example: John Doe
+        type: string
+      phone:
+        example: "+1234567890"
+        type: string
+      profilePhotoUrl:
+        example: https://example.com/photo.jpg
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+        example: service_provider
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus'
+        example: active
+      updatedAt:
+        example: "2024-01-15T12:00:00Z"
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse:
     properties:
       accessToken:
@@ -689,6 +809,57 @@ definitions:
       userId:
         type: string
     type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderProfileResponse:
+    properties:
+      businessName:
+        description: Business Information
+        type: string
+      completedJobs:
+        type: integer
+      createdAt:
+        type: string
+      currency:
+        type: string
+      description:
+        type: string
+      hourlyRate:
+        description: Financial
+        type: number
+      id:
+        type: string
+      isAvailable:
+        description: Availability
+        type: boolean
+      isVerified:
+        type: boolean
+      rating:
+        description: Ratings & Performance
+        type: number
+      serviceAreas:
+        items:
+          type: string
+        type: array
+      serviceCategory:
+        description: delivery, handyman, general_service
+        type: string
+      status:
+        description: Verification & Documents
+        type: string
+      totalReviews:
+        type: integer
+      updatedAt:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+      userId:
+        type: string
+      verificationDocs:
+        items:
+          type: string
+        type: array
+      workingHours:
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderResponse:
     properties:
       completedJobs:
@@ -701,6 +872,31 @@ definitions:
         type: string
       rating:
         type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_dto.RegisterProviderRequest:
+    properties:
+      businessName:
+        maxLength: 255
+        minLength: 2
+        type: string
+      description:
+        maxLength: 1000
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      photo:
+        type: string
+      serviceIds:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - latitude
+    - longitude
+    - serviceIds
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.SelectedOptionRequest:
     properties:
@@ -1254,43 +1450,6 @@ definitions:
       vehicleTypeId:
         type: string
     type: object
-  github_com_umar5678_go-backend_internal_modules_todo_dto.CreateTodoRequest:
-    properties:
-      description:
-        type: string
-      title:
-        minLength: 3
-        type: string
-    required:
-    - title
-    type: object
-  github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse:
-    properties:
-      completed:
-        type: boolean
-      created_at:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      title:
-        type: string
-      updated_at:
-        type: string
-      user_id:
-        type: string
-    type: object
-  github_com_umar5678_go-backend_internal_modules_todo_dto.UpdateTodoRequest:
-    properties:
-      completed:
-        type: boolean
-      description:
-        type: string
-      title:
-        minLength: 3
-        type: string
-    type: object
   github_com_umar5678_go-backend_internal_modules_tracking_dto.DriverLocationResponse:
     properties:
       distance:
@@ -1333,6 +1492,31 @@ definitions:
         type: number
       searchLocation:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.LocationResponse'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_tracking_dto.UpdateLocationRequest:
+    properties:
+      accuracy:
+        minimum: 0
+        type: number
+      heading:
+        maximum: 360
+        minimum: 0
+        type: integer
+      latitude:
+        maximum: 90
+        minimum: -90
+        type: number
+      longitude:
+        maximum: 180
+        minimum: -180
+        type: number
+      speed:
+        maximum: 300
+        minimum: 0
+        type: number
+    required:
+    - latitude
+    - longitude
     type: object
   github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse:
     properties:
@@ -1447,6 +1631,7 @@ definitions:
       processedAt:
         type: string
       referenceId:
+        description: now varchar instead of uuid
         type: string
       referenceType:
         type: string
@@ -1550,6 +1735,219 @@ info:
   title: supr booking server in go
   version: "1.0"
 paths:
+  /admin/dashboard/stats:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve statistical data for the admin dashboard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dashboard statistics retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.DashboardStatsResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get admin dashboard statistics
+      tags:
+      - Admin routes
+  /admin/service-providers/{id}/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approve a pending service provider registration
+      parameters:
+      - description: Service Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service provider approved successfully
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Service provider not found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Approve a service provider (Admin)
+      tags:
+      - Admin routes
+  /admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of users with optional filtering by role and
+        status
+      parameters:
+      - description: Filter by user role (e.g., admin, service_provider, customer)
+        in: query
+        name: role
+        type: string
+      - description: Filter by user status (e.g., active, pending, suspended)
+        in: query
+        name: status
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Users retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.ListUsersResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List all users (Admin)
+      tags:
+      - Admin routes
+  /admin/users/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Change the status of a user account
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New user status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.UpdateUserStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User status updated successfully
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad request - Invalid status
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update user status (Admin)
+      tags:
+      - Admin routes
+  /admin/users/{id}/suspend:
+    post:
+      consumes:
+      - application/json
+      description: Suspend a user account with a reason
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Suspension reason
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_admin_dto.SuspendUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User suspended successfully
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Suspend a user (Admin)
+      tags:
+      - Admin routes
   /auth/email/login:
     post:
       consumes:
@@ -2974,37 +3372,18 @@ paths:
       summary: Start an order
       tags:
       - home-services-provider
-  /todos:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse'
-                  type: array
-              type: object
-      security:
-      - BearerAuth: []
-      summary: Get all todos
-      tags:
-      - todos
+  /services/provider/register:
     post:
       consumes:
       - application/json
+      description: Register authenticated user as a home service provider
       parameters:
-      - description: Create Todo
+      - description: Provider registration details
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.CreateTodoRequest'
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.RegisterProviderRequest'
       produces:
       - application/json
       responses:
@@ -3015,89 +3394,21 @@ paths:
             - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse'
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.ProviderProfileResponse'
               type: object
-      security:
-      - BearerAuth: []
-      summary: Create new todo
-      tags:
-      - todos
-  /todos/{id}:
-    delete:
-      parameters:
-      - description: Todo ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
       security:
       - BearerAuth: []
-      summary: Delete todo
+      summary: Register as service provider
       tags:
-      - todos
-    get:
-      parameters:
-      - description: Todo ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse'
-              type: object
-      security:
-      - BearerAuth: []
-      summary: Get todo by ID
-      tags:
-      - todos
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Todo ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Update Todo
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.UpdateTodoRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_todo_dto.TodoResponse'
-              type: object
-      security:
-      - BearerAuth: []
-      summary: Update todo
-      tags:
-      - todos
+      - home-services-provider
   /tracking/driver/{driverId}:
     get:
       parameters:
@@ -3119,6 +3430,29 @@ paths:
                   $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.LocationResponse'
               type: object
       summary: Get driver's current location
+      tags:
+      - tracking
+  /tracking/location:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Location data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.UpdateLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update driver location (called by driver app)
       tags:
       - tracking
   /tracking/nearby:
