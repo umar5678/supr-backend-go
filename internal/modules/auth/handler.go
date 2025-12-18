@@ -17,7 +17,7 @@ func NewHandler(service Service) *Handler {
 }
 
 // PhoneSignup godoc
-// @Summary Signup with phone (riders/drivers)
+// @Summary Signup with phone (riders / drivers / service providers)
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -41,7 +41,7 @@ func (h *Handler) PhoneSignup(c *gin.Context) {
 }
 
 // PhoneLogin godoc
-// @Summary Login with phone (riders/drivers)
+// @Summary Login with phone (riders / drivers / service providers)
 // @Tags auth
 // @Accept json
 // @Produce json

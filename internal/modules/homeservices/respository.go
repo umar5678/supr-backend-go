@@ -8,6 +8,7 @@ import (
 
 	"github.com/umar5678/go-backend/internal/models"
 	homeServiceDto "github.com/umar5678/go-backend/internal/modules/homeservices/dto"
+	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
 type Repository interface {
@@ -16,10 +17,13 @@ type Repository interface {
 	GetCategoryByID(ctx context.Context, id uint) (*models.ServiceCategory, error)
 	GetCategoryWithTabs(ctx context.Context, id uint) (*models.ServiceCategory, error)
 	CreateCategory(ctx context.Context, category *models.ServiceCategory) error
+	GetAllCategorySlugs(ctx context.Context) ([]string, error)
 	ListServices(ctx context.Context, query homeServiceDto.ListServicesQuery) ([]*models.Service, int64, error)
 	GetServiceByID(ctx context.Context, id uint) (*models.Service, error)
 	GetServiceWithOptions(ctx context.Context, id uint) (*models.Service, error)
 	GetServicesByIDs(ctx context.Context, ids []uint) ([]*models.Service, error)
+	GetServicesByUUIDs(ctx context.Context, ids []string) ([]*models.ServiceNew, error)
+	GetServiceNewByID(ctx context.Context, id string) (*models.ServiceNew, error)
 
 	ListTabs(ctx context.Context, categoryID uint) ([]models.ServiceTab, error)
 	GetTabByID(ctx context.Context, id uint) (*models.ServiceTab, error)
@@ -41,11 +45,11 @@ type Repository interface {
 	AssignProviderToOrder(ctx context.Context, providerID, orderID string) error
 
 	// Provider Registeration
-	FindProviderByUserID(ctx context.Context, userID string) (*models.ServiceProvider, error)
+	FindProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error)
 
 	// Provider Matching
 	FindNearestAvailableProviders(ctx context.Context, serviceIDs []uint, lat, lon float64, radiusMeters int) ([]models.ServiceProvider, error)
-	GetProviderByID(ctx context.Context, providerID string) (*models.ServiceProvider, error)
+	GetProviderByID(ctx context.Context, providerID string) (*models.ServiceProviderProfile, error)
 	UpdateProviderStatus(ctx context.Context, providerID, status string) error
 	UpdateProviderLocation(ctx context.Context, providerID string, lat, lon float64) error
 
@@ -56,9 +60,11 @@ type Repository interface {
 	CreateOptionChoice(ctx context.Context, choice *models.ServiceOptionChoice) error
 
 	// Provider Management
-	CreateProvider(ctx context.Context, provider *models.ServiceProvider, lat, lon float64) error
-	AssignServiceToProvider(ctx context.Context, providerID string, serviceID uint) error
-	RemoveServiceFromProvider(ctx context.Context, providerID string, serviceID uint) error
+	CreateProvider(ctx context.Context, provider *models.ServiceProviderProfile) error
+	AssignServiceToProvider(ctx context.Context, providerID string, serviceID string) error
+	RemoveServiceFromProvider(ctx context.Context, providerID string, serviceID string) error
+	AddProviderCategory(ctx context.Context, category *models.ProviderServiceCategory) error
+	GetProviderCategory(ctx context.Context, providerID string, categorySlug string) (*models.ProviderServiceCategory, error)
 }
 
 type repository struct {
@@ -100,6 +106,16 @@ func (r *repository) GetCategoryWithTabs(ctx context.Context, id uint) (*models.
 
 func (r *repository) CreateCategory(ctx context.Context, category *models.ServiceCategory) error {
 	return r.db.WithContext(ctx).Create(category).Error
+}
+
+func (r *repository) GetAllCategorySlugs(ctx context.Context) ([]string, error) {
+	var slugs []string
+	err := r.db.WithContext(ctx).
+		Model(&models.ServiceNew{}).
+		Distinct("category_slug").
+		Order("category_slug ASC").
+		Pluck("category_slug", &slugs).Error
+	return slugs, err
 }
 
 func (r *repository) ListTabs(ctx context.Context, categoryID uint) ([]models.ServiceTab, error) {
@@ -208,6 +224,22 @@ func (r *repository) GetServicesByIDs(ctx context.Context, ids []uint) ([]*model
 		Preload("Options.Choices").
 		Find(&services).Error
 	return services, err
+}
+
+func (r *repository) GetServicesByUUIDs(ctx context.Context, ids []string) ([]*models.ServiceNew, error) {
+	var services []*models.ServiceNew
+	err := r.db.WithContext(ctx).
+		Where("id IN ?", ids).
+		Find(&services).Error
+	return services, err
+}
+
+func (r *repository) GetServiceNewByID(ctx context.Context, id string) (*models.ServiceNew, error) {
+	var service models.ServiceNew
+	err := r.db.WithContext(ctx).
+		Where("id = ?", id).
+		First(&service).Error
+	return &service, err
 }
 
 // ==================== ADD-ONS ====================
@@ -400,8 +432,8 @@ func (r *repository) FindNearestAvailableProviders(ctx context.Context, serviceI
 	return providers, err
 }
 
-func (r *repository) GetProviderByID(ctx context.Context, providerID string) (*models.ServiceProvider, error) {
-	var provider models.ServiceProvider
+func (r *repository) GetProviderByID(ctx context.Context, providerID string) (*models.ServiceProviderProfile, error) {
+	var provider models.ServiceProviderProfile
 	err := r.db.WithContext(ctx).
 		Where("id = ?", providerID).
 		First(&provider).Error
@@ -434,8 +466,8 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*models.Us
 // }
 
 // Find provider by user ID
-func (r *repository) FindProviderByUserID(ctx context.Context, userID string) (*models.ServiceProvider, error) {
-	var provider models.ServiceProvider
+func (r *repository) FindProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error) {
+	var provider models.ServiceProviderProfile
 	err := r.db.WithContext(ctx).
 		Where("user_id = ?", userID).
 		First(&provider).Error
@@ -473,36 +505,51 @@ func (r *repository) CreateOptionChoice(ctx context.Context, choice *models.Serv
 
 // --- Provider Management ---
 
-func (r *repository) CreateProvider(ctx context.Context, provider *models.ServiceProvider, lat, lon float64) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Create provider with location
-		result := tx.Exec(`
-            INSERT INTO service_providers (
-                id, user_id, photo, rating, status, location, is_verified,
-                total_jobs, completed_jobs, created_at, updated_at
-            ) VALUES (
-                ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?,
-                ?, ?, NOW(), NOW()
-            )`,
-			provider.ID, provider.UserID, provider.Photo, provider.Rating,
-			provider.Status, lon, lat, provider.IsVerified,
-			provider.TotalJobs, provider.CompletedJobs,
-		)
-		return result.Error
-	})
+func (r *repository) CreateProvider(ctx context.Context, provider *models.ServiceProviderProfile) error {
+	return r.db.WithContext(ctx).Create(provider).Error
 }
 
-func (r *repository) AssignServiceToProvider(ctx context.Context, providerID string, serviceID uint) error {
-	return r.db.WithContext(ctx).Exec(`
+func (r *repository) AssignServiceToProvider(ctx context.Context, providerID string, serviceID string) error {
+	logger.Info("attempting to assign service to provider", "providerID", providerID, "serviceID", serviceID)
+
+	result := r.db.WithContext(ctx).Exec(`
         INSERT INTO provider_qualified_services (provider_id, service_id)
         VALUES (?, ?)
         ON CONFLICT DO NOTHING
-    `, providerID, serviceID).Error
+    `, providerID, serviceID)
+
+	if result.Error != nil {
+		logger.Error("failed to assign service to provider", "error", result.Error, "providerID", providerID, "serviceID", serviceID)
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		logger.Warn("service assignment returned 0 rows affected (likely already exists)", "providerID", providerID, "serviceID", serviceID)
+	} else {
+		logger.Info("service assigned successfully", "providerID", providerID, "serviceID", serviceID, "rowsAffected", result.RowsAffected)
+	}
+
+	return nil
 }
 
-func (r *repository) RemoveServiceFromProvider(ctx context.Context, providerID string, serviceID uint) error {
+func (r *repository) RemoveServiceFromProvider(ctx context.Context, providerID string, serviceID string) error {
 	return r.db.WithContext(ctx).Exec(`
         DELETE FROM provider_qualified_services
         WHERE provider_id = ? AND service_id = ?
     `, providerID, serviceID).Error
+}
+
+func (r *repository) AddProviderCategory(ctx context.Context, category *models.ProviderServiceCategory) error {
+	return r.db.WithContext(ctx).Create(category).Error
+}
+
+func (r *repository) GetProviderCategory(ctx context.Context, providerID string, categorySlug string) (*models.ProviderServiceCategory, error) {
+	var category models.ProviderServiceCategory
+	err := r.db.WithContext(ctx).
+		Where("provider_id = ? AND category_slug = ?", providerID, categorySlug).
+		First(&category).Error
+	if err != nil {
+		return nil, err
+	}
+	return &category, nil
 }

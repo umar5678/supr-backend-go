@@ -161,6 +161,9 @@ type ServiceProvider struct {
 	LastActive    time.Time `json:"lastActive"`
 	CreatedAt     time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt     time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
+
+	// Relations
+	User *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
 func (p *ServiceProvider) BeforeCreate(tx *gorm.DB) error {
@@ -185,6 +188,7 @@ type ServiceOrder struct {
 	Frequency      string     `gorm:"type:varchar(50);default:'once'" json:"frequency"`      // once, daily, weekly, monthly
 	QuantityOfPros int        `gorm:"type:integer;not null;default:1" json:"quantityOfPros"` //  NEW: Number of professionals
 	HoursOfService float64    `gorm:"type:decimal(5,2);not null;default:1.0" json:"hoursOfService"`
+	CategorySlug   string     `gorm:"type:varchar(255);index" json:"categorySlug"` // Service category slug for provider filtering
 	Subtotal       float64    `gorm:"type:decimal(10,2);not null" json:"subtotal"`
 	Discount       float64    `gorm:"type:decimal(10,2);default:0" json:"discount"`
 	SurgeFee       float64    `gorm:"type:decimal(10,2);default:0" json:"surgeFee"`
@@ -237,7 +241,7 @@ func (ServiceOrder) TableName() string { return "service_orders" }
 type OrderItem struct {
 	ID              uint                   `gorm:"primaryKey" json:"id"`
 	OrderID         string                 `gorm:"type:uuid;not null;index" json:"orderId"`
-	ServiceID       uint                   `gorm:"not null" json:"serviceId"`
+	ServiceID       string                 `gorm:"type:uuid;not null" json:"serviceId"`
 	ServiceName     string                 `gorm:"type:varchar(255);not null" json:"serviceName"`
 	BasePrice       float64                `gorm:"type:decimal(10,2);not null" json:"basePrice"`
 	CalculatedPrice float64                `gorm:"type:decimal(10,2);not null" json:"calculatedPrice"`
@@ -245,8 +249,7 @@ type OrderItem struct {
 	SelectedOptions map[string]interface{} `gorm:"type:jsonb" json:"selectedOptions"`
 	CreatedAt       time.Time              `gorm:"autoCreateTime" json:"createdAt"`
 
-	Order   *ServiceOrder `gorm:"foreignKey:OrderID" json:"order,omitempty"`
-	Service *Service      `gorm:"foreignKey:ServiceID" json:"service,omitempty"`
+	Order *ServiceOrder `gorm:"foreignKey:OrderID" json:"order,omitempty"`
 }
 
 func (OrderItem) TableName() string { return "order_items" }

@@ -15,6 +15,15 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
+// RegisterDriver godoc
+// @Summary Register driver profile
+// @Tags drivers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body driverdto.RegisterDriverRequest true "Driver registration data"
+// @Success 200 {object} response.Response{data=driverdto.DriverProfileResponse}
+// @Router /drivers/register [post]
 func (h *Handler) RegisterDriver(c *gin.Context) {
 	userID, _ := c.Get("userID")
 

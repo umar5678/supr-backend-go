@@ -36,6 +36,23 @@ func (h *Handler) ListCategories(c *gin.Context) {
 	response.Success(c, categories, "Categories retrieved successfully")
 }
 
+// GetAllCategorySlugs godoc
+// @Summary Get all category slugs
+// @Description Get list of all distinct category slugs for provider registration dropdown
+// @Tags home-services
+// @Produce json
+// @Success 200 {object} response.Response{data=[]string}
+// @Router /services/category-slugs [get]
+func (h *Handler) GetAllCategorySlugs(c *gin.Context) {
+	slugs, err := h.service.GetAllCategorySlugs(c.Request.Context())
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, slugs, "Category slugs retrieved successfully")
+}
+
 // GetCategoryWithTabs godoc
 // @Summary Get category with tabs
 // @Description Get detailed category information with all tabs

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/umar5678/go-backend/internal/config"
@@ -284,6 +285,7 @@ func (s *service) EmailSignup(ctx context.Context, req authdto.EmailSignupReques
 
 // EmailLogin handles email-based login
 func (s *service) EmailLogin(ctx context.Context, req authdto.EmailLoginRequest) (*authdto.AuthResponse, error) {
+	fmt.Println("=========================================================service  called")
 	logger.Debug("service fun for emial login, ============")
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
@@ -307,13 +309,16 @@ func (s *service) EmailLogin(ctx context.Context, req authdto.EmailLoginRequest)
 	// 	return nil, response.UnauthorizedError("Invalid credentials || password validation failed ")
 	// }
 
-	if !password.Verify(*user.Password, req.Password) {
+	if !password.Verify(req.Password, *user.Password) {
+		fmt.Println("RAW stored hash: ", *user.Password)
 		logger.Debug("RAW stored hash: ", *user.Password)
+		fmt.Println("Hash length: ", len(*user.Password))
 		logger.Debug("Hash length: ", len(*user.Password))
-		logger.Debug("Hash starts with: ", (*user.Password)[:7]) // should be "$2a$" or "$2b$"
+		fmt.Println("Hash starts with: ", (*user.Password)[:7]) // should be "$2a$" or "$2b$"
 
 		// Test manually with bcrypt
 		err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(req.Password))
+		fmt.Println("bcrypt compare error: ", err)
 		logger.Debug("bcrypt error: ", err)
 
 		return nil, response.UnauthorizedError("Invalid credentials")

@@ -10,6 +10,7 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 	{
 		// --- Public Routes ---
 		services.GET("/categories", handler.ListCategories)
+		services.GET("/category-slugs", handler.GetAllCategorySlugs)
 		services.GET("/categories/:id", handler.GetCategoryWithTabs)
 		services.GET("", handler.ListServices)
 		services.GET("/:id", handler.GetServiceDetails)
@@ -29,7 +30,7 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		// --- Provider Protected Routes ---
 		provider := services.Group("/provider")
 		provider.Use(authMiddleware)
-		provider.Use(middleware.RequireRole("provider")) // Only providers
+		provider.Use(middleware.RequireRole("service_provider")) // Only service providers
 		{
 			provider.POST("/register", handler.RegisterProvider)
 			provider.GET("/orders", handler.GetProviderOrders)

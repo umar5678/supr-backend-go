@@ -319,7 +319,7 @@ type OrderListResponse struct {
 
 type OrderItemResponse struct {
 	ID              uint                   `json:"id"`
-	ServiceID       uint                   `json:"serviceId"`
+	ServiceID       string                 `json:"serviceId"`
 	ServiceName     string                 `json:"serviceName"`
 	BasePrice       float64                `json:"basePrice"`
 	CalculatedPrice float64                `json:"calculatedPrice"`

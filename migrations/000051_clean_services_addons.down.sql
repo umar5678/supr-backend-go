@@ -1,0 +1,3 @@
+-- Rollback
+DROP TABLE IF EXISTS addons CASCADE;
+DROP TABLE IF EXISTS services CASCADE;

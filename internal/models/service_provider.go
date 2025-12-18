@@ -26,6 +26,7 @@ type ServiceProviderProfile struct {
 	BusinessName    *string `gorm:"type:varchar(255)" json:"businessName,omitempty"`
 	Description     *string `gorm:"type:text" json:"description,omitempty"`
 	ServiceCategory string  `gorm:"type:varchar(100);not null" json:"serviceCategory"` // delivery, handyman, general_service
+	ServiceType     string  `gorm:"type:varchar(255);not null;index" json:"serviceType"`
 
 	// Verification & Documents
 	Status           ServiceProviderStatus `gorm:"type:varchar(50);not null;default:'pending_approval'" json:"status"`

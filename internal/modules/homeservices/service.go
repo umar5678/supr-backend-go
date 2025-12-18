@@ -2,7 +2,6 @@ package homeservices
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -31,6 +30,7 @@ type Service interface {
 	// Customer - Service Catalog
 	ListCategories(ctx context.Context) ([]*homeservicedto.ServiceCategoryResponse, error)
 	GetCategoryWithTabs(ctx context.Context, id uint) (*homeservicedto.CategoryWithTabsResponse, error)
+	GetAllCategorySlugs(ctx context.Context) ([]string, error)
 	ListServices(ctx context.Context, query homeservicedto.ListServicesQuery) ([]*homeservicedto.ServiceListResponse, *response.PaginationMeta, error)
 	GetServiceDetails(ctx context.Context, id uint) (*homeservicedto.ServiceDetailResponse, error)
 	ListAddOns(ctx context.Context, categoryID uint) ([]*homeservicedto.AddOnResponse, error)
@@ -84,6 +84,16 @@ func (s *service) ListCategories(ctx context.Context) ([]*homeservicedto.Service
 	}
 
 	return homeservicedto.ToServiceCategoryList(categories), nil
+}
+
+// GetAllCategorySlugs returns all distinct category slugs from services table for dropdown
+func (s *service) GetAllCategorySlugs(ctx context.Context) ([]string, error) {
+	slugs, err := s.repo.GetAllCategorySlugs(ctx)
+	if err != nil {
+		logger.Error("failed to list category slugs", "error", err)
+		return nil, response.InternalServerError("Failed to fetch category slugs", err)
+	}
+	return slugs, nil
 }
 
 func (s *service) GetCategoryWithTabs(ctx context.Context, id uint) (*homeservicedto.CategoryWithTabsResponse, error) {
@@ -169,41 +179,68 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 	if err == nil {
 		return nil, response.BadRequest("User is already registered as a service provider")
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		logger.Error("failed to check existing provider", "error", err, "userID", userID)
-		return nil, response.InternalServerError("Failed to check provider status", err)
+	// if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	// 	logger.Error("failed to check existing provider", "error", err, "userID", userID)
+	// 	return nil, response.InternalServerError("Failed to check provider status", err)
+	// }
+
+	// 1.5 Validate that all serviceIds are valid UUIDs
+	for _, serviceID := range req.ServiceIDs {
+		if _, err := uuid.Parse(serviceID); err != nil {
+			return nil, response.BadRequest(fmt.Sprintf("Invalid service ID format: %s (must be a valid UUID)", serviceID))
+		}
 	}
 
 	// 2. Verify all services exist and are active
-	services, err := s.repo.GetServicesByIDs(ctx, req.ServiceIDs)
+	services, err := s.repo.GetServicesByUUIDs(ctx, req.ServiceIDs)
 	if err != nil {
-		logger.Error("failed to fetch services", "error", err, "serviceIDs", req.ServiceIDs)
+		logger.Error("failed to fetch services from database", "error", err, "serviceIDs", req.ServiceIDs)
 		return nil, response.InternalServerError("Failed to verify services", err)
 	}
 
+	// Verify that all requested serviceIds were found
+	if len(services) == 0 {
+		logger.Warn("no services found for provided IDs", "serviceIDs", req.ServiceIDs)
+		return nil, response.BadRequest("No valid services found for provided service IDs")
+	}
+
 	if len(services) != len(req.ServiceIDs) {
-		return nil, response.BadRequest("One or more service IDs are invalid")
+		return nil, response.BadRequest("One or more service IDs are invalid or not found in database")
 	}
 
 	// 3. Create provider profile
 	providerID := uuid.New().String()
-	provider := &models.ServiceProvider{
-		ID:            providerID,
-		UserID:        userID,
-		Photo:         req.Photo,
-		Status:        "available",
-		Rating:        5.0,
-		IsVerified:    true, // Auto-approve for now
-		TotalJobs:     0,
-		CompletedJobs: 0,
+	provider := &models.ServiceProviderProfile{
+		ID:              providerID,
+		UserID:          userID,
+		ServiceCategory: req.CategorySlug,
+		ServiceType:     req.CategorySlug,
+		Status:          models.SPStatusActive,
+		IsVerified:      true, // Auto-approve for now
+		IsAvailable:     true,
 	}
 
-	if err := s.repo.CreateProvider(ctx, provider, req.Latitude, req.Longitude); err != nil {
+	if err := s.repo.CreateProvider(ctx, provider); err != nil {
 		logger.Error("failed to create provider profile", "error", err, "userID", userID)
 		return nil, response.InternalServerError("Failed to create provider profile", err)
 	}
 
-	// 4. Assign qualified services
+	// 4. Register provider category selection (so provider receives notifications for this category)
+	if req.CategorySlug != "" {
+		category := &models.ProviderServiceCategory{
+			ProviderID:        providerID,
+			CategorySlug:      req.CategorySlug,
+			ExpertiseLevel:    "beginner",
+			YearsOfExperience: 0,
+			IsActive:          true,
+		}
+		if err := s.repo.AddProviderCategory(ctx, category); err != nil {
+			// log but don't block registration
+			logger.Error("failed to add provider category", "error", err, "providerID", providerID, "category", req.CategorySlug)
+		}
+	}
+
+	// 5. Assign qualified services
 	for _, serviceID := range req.ServiceIDs {
 		if err := s.repo.AssignServiceToProvider(ctx, providerID, serviceID); err != nil {
 			logger.Error("failed to assign service to provider",
@@ -224,16 +261,17 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 	provider, _ = s.repo.GetProviderByID(ctx, providerID)
 
 	return &homeservicedto.ProviderProfileResponse{
-		ID:            provider.ID,
-		UserID:        provider.UserID,
-		Status:        provider.Status,
-		IsVerified:    provider.IsVerified,
-		Rating:        provider.Rating,
-		CompletedJobs: provider.CompletedJobs,
-		IsAvailable:   provider.Status == "available",
-		Currency:      "USD",
-		CreatedAt:     provider.CreatedAt,
-		UpdatedAt:     provider.UpdatedAt,
+		ID:              provider.ID,
+		UserID:          provider.UserID,
+		ServiceCategory: provider.ServiceCategory,
+		Status:          string(provider.Status),
+		IsVerified:      provider.IsVerified,
+		Rating:          provider.Rating,
+		TotalReviews:    provider.TotalReviews,
+		CompletedJobs:   provider.CompletedJobs,
+		IsAvailable:     provider.IsAvailable,
+		Currency:        provider.Currency,
+		CreatedAt:       provider.CreatedAt,
 	}, nil
 }
 
@@ -251,18 +289,6 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 		return nil, response.BadRequest("Invalid service date format. Use RFC3339")
 	}
 
-	// Calculate pricing ( UPDATED to include quantity and hours)
-	subtotal, totalDuration := s.calculateOrderPricing([]*models.Service{}, []*models.AddOnService{}, req)
-
-	//  Multiply by quantity of professionals
-	subtotal = subtotal * float64(req.QuantityOfPros)
-
-	//  If pricing is hourly, multiply by hours
-	// This depends on your pricing model - adjust as needed
-	if s.isHourlyPricing([]*models.Service{}) {
-		subtotal = subtotal * req.HoursOfService
-	}
-
 	// Ensure service date is in the future
 	if serviceDate.Before(time.Now()) {
 		return nil, response.BadRequest("Service date must be in the future")
@@ -271,36 +297,47 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 	// 3. Calculate pricing for each item
 	var items []models.OrderItem
 	var addOns []models.OrderAddOn
-	// subtotal = 0.0
-	// totalDuration = 0
+	var categorySlug string // Track category from first service
+	var subtotal float64
+	var totalDuration int
 
 	// Process main service items
-	for _, itemReq := range req.Items {
-		svc, err := s.repo.GetServiceWithOptions(ctx, itemReq.ServiceID)
+	for i, itemReq := range req.Items {
+		svc, err := s.repo.GetServiceNewByID(ctx, itemReq.ServiceID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
-				return nil, response.BadRequest(fmt.Sprintf("Service with ID %d not found", itemReq.ServiceID))
+				return nil, response.BadRequest(fmt.Sprintf("Service with ID %s not found", itemReq.ServiceID))
 			}
 			return nil, response.InternalServerError("Failed to fetch service", err)
 		}
 
 		if !svc.IsActive {
-			return nil, response.BadRequest(fmt.Sprintf("Service '%s' is not available", svc.Name))
+			return nil, response.BadRequest(fmt.Sprintf("Service '%s' is not available", svc.Title))
 		}
 
-		// Calculate price and duration based on selected options
-		price, duration, selectedOpts, err := s.calculateItemPrice(svc, itemReq.SelectedOptions)
-		if err != nil {
-			return nil, response.BadRequest(err.Error())
+		// Extract category slug from first service
+		if i == 0 {
+			categorySlug = svc.CategorySlug
+		}
+
+		// For the new ServiceNew model, calculate price from BasePrice
+		// The new model doesn't have options like the old Service model
+		price := 0.0
+		duration := 0
+		if svc.BasePrice != nil {
+			price = *svc.BasePrice
+		}
+		if svc.Duration != nil {
+			duration = *svc.Duration
 		}
 
 		items = append(items, models.OrderItem{
 			ServiceID:       svc.ID,
-			ServiceName:     svc.Name,
-			BasePrice:       svc.BasePrice,
+			ServiceName:     svc.Title,
+			BasePrice:       price,
 			CalculatedPrice: price,
 			DurationMinutes: duration,
-			SelectedOptions: selectedOpts,
+			SelectedOptions: nil,
 		})
 
 		subtotal += price
@@ -368,6 +405,7 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 		Frequency:      req.Frequency,
 		QuantityOfPros: req.QuantityOfPros, // ✅ NEW
 		HoursOfService: req.HoursOfService, // ✅ NEW
+		CategorySlug:   categorySlug,       // ✅ Set category slug from first service
 		Notes:          req.Notes,
 		Subtotal:       subtotal,
 		Discount:       discount,
@@ -407,6 +445,15 @@ func (s *service) isHourlyPricing(services []*models.Service) bool {
 	return false
 }
 
+// ✅ Generate unique order code
+func (s *service) generateOrderCode() string {
+	// Format: HS-YYYY-NNNNNN (HS = Home Service)
+	year := time.Now().Year()
+	random := rand.Intn(999999)
+	return fmt.Sprintf("HS-%d-%06d", year, random)
+}
+
+/* DEPRECATED: Old helper functions for legacy Service model - no longer used
 // ✅ Calculate order pricing based on services, add-ons, options, quantity, and hours
 func (s *service) calculateOrderPricing(
 	services []*models.Service,
@@ -511,13 +558,6 @@ func (s *service) hasHourlyPricing(services []*models.Service) bool {
 	return false
 }
 
-// ✅ Generate unique order code
-func (s *service) generateOrderCode() string {
-	// Format: HS-YYYY-NNNNNN (HS = Home Service)
-	year := time.Now().Year()
-	random := rand.Intn(999999)
-	return fmt.Sprintf("HS-%d-%06d", year, random)
-}
 
 // ✅ Build order items from request
 func (s *service) buildOrderItems(
@@ -600,6 +640,7 @@ func (s *service) buildOrderAddOns(addOnIDs []uint, addOns []*models.AddOnServic
 
 	return orderAddOns
 }
+*/
 
 // func (s *service) CreateOrder(ctx context.Context, userID string, req homeservicedto.CreateOrderRequest) (*homeservicedto.OrderResponse, error) {
 // 	// 1. Validate and set defaults
@@ -1034,14 +1075,6 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string)
 func (s *service) FindAndNotifyNextProvider(orderID string) {
 	ctx := context.Background()
 
-	// 1. Get rejected provider IDs from Redis
-	rejectedKey := fmt.Sprintf("order:%s:rejected_providers", orderID)
-	rejectedIDsStr, _ := cache.Get(ctx, rejectedKey)
-	var rejectedIDs []string
-	if rejectedIDsStr != "" {
-		rejectedIDs = s.parseCommaSeparated(rejectedIDsStr)
-	}
-
 	// 2. Fetch order
 	order, err := s.repo.GetOrderByID(ctx, orderID)
 	if err != nil {
@@ -1050,7 +1083,7 @@ func (s *service) FindAndNotifyNextProvider(orderID string) {
 	}
 
 	// 3. Get service IDs from order items
-	var serviceIDs []uint
+	var serviceIDs []string
 	fullOrder, _ := s.repo.GetOrderByIDWithDetails(ctx, orderID)
 	if fullOrder != nil {
 		for _, item := range fullOrder.Items {
@@ -1063,18 +1096,22 @@ func (s *service) FindAndNotifyNextProvider(orderID string) {
 		return
 	}
 
-	// 4. Get lat/lon from order (requires raw query since it's stored in PostGIS)
-	var lat, lon float64
-	// This would need to be implemented in repository
-	// For now, we'll use default coordinates
-	lat, lon = 0.0, 0.0
+	// Get order's category slug for filtering providers
+	orderCategorySlug := order.CategorySlug
+	if orderCategorySlug == "" {
+		logger.Error("order has no category slug", "orderID", orderID)
+		return
+	}
 
-	// 5. Find nearest qualified providers
-	providers, err := s.repo.FindNearestAvailableProviders(ctx, serviceIDs, lat, lon, DefaultSearchRadius)
-	if err != nil || len(providers) == 0 {
-		logger.Warn("no providers found", "orderID", orderID, "serviceIDs", serviceIDs)
-		s.repo.UpdateOrderStatus(ctx, orderID, "no_provider_available")
-		// Release wallet hold
+	// 5. Find providers with this category (category-based matching)
+	// The provider matching is now handled through category slugs
+	// Providers register with categories and see orders with matching categories
+	// This is managed through the provider app's GetAvailableOrders endpoint
+
+	// For now, just update order status to indicate it's available for providers
+	if err := s.repo.UpdateOrderStatus(ctx, orderID, "pending"); err != nil {
+		logger.Error("failed to update order status", "error", err, "orderID", orderID)
+		// Release wallet hold on error
 		if order.WalletHoldID != nil {
 			releaseReq := walletdto.ReleaseHoldRequest{HoldID: *order.WalletHoldID}
 			s.walletService.ReleaseHold(ctx, order.UserID, releaseReq)
@@ -1082,53 +1119,10 @@ func (s *service) FindAndNotifyNextProvider(orderID string) {
 		return
 	}
 
-	// 6. Find next provider who hasn't been tried
-	var nextProvider *models.ServiceProvider
-	for i := range providers {
-		if !s.contains(rejectedIDs, providers[i].ID) {
-			nextProvider = &providers[i]
-			break
-		}
-	}
-
-	if nextProvider == nil {
-		logger.Warn("all providers exhausted", "orderID", orderID)
-		s.repo.UpdateOrderStatus(ctx, orderID, "no_provider_available")
-		if order.WalletHoldID != nil {
-			releaseReq := walletdto.ReleaseHoldRequest{HoldID: *order.WalletHoldID}
-			s.walletService.ReleaseHold(ctx, order.UserID, releaseReq)
-		}
-		return
-	}
-
-	// 7. Offer job to provider
-	offerKey := fmt.Sprintf("provider:%s:current_offer", nextProvider.ID)
-	cache.Set(ctx, offerKey, orderID, ProviderOfferTimeout)
-
-	// Mark provider as tried
-	rejectedIDs = append(rejectedIDs, nextProvider.ID)
-	cache.Set(ctx, rejectedKey, s.joinCommaSeparated(rejectedIDs), 24*time.Hour)
-
-	logger.Info("offering order to provider", "orderID", orderID, "providerID", nextProvider.ID)
-
-	// TODO: Send push notification to provider
-
-	// 8. Schedule timeout check
-	time.AfterFunc(ProviderOfferTimeout, func() {
-		s.checkOfferTimeout(orderID, nextProvider.ID)
-	})
-}
-
-func (s *service) checkOfferTimeout(orderID, providerID string) {
-	ctx := context.Background()
-	offerKey := fmt.Sprintf("provider:%s:current_offer", providerID)
-
-	val, err := cache.Get(ctx, offerKey)
-	if err == nil && val == orderID {
-		// Provider timed out, find next one
-		logger.Info("provider offer timed out", "orderID", orderID, "providerID", providerID)
-		s.FindAndNotifyNextProvider(orderID)
-	}
+	logger.Info("order is available for providers",
+		"orderID", orderID,
+		"category", orderCategorySlug,
+		"status", "pending")
 }
 
 // --- Admin - Service Management ---
