@@ -231,8 +231,16 @@ definitions:
     properties:
       phone:
         type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+        enum:
+        - rider
+        - driver
+        - service_provider
     required:
     - phone
+    - role
     type: object
   github_com_umar5678_go-backend_internal_modules_auth_dto.PhoneSignupRequest:
     properties:
@@ -349,6 +357,18 @@ definitions:
       longitude:
         type: number
     type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.RegisterDriverRequest:
+    properties:
+      licenseNumber:
+        maxLength: 100
+        minLength: 5
+        type: string
+      vehicle:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.VehicleInput'
+    required:
+    - licenseNumber
+    - vehicle
+    type: object
   github_com_umar5678_go-backend_internal_modules_drivers_dto.UpdateDriverProfileRequest:
     properties:
       licenseNumber:
@@ -414,6 +434,42 @@ definitions:
         minimum: 1900
         type: integer
     type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.VehicleInput:
+    properties:
+      capacity:
+        maximum: 20
+        minimum: 1
+        type: integer
+      color:
+        maxLength: 50
+        minLength: 2
+        type: string
+      licensePlate:
+        maxLength: 50
+        minLength: 2
+        type: string
+      make:
+        maxLength: 100
+        minLength: 2
+        type: string
+      model:
+        maxLength: 100
+        minLength: 2
+        type: string
+      vehicleTypeId:
+        type: string
+      year:
+        minimum: 1900
+        type: integer
+    required:
+    - capacity
+    - color
+    - licensePlate
+    - make
+    - model
+    - vehicleTypeId
+    - year
+    type: object
   github_com_umar5678_go-backend_internal_modules_drivers_dto.VehicleResponse:
     properties:
       capacity:
@@ -453,6 +509,1600 @@ definitions:
         type: number
       totalEarnings:
         type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonListResponse:
+    properties:
+      addonSlug:
+        type: string
+      categorySlug:
+        type: string
+      discountPercentage:
+        type: number
+      id:
+        type: string
+      image:
+        type: string
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+      price:
+        type: number
+      sortOrder:
+        type: integer
+      strikethroughPrice:
+        type: number
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonResponse:
+    properties:
+      addonSlug:
+        type: string
+      categorySlug:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      discountPercentage:
+        type: number
+      id:
+        type: string
+      image:
+        type: string
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+      notes:
+        items:
+          type: string
+        type: array
+      price:
+        type: number
+      sortOrder:
+        type: integer
+      strikethroughPrice:
+        type: number
+      title:
+        type: string
+      updatedAt:
+        type: string
+      whatsIncluded:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminBookingInfo:
+    properties:
+      date:
+        type: string
+      day:
+        type: string
+      formattedDate:
+        type: string
+      formattedTime:
+        type: string
+      isPast:
+        type: boolean
+      isToday:
+        type: boolean
+      preferredTime:
+        type: string
+      time:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminCancelOrderRequest:
+    properties:
+      notifyParties:
+        type: boolean
+      reason:
+        maxLength: 500
+        minLength: 10
+        type: string
+      refundAmount:
+        description: Optional custom refund
+        minimum: 0
+        type: number
+    required:
+    - reason
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminCancellationInfo:
+    properties:
+      cancellationFee:
+        type: number
+      cancelledAt:
+        type: string
+      cancelledBy:
+        type: string
+      reason:
+        type: string
+      refundAmount:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderAddonItem:
+    properties:
+      addonSlug:
+        type: string
+      price:
+        type: number
+      quantity:
+        type: integer
+      subtotal:
+        type: number
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderDetailResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderAddonItem'
+        type: array
+      availableActions:
+        description: Admin actions
+        items:
+          type: string
+        type: array
+      bookingInfo:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminBookingInfo'
+        description: Booking
+      cancellation:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminCancellationInfo'
+        description: Cancellation (if cancelled)
+      categorySlug:
+        description: Category
+        type: string
+      categoryTitle:
+        type: string
+      createdAt:
+        description: Timestamps
+        type: string
+      customer:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.OrderPartyInfo'
+        description: Customer
+      id:
+        type: string
+      orderNumber:
+        type: string
+      payment:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminPaymentInfo'
+        description: Payment
+      pricing:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderPricing'
+        description: Pricing
+      provider:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.OrderPartyInfo'
+        description: Provider
+      ratings:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminRatingsInfo'
+        description: Ratings
+      services:
+        description: Services
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderServiceItem'
+        type: array
+      specialNotes:
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderStatus'
+        description: Status
+      statusHistory:
+        description: History
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.StatusHistoryItem'
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderListResponse:
+    properties:
+      bookingDate:
+        type: string
+      bookingTime:
+        type: string
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      commission:
+        type: number
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      customerName:
+        type: string
+      customerPhone:
+        type: string
+      displayStatus:
+        type: string
+      id:
+        type: string
+      orderNumber:
+        type: string
+      paymentMethod:
+        type: string
+      paymentStatus:
+        type: string
+      providerName:
+        type: string
+      providerPayout:
+        type: number
+      status:
+        type: string
+      totalPrice:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderPricing:
+    properties:
+      addonsTotal:
+        type: number
+      commissionRate:
+        description: e.g., 0.10 for 10%
+        type: number
+      formattedTotal:
+        type: string
+      platformCommission:
+        type: number
+      providerPayout:
+        type: number
+      servicesTotal:
+        type: number
+      subtotal:
+        type: number
+      totalPrice:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderServiceItem:
+    properties:
+      price:
+        type: number
+      quantity:
+        type: integer
+      serviceSlug:
+        type: string
+      subtotal:
+        type: number
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderStatus:
+    properties:
+      completedAt:
+        type: string
+      current:
+        type: string
+      displayStatus:
+        type: string
+      expiresAt:
+        type: string
+      isExpired:
+        type: boolean
+      providerAcceptedAt:
+        type: string
+      providerStartedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminPaymentInfo:
+    properties:
+      amountPaid:
+        type: number
+      method:
+        type: string
+      status:
+        type: string
+      total:
+        type: number
+      transactionId:
+        type: string
+      voucher:
+        type: string
+      walletHoldId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminRatingsInfo:
+    properties:
+      customerRatedAt:
+        type: string
+      customerRating:
+        type: integer
+      customerReview:
+        type: string
+      providerRatedAt:
+        type: string
+      providerRating:
+        type: integer
+      providerReview:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AnalyticsPeriod:
+    properties:
+      fromDate:
+        type: string
+      groupBy:
+        type: string
+      toDate:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AnalyticsSummary:
+    properties:
+      averageOrderValue:
+        type: number
+      averageRating:
+        type: number
+      cancellationRate:
+        type: number
+      cancelledOrders:
+        type: integer
+      completedOrders:
+        type: integer
+      completionRate:
+        type: number
+      pendingOrders:
+        type: integer
+      totalCommission:
+        type: number
+      totalOrders:
+        type: integer
+      totalProviderPayouts:
+        type: number
+      totalRevenue:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AnalyticsTrends:
+    properties:
+      completionChange:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.TrendChange'
+      ordersChange:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.TrendChange'
+      revenueChange:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.TrendChange'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.BulkUpdateStatusRequest:
+    properties:
+      orderIds:
+        items:
+          type: string
+        maxItems: 100
+        minItems: 1
+        type: array
+      reason:
+        maxLength: 500
+        minLength: 10
+        type: string
+      status:
+        type: string
+    required:
+    - orderIds
+    - reason
+    - status
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CategoryCount:
+    properties:
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      orderCount:
+        type: integer
+      percentage:
+        type: number
+      revenue:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CategoryRevenue:
+    properties:
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      commission:
+        type: number
+      orderCount:
+        type: integer
+      percentage:
+        type: number
+      revenue:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CategoryServicesResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonListResponse'
+        type: array
+      categorySlug:
+        type: string
+      services:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ServiceListResponse'
+        type: array
+      totalCount:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CreateAddonRequest:
+    properties:
+      addonSlug:
+        maxLength: 255
+        minLength: 3
+        type: string
+      categorySlug:
+        maxLength: 255
+        minLength: 2
+        type: string
+      description:
+        maxLength: 2000
+        type: string
+      image:
+        maxLength: 500
+        type: string
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+      notes:
+        items:
+          type: string
+        type: array
+      price:
+        type: number
+      sortOrder:
+        minimum: 0
+        type: integer
+      strikethroughPrice:
+        type: number
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+      whatsIncluded:
+        items:
+          type: string
+        type: array
+    required:
+    - addonSlug
+    - categorySlug
+    - price
+    - title
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CreateServiceRequest:
+    properties:
+      bannerImage:
+        maxLength: 500
+        type: string
+      basePrice:
+        minimum: 0
+        type: number
+      categorySlug:
+        maxLength: 255
+        minLength: 2
+        type: string
+      description:
+        maxLength: 2000
+        type: string
+      duration:
+        description: max 24 hours in minutes
+        maximum: 1440
+        minimum: 1
+        type: integer
+      frequency:
+        maxLength: 100
+        type: string
+      highlights:
+        maxLength: 500
+        minLength: 3
+        type: string
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+      isFrequent:
+        type: boolean
+      longDescription:
+        maxLength: 10000
+        type: string
+      longTitle:
+        maxLength: 500
+        type: string
+      serviceSlug:
+        maxLength: 255
+        minLength: 3
+        type: string
+      sortOrder:
+        minimum: 0
+        type: integer
+      termsAndConditions:
+        items:
+          type: string
+        type: array
+      thumbnail:
+        maxLength: 500
+        type: string
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+      whatsIncluded:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - categorySlug
+    - highlights
+    - serviceSlug
+    - title
+    - whatsIncluded
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.DailyStats:
+    properties:
+      date:
+        type: string
+      dayName:
+        type: string
+      orderCount:
+        type: integer
+      revenue:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.DashboardResponse:
+    properties:
+      pendingActions:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.PendingActions'
+        description: Pending actions
+      recentOrders:
+        description: Recent orders
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderListResponse'
+        type: array
+      today:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.TodayStats'
+        description: Today's stats
+      weeklyStats:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.WeeklyStats'
+        description: Quick stats (last 7 days)
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.OrderPartyInfo:
+    properties:
+      address:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+      name:
+        type: string
+      phone:
+        type: string
+      photo:
+        type: string
+      rating:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.OverviewAnalyticsResponse:
+    properties:
+      ordersByCategory:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CategoryCount'
+        type: array
+      ordersByStatus:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.StatusCount'
+        type: array
+      period:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AnalyticsPeriod'
+      revenueBreakdown:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.RevenueBreakdown'
+        type: array
+      summary:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AnalyticsSummary'
+      trends:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AnalyticsTrends'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.PaymentMethodStats:
+    properties:
+      method:
+        type: string
+      orderCount:
+        type: integer
+      percentage:
+        type: number
+      totalAmount:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.PendingActions:
+    properties:
+      disputedOrders:
+        type: integer
+      expiredOrders:
+        type: integer
+      ordersNeedingProvider:
+        type: integer
+      unratedOrders:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ProviderAnalyticsItem:
+    properties:
+      averageRating:
+        type: number
+      cancelledOrders:
+        type: integer
+      categories:
+        items:
+          type: string
+        type: array
+      completedOrders:
+        type: integer
+      completionRate:
+        type: number
+      photo:
+        type: string
+      providerId:
+        type: string
+      providerName:
+        type: string
+      totalEarnings:
+        type: number
+      totalRatings:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ProviderAnalyticsResponse:
+    properties:
+      period:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AnalyticsPeriod'
+      providers:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ProviderAnalyticsItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ReassignOrderRequest:
+    properties:
+      providerId:
+        type: string
+      reason:
+        maxLength: 500
+        minLength: 10
+        type: string
+    required:
+    - providerId
+    - reason
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.RevenueBreakdown:
+    properties:
+      averageOrderValue:
+        type: number
+      commission:
+        type: number
+      orderCount:
+        type: integer
+      period:
+        description: Date, week, or month
+        type: string
+      providerPayouts:
+        type: number
+      revenue:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.RevenueReportResponse:
+    properties:
+      breakdown:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.RevenueBreakdown'
+        type: array
+      byCategory:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CategoryRevenue'
+        type: array
+      byPaymentMethod:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.PaymentMethodStats'
+        type: array
+      formattedRevenue:
+        type: string
+      netRevenue:
+        type: number
+      period:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AnalyticsPeriod'
+      totalCommission:
+        type: number
+      totalPayouts:
+        type: number
+      totalRefunds:
+        type: number
+      totalRevenue:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ServiceListResponse:
+    properties:
+      basePrice:
+        type: number
+      categorySlug:
+        type: string
+      createdAt:
+        type: string
+      duration:
+        type: integer
+      id:
+        type: string
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+      serviceSlug:
+        type: string
+      sortOrder:
+        type: integer
+      thumbnail:
+        type: string
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ServiceResponse:
+    properties:
+      bannerImage:
+        type: string
+      basePrice:
+        type: number
+      categorySlug:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      duration:
+        type: integer
+      frequency:
+        type: string
+      highlights:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+      isFrequent:
+        type: boolean
+      longDescription:
+        type: string
+      longTitle:
+        type: string
+      serviceSlug:
+        type: string
+      sortOrder:
+        type: integer
+      termsAndConditions:
+        items:
+          type: string
+        type: array
+      thumbnail:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+      whatsIncluded:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.StatusCount:
+    properties:
+      count:
+        type: integer
+      displayName:
+        type: string
+      percentage:
+        type: number
+      status:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.StatusHistoryItem:
+    properties:
+      changedBy:
+        type: string
+      changedByRole:
+        type: string
+      createdAt:
+        type: string
+      fromStatus:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      notes:
+        type: string
+      toStatus:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.TodayStats:
+    properties:
+      activeProviders:
+        type: integer
+      commission:
+        type: number
+      completedOrders:
+        type: integer
+      inProgressOrders:
+        type: integer
+      newCustomers:
+        type: integer
+      pendingOrders:
+        type: integer
+      revenue:
+        type: number
+      totalOrders:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.TrendChange:
+    properties:
+      change:
+        description: Absolute change
+        type: number
+      changePercent:
+        description: Percentage change
+        type: number
+      currentValue:
+        type: number
+      previousValue:
+        type: number
+      trend:
+        description: '"up", "down", "stable"'
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateAddonRequest:
+    properties:
+      categorySlug:
+        maxLength: 255
+        minLength: 2
+        type: string
+      description:
+        maxLength: 2000
+        type: string
+      image:
+        maxLength: 500
+        type: string
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+      notes:
+        items:
+          type: string
+        type: array
+      price:
+        type: number
+      sortOrder:
+        minimum: 0
+        type: integer
+      strikethroughPrice:
+        minimum: 0
+        type: number
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+      whatsIncluded:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateAddonStatusRequest:
+    properties:
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateOrderStatusRequest:
+    properties:
+      notes:
+        maxLength: 1000
+        type: string
+      reason:
+        maxLength: 500
+        type: string
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateServiceRequest:
+    properties:
+      bannerImage:
+        maxLength: 500
+        type: string
+      basePrice:
+        minimum: 0
+        type: number
+      categorySlug:
+        maxLength: 255
+        minLength: 2
+        type: string
+      description:
+        maxLength: 2000
+        type: string
+      duration:
+        maximum: 1440
+        minimum: 1
+        type: integer
+      frequency:
+        maxLength: 100
+        type: string
+      highlights:
+        maxLength: 500
+        minLength: 3
+        type: string
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+      isFrequent:
+        type: boolean
+      longDescription:
+        maxLength: 10000
+        type: string
+      longTitle:
+        maxLength: 500
+        type: string
+      sortOrder:
+        minimum: 0
+        type: integer
+      termsAndConditions:
+        items:
+          type: string
+        type: array
+      thumbnail:
+        maxLength: 500
+        type: string
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+      whatsIncluded:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - highlights
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateServiceStatusRequest:
+    properties:
+      isActive:
+        type: boolean
+      isAvailable:
+        type: boolean
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.WeeklyStats:
+    properties:
+      averageRating:
+        type: number
+      completedOrders:
+        type: integer
+      dailyBreakdown:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.DailyStats'
+        type: array
+      totalOrders:
+        type: integer
+      totalRevenue:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.AddonListResponse:
+    properties:
+      categorySlug:
+        type: string
+      discountPercentage:
+        type: number
+      formattedPrice:
+        type: string
+      hasDiscount:
+        type: boolean
+      id:
+        type: string
+      image:
+        type: string
+      price:
+        type: number
+      slug:
+        type: string
+      strikethroughPrice:
+        type: number
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.AddonResponse:
+    properties:
+      categorySlug:
+        type: string
+      description:
+        type: string
+      discountPercentage:
+        type: number
+      formattedPrice:
+        type: string
+      hasDiscount:
+        type: boolean
+      id:
+        type: string
+      image:
+        type: string
+      notes:
+        items:
+          type: string
+        type: array
+      price:
+        type: number
+      slug:
+        type: string
+      strikethroughPrice:
+        type: number
+      title:
+        type: string
+      whatsIncluded:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.BookingInfoRequest:
+    properties:
+      date:
+        description: YYYY-MM-DD
+        type: string
+      preferredTime:
+        description: optional specific time HH:MM
+        type: string
+      quantityOfPros:
+        maximum: 5
+        minimum: 1
+        type: integer
+      time:
+        description: HH:MM
+        type: string
+    required:
+    - date
+    - quantityOfPros
+    - time
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CancelOrderRequest:
+    properties:
+      reason:
+        maxLength: 500
+        minLength: 10
+        type: string
+    required:
+    - reason
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CancellationPreviewResponse:
+    properties:
+      cancellationFee:
+        type: number
+      currentStatus:
+        type: string
+      feePercentage:
+        type: number
+      message:
+        type: string
+      orderId:
+        type: string
+      orderNumber:
+        type: string
+      refundAmount:
+        type: number
+      totalPrice:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CategoryDetailResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.AddonResponse'
+        type: array
+      description:
+        type: string
+      icon:
+        type: string
+      image:
+        type: string
+      services:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.ServiceResponse'
+        type: array
+      slug:
+        type: string
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CategoryListResponse:
+    properties:
+      categories:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CategoryResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CategoryResponse:
+    properties:
+      addonCount:
+        type: integer
+      description:
+        type: string
+      icon:
+        type: string
+      image:
+        type: string
+      serviceCount:
+        type: integer
+      slug:
+        type: string
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CreateOrderRequest:
+    properties:
+      bookingInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.BookingInfoRequest'
+      categorySlug:
+        type: string
+      customerInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CustomerInfoRequest'
+      paymentMethod:
+        enum:
+        - wallet
+        - cash
+        type: string
+      selectedAddons:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.SelectedAddonRequest'
+        type: array
+      selectedServices:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.SelectedServiceRequest'
+        minItems: 1
+        type: array
+      specialNotes:
+        maxLength: 1000
+        type: string
+    required:
+    - bookingInfo
+    - categorySlug
+    - customerInfo
+    - paymentMethod
+    - selectedServices
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CustomerInfoRequest:
+    properties:
+      address:
+        maxLength: 500
+        minLength: 10
+        type: string
+      email:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      phone:
+        type: string
+    required:
+    - address
+    - lat
+    - lng
+    - name
+    - phone
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderAddonItem:
+    properties:
+      addonSlug:
+        type: string
+      price:
+        type: number
+      quantity:
+        type: integer
+      subtotal:
+        type: number
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderBookingInfo:
+    properties:
+      date:
+        type: string
+      day:
+        type: string
+      formattedDate:
+        description: e.g., "Monday, January 15, 2024"
+        type: string
+      formattedTime:
+        description: e.g., "2:30 PM"
+        type: string
+      preferredTime:
+        type: string
+      quantityOfPros:
+        type: integer
+      time:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderCancellationInfo:
+    properties:
+      cancellationFee:
+        type: number
+      cancelledAt:
+        type: string
+      cancelledBy:
+        type: string
+      reason:
+        type: string
+      refundAmount:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderCreatedResponse:
+    properties:
+      bookingInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderBookingInfo'
+      displayStatus:
+        type: string
+      estimatedAssignmentTime:
+        type: string
+      formattedTotal:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      orderNumber:
+        type: string
+      status:
+        type: string
+      totalPrice:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderCustomerInfo:
+    properties:
+      address:
+        type: string
+      email:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderListResponse:
+    properties:
+      bookingInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderBookingInfo'
+      canCancel:
+        type: boolean
+      canRate:
+        type: boolean
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      createdAt:
+        type: string
+      displayStatus:
+        type: string
+      formattedTotal:
+        type: string
+      id:
+        type: string
+      orderNumber:
+        type: string
+      serviceCount:
+        type: integer
+      status:
+        type: string
+      totalPrice:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderPaymentInfo:
+    properties:
+      amountPaid:
+        type: number
+      method:
+        type: string
+      status:
+        type: string
+      transactionId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderPricing:
+    properties:
+      addonsTotal:
+        type: number
+      formattedTotal:
+        type: string
+      platformCommission:
+        type: number
+      servicesTotal:
+        type: number
+      subtotal:
+        type: number
+      totalPrice:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderProviderInfo:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      phone:
+        description: Only shown after acceptance
+        type: string
+      photo:
+        type: string
+      rating:
+        type: number
+      totalReviews:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderRatingInfo:
+    properties:
+      canRate:
+        type: boolean
+      customerRatedAt:
+        type: string
+      customerRating:
+        type: integer
+      customerReview:
+        type: string
+      providerRatedAt:
+        type: string
+      providerRating:
+        type: integer
+      providerReview:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderAddonItem'
+        type: array
+      bookingInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderBookingInfo'
+      cancellation:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderCancellationInfo'
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      createdAt:
+        type: string
+      customerInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderCustomerInfo'
+      id:
+        type: string
+      orderNumber:
+        type: string
+      payment:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderPaymentInfo'
+      pricing:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderPricing'
+      provider:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderProviderInfo'
+      rating:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderRatingInfo'
+      services:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderServiceItem'
+        type: array
+      specialNotes:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderStatusInfo'
+      updatedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderServiceItem:
+    properties:
+      price:
+        type: number
+      quantity:
+        type: integer
+      serviceSlug:
+        type: string
+      subtotal:
+        type: number
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderStatusInfo:
+    properties:
+      canCancel:
+        type: boolean
+      completedAt:
+        type: string
+      current:
+        type: string
+      displayStatus:
+        type: string
+      providerAcceptedAt:
+        type: string
+      providerStartedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.RateOrderRequest:
+    properties:
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      review:
+        maxLength: 1000
+        type: string
+    required:
+    - rating
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.SearchResponse:
+    properties:
+      query:
+        type: string
+      results:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.SearchResultItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.SearchResultItem:
+    properties:
+      categorySlug:
+        type: string
+      description:
+        type: string
+      formattedPrice:
+        type: string
+      id:
+        type: string
+      image:
+        type: string
+      price:
+        type: number
+      slug:
+        type: string
+      title:
+        type: string
+      type:
+        description: '"service" or "addon"'
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.SelectedAddonRequest:
+    properties:
+      addonSlug:
+        type: string
+      quantity:
+        maximum: 10
+        minimum: 1
+        type: integer
+    required:
+    - addonSlug
+    - quantity
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.SelectedServiceRequest:
+    properties:
+      quantity:
+        maximum: 10
+        minimum: 1
+        type: integer
+      serviceSlug:
+        type: string
+    required:
+    - quantity
+    - serviceSlug
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.ServiceDetailResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.AddonResponse'
+        type: array
+      service:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.ServiceResponse'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.ServiceListResponse:
+    properties:
+      basePrice:
+        type: number
+      categorySlug:
+        type: string
+      description:
+        type: string
+      duration:
+        type: integer
+      durationText:
+        type: string
+      formattedPrice:
+        type: string
+      id:
+        type: string
+      isFrequent:
+        type: boolean
+      slug:
+        type: string
+      thumbnail:
+        type: string
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.ServiceResponse:
+    properties:
+      bannerImage:
+        type: string
+      basePrice:
+        type: number
+      categorySlug:
+        type: string
+      description:
+        type: string
+      duration:
+        description: in minutes
+        type: integer
+      durationText:
+        type: string
+      formattedPrice:
+        type: string
+      frequency:
+        type: string
+      highlights:
+        type: string
+      id:
+        type: string
+      isFrequent:
+        type: boolean
+      longDescription:
+        type: string
+      longTitle:
+        type: string
+      slug:
+        type: string
+      termsAndConditions:
+        items:
+          type: string
+        type: array
+      thumbnail:
+        type: string
+      title:
+        type: string
+      whatsIncluded:
+        items:
+          type: string
+        type: array
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.AddOnResponse:
     properties:
@@ -573,8 +2223,8 @@ definitions:
           $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_dto.SelectedOptionRequest'
         type: array
       serviceId:
-        minimum: 1
-        type: integer
+        minLength: 1
+        type: string
     required:
     - serviceId
     type: object
@@ -731,7 +2381,7 @@ definitions:
         additionalProperties: true
         type: object
       serviceId:
-        type: integer
+        type: string
       serviceName:
         type: string
     type: object
@@ -879,6 +2529,10 @@ definitions:
         maxLength: 255
         minLength: 2
         type: string
+      categorySlug:
+        maxLength: 100
+        minLength: 2
+        type: string
       description:
         maxLength: 1000
         type: string
@@ -890,10 +2544,11 @@ definitions:
         type: string
       serviceIds:
         items:
-          type: integer
+          type: string
         minItems: 1
         type: array
     required:
+    - categorySlug
     - latitude
     - longitude
     - serviceIds
@@ -1122,6 +2777,402 @@ definitions:
         - hourly
         - per_unit
         type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.AddServiceCategoryRequest:
+    properties:
+      categorySlug:
+        maxLength: 100
+        minLength: 2
+        type: string
+      expertiseLevel:
+        enum:
+        - beginner
+        - intermediate
+        - expert
+        type: string
+      yearsOfExperience:
+        maximum: 50
+        minimum: 0
+        type: integer
+    required:
+    - categorySlug
+    - expertiseLevel
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.AvailableOrderResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderAddonItem'
+        type: array
+      bookingInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderBookingInfo'
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      createdAt:
+        type: string
+      customerInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderCustomerInfo'
+      distance:
+        description: km from provider
+        type: number
+      expiresAt:
+        type: string
+      formattedPayout:
+        type: string
+      id:
+        type: string
+      orderNumber:
+        type: string
+      providerPayout:
+        description: 90% of total
+        type: number
+      services:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderServiceItem'
+        type: array
+      specialNotes:
+        type: string
+      totalPrice:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.CategoryEarnings:
+    properties:
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      earnings:
+        type: number
+      orderCount:
+        type: integer
+      percentage:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.CompleteOrderRequest:
+    properties:
+      notes:
+        maxLength: 1000
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.EarningsBreakdown:
+    properties:
+      earnings:
+        type: number
+      formattedEarnings:
+        type: string
+      orderCount:
+        type: integer
+      period:
+        description: date, week number, or month
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.EarningsPeriod:
+    properties:
+      fromDate:
+        type: string
+      toDate:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.EarningsSummaryResponse:
+    properties:
+      averagePerOrder:
+        type: number
+      breakdown:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.EarningsBreakdown'
+        type: array
+      byCategory:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.CategoryEarnings'
+        type: array
+      formattedTotal:
+        type: string
+      period:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.EarningsPeriod'
+      totalEarnings:
+        type: number
+      totalOrders:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderAddonItem:
+    properties:
+      addonSlug:
+        type: string
+      price:
+        type: number
+      quantity:
+        type: integer
+      subtotal:
+        type: number
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderBookingInfo:
+    properties:
+      date:
+        type: string
+      day:
+        type: string
+      formattedDate:
+        type: string
+      formattedTime:
+        type: string
+      preferredTime:
+        type: string
+      time:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderCustomerInfo:
+    properties:
+      address:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+      name:
+        type: string
+      phone:
+        description: Only shown after acceptance
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderRatingInfo:
+    properties:
+      customerRatedAt:
+        type: string
+      customerRating:
+        type: integer
+      customerReview:
+        type: string
+      providerRatedAt:
+        type: string
+      providerRating:
+        type: integer
+      providerReview:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderServiceItem:
+    properties:
+      price:
+        type: number
+      quantity:
+        type: integer
+      serviceSlug:
+        type: string
+      subtotal:
+        type: number
+      title:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderStatusInfo:
+    properties:
+      acceptedAt:
+        type: string
+      canComplete:
+        type: boolean
+      canRate:
+        type: boolean
+      canStart:
+        type: boolean
+      completedAt:
+        type: string
+      current:
+        type: string
+      displayStatus:
+        type: string
+      startedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderOrderListResponse:
+    properties:
+      bookingInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderBookingInfo'
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      createdAt:
+        type: string
+      customerName:
+        type: string
+      displayStatus:
+        type: string
+      formattedPayout:
+        type: string
+      id:
+        type: string
+      orderNumber:
+        type: string
+      providerPayout:
+        type: number
+      status:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderOrderResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderAddonItem'
+        type: array
+      bookingInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderBookingInfo'
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      createdAt:
+        type: string
+      customerInfo:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderCustomerInfo'
+      formattedPayout:
+        type: string
+      id:
+        type: string
+      orderNumber:
+        type: string
+      providerPayout:
+        type: number
+      rating:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderRatingInfo'
+      services:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderServiceItem'
+        type: array
+      specialNotes:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderStatusInfo'
+      totalPrice:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderProfileResponse:
+    properties:
+      bio:
+        type: string
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      isAvailable:
+        type: boolean
+      isVerified:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+      photo:
+        type: string
+      serviceCategories:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ServiceCategoryResponse'
+        type: array
+      statistics:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderStatistics'
+      userId:
+        type: string
+      yearsOfExperience:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderStatistics:
+    properties:
+      acceptanceRate:
+        type: number
+      averageResponseTime:
+        description: in minutes
+        type: integer
+      completionRate:
+        type: number
+      overallRating:
+        type: number
+      todayCompletedOrders:
+        type: integer
+      todayEarnings:
+        type: number
+      totalActiveOrders:
+        type: integer
+      totalCompletedJobs:
+        type: integer
+      totalEarnings:
+        type: number
+      totalRatings:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.RateCustomerRequest:
+    properties:
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      review:
+        maxLength: 1000
+        type: string
+    required:
+    - rating
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.RejectOrderRequest:
+    properties:
+      reason:
+        maxLength: 500
+        minLength: 10
+        type: string
+    required:
+    - reason
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ServiceCategoryResponse:
+    properties:
+      averageRating:
+        type: number
+      categorySlug:
+        type: string
+      categoryTitle:
+        type: string
+      completedJobs:
+        type: integer
+      createdAt:
+        type: string
+      expertiseLevel:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      totalEarnings:
+        type: number
+      totalRatings:
+        type: integer
+      yearsOfExperience:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.UpdateAvailabilityRequest:
+    properties:
+      isAvailable:
+        type: boolean
+      latitude:
+        type: number
+      longitude:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.UpdateServiceCategoryRequest:
+    properties:
+      expertiseLevel:
+        enum:
+        - beginner
+        - intermediate
+        - expert
+        type: string
+      isActive:
+        type: boolean
+      yearsOfExperience:
+        maximum: 50
+        minimum: 0
+        type: integer
     type: object
   github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateRequest:
     properties:
@@ -1765,6 +3816,1119 @@ paths:
       summary: Get admin dashboard statistics
       tags:
       - Admin routes
+  /admin/homeservices/addons:
+    get:
+      description: Get paginated list of addons with filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category
+        in: query
+        name: categorySlug
+        type: string
+      - description: Search in title and description
+        in: query
+        name: search
+        type: string
+      - description: Filter by active status
+        in: query
+        name: isActive
+        type: boolean
+      - description: Filter by available status
+        in: query
+        name: isAvailable
+        type: boolean
+      - description: Minimum price
+        in: query
+        name: minPrice
+        type: number
+      - description: Maximum price
+        in: query
+        name: maxPrice
+        type: number
+      - description: Sort by field
+        enum:
+        - title
+        - created_at
+        - sort_order
+        - price
+        in: query
+        name: sortBy
+        type: string
+      - description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonListResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List addons
+      tags:
+      - Admin - Home Services
+    post:
+      consumes:
+      - application/json
+      description: Create a new service addon
+      parameters:
+      - description: Addon details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CreateAddonRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a new addon
+      tags:
+      - Admin - Home Services
+  /admin/homeservices/addons/{slug}:
+    delete:
+      description: Soft delete an addon
+      parameters:
+      - description: Addon slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete addon
+      tags:
+      - Admin - Home Services
+    get:
+      description: Get detailed addon information
+      parameters:
+      - description: Addon slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get addon by slug
+      tags:
+      - Admin - Home Services
+    put:
+      consumes:
+      - application/json
+      description: Update addon details
+      parameters:
+      - description: Addon slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      - description: Update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateAddonRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update addon
+      tags:
+      - Admin - Home Services
+  /admin/homeservices/addons/{slug}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update addon active/available status
+      parameters:
+      - description: Addon slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      - description: Status update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateAddonStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update addon status
+      tags:
+      - Admin - Home Services
+  /admin/homeservices/analytics/overview:
+    get:
+      description: Get comprehensive analytics overview for orders
+      parameters:
+      - description: From date (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        required: true
+        type: string
+      - description: To date (YYYY-MM-DD)
+        in: query
+        name: toDate
+        required: true
+        type: string
+      - description: Group by
+        enum:
+        - day
+        - week
+        - month
+        in: query
+        name: groupBy
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.OverviewAnalyticsResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get overview analytics
+      tags:
+      - Admin - Analytics
+  /admin/homeservices/analytics/providers:
+    get:
+      description: Get analytics for service providers
+      parameters:
+      - description: From date (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        required: true
+        type: string
+      - description: To date (YYYY-MM-DD)
+        in: query
+        name: toDate
+        required: true
+        type: string
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Minimum completed orders
+        in: query
+        name: minOrders
+        type: integer
+      - description: Minimum rating
+        in: query
+        name: minRating
+        type: number
+      - description: Sort by
+        enum:
+        - completed_orders
+        - earnings
+        - rating
+        in: query
+        name: sortBy
+        type: string
+      - default: true
+        description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      - default: 20
+        description: Number of providers
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ProviderAnalyticsResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get provider analytics
+      tags:
+      - Admin - Analytics
+  /admin/homeservices/analytics/revenue:
+    get:
+      description: Get detailed revenue report
+      parameters:
+      - description: From date (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        required: true
+        type: string
+      - description: To date (YYYY-MM-DD)
+        in: query
+        name: toDate
+        required: true
+        type: string
+      - description: Group by
+        enum:
+        - day
+        - week
+        - month
+        in: query
+        name: groupBy
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.RevenueReportResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get revenue report
+      tags:
+      - Admin - Analytics
+  /admin/homeservices/categories:
+    get:
+      description: Get list of all unique category slugs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get all categories
+      tags:
+      - Admin - Home Services
+  /admin/homeservices/categories/{categorySlug}:
+    get:
+      description: Get all services and addons for a category
+      parameters:
+      - description: Category slug
+        in: path
+        name: categorySlug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CategoryServicesResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get category details
+      tags:
+      - Admin - Home Services
+  /admin/homeservices/dashboard:
+    get:
+      description: Get dashboard overview with key metrics and recent activity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.DashboardResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get admin dashboard
+      tags:
+      - Admin - Dashboard
+  /admin/homeservices/orders:
+    get:
+      description: Get paginated list of all orders with filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Filter by customer ID
+        in: query
+        name: customerId
+        type: string
+      - description: Filter by provider ID
+        in: query
+        name: providerId
+        type: string
+      - description: Search by order number
+        in: query
+        name: orderNumber
+        type: string
+      - description: Filter from date (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        type: string
+      - description: Filter to date (YYYY-MM-DD)
+        in: query
+        name: toDate
+        type: string
+      - description: Filter by booking from date
+        in: query
+        name: bookingFromDate
+        type: string
+      - description: Filter by booking to date
+        in: query
+        name: bookingToDate
+        type: string
+      - description: Minimum price
+        in: query
+        name: minPrice
+        type: number
+      - description: Maximum price
+        in: query
+        name: maxPrice
+        type: number
+      - description: Sort by field
+        enum:
+        - created_at
+        - booking_date
+        - total_price
+        - status
+        - completed_at
+        in: query
+        name: sortBy
+        type: string
+      - default: true
+        description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderListResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List all orders
+      tags:
+      - Admin - Orders
+  /admin/homeservices/orders/{id}:
+    get:
+      description: Get detailed order information by ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderDetailResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get order by ID
+      tags:
+      - Admin - Orders
+  /admin/homeservices/orders/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancel an order with admin privileges
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Cancellation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminCancelOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderDetailResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cancel order (Admin)
+      tags:
+      - Admin - Orders
+  /admin/homeservices/orders/{id}/history:
+    get:
+      description: Get the complete status change history for an order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderDetailResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get order status history
+      tags:
+      - Admin - Orders
+  /admin/homeservices/orders/{id}/reassign:
+    post:
+      consumes:
+      - application/json
+      description: Reassign an order to a different service provider
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Reassignment details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ReassignOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderDetailResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Reassign order to another provider
+      tags:
+      - Admin - Orders
+  /admin/homeservices/orders/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update the status of an order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateOrderStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderDetailResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update order status
+      tags:
+      - Admin - Orders
+  /admin/homeservices/orders/bulk/status:
+    post:
+      consumes:
+      - application/json
+      description: Update status of multiple orders at once
+      parameters:
+      - description: Bulk update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.BulkUpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Bulk update order status
+      tags:
+      - Admin - Orders
+  /admin/homeservices/orders/number/{orderNumber}:
+    get:
+      description: Get detailed order information by order number
+      parameters:
+      - description: Order Number (e.g., HS-2024-000001)
+        in: path
+        name: orderNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminOrderDetailResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get order by order number
+      tags:
+      - Admin - Orders
+  /admin/homeservices/services:
+    get:
+      description: Get paginated list of services with filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category
+        in: query
+        name: categorySlug
+        type: string
+      - description: Search in title and description
+        in: query
+        name: search
+        type: string
+      - description: Filter by active status
+        in: query
+        name: isActive
+        type: boolean
+      - description: Filter by available status
+        in: query
+        name: isAvailable
+        type: boolean
+      - description: Sort by field
+        enum:
+        - title
+        - created_at
+        - sort_order
+        - base_price
+        in: query
+        name: sortBy
+        type: string
+      - description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ServiceListResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List services
+      tags:
+      - Admin - Home Services
+    post:
+      consumes:
+      - application/json
+      description: Create a new home service offering
+      parameters:
+      - description: Service details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.CreateServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ServiceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a new service
+      tags:
+      - Admin - Home Services
+  /admin/homeservices/services/{slug}:
+    delete:
+      description: Soft delete a service
+      parameters:
+      - description: Service slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete service
+      tags:
+      - Admin - Home Services
+    get:
+      description: Get detailed service information
+      parameters:
+      - description: Service slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ServiceResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get service by slug
+      tags:
+      - Admin - Home Services
+    put:
+      consumes:
+      - application/json
+      description: Update service details
+      parameters:
+      - description: Service slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      - description: Update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ServiceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update service
+      tags:
+      - Admin - Home Services
+  /admin/homeservices/services/{slug}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update service active/available status
+      parameters:
+      - description: Service slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      - description: Status update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.UpdateServiceStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.ServiceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update service status
+      tags:
+      - Admin - Home Services
   /admin/service-providers/{id}/approve:
     post:
       consumes:
@@ -2046,7 +5210,7 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse'
               type: object
-      summary: Login with phone (riders/drivers)
+      summary: Login with phone (riders / drivers / service providers)
       tags:
       - auth
   /auth/phone/signup:
@@ -2072,7 +5236,7 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse'
               type: object
-      summary: Signup with phone (riders/drivers)
+      summary: Signup with phone (riders / drivers / service providers)
       tags:
       - auth
   /auth/profile:
@@ -2208,6 +5372,34 @@ paths:
       summary: Update driver profile
       tags:
       - drivers
+  /drivers/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Driver registration data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.RegisterDriverRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverProfileResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Register driver profile
+      tags:
+      - drivers
   /drivers/status:
     post:
       consumes:
@@ -2283,6 +5475,664 @@ paths:
       summary: Get driver wallet balance
       tags:
       - drivers
+  /homeservices/addons:
+    get:
+      description: Get paginated list of available addons with filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category slug
+        in: query
+        name: category
+        type: string
+      - description: Search in title and description
+        in: query
+        name: search
+        type: string
+      - description: Minimum price
+        in: query
+        name: minPrice
+        type: number
+      - description: Maximum price
+        in: query
+        name: maxPrice
+        type: number
+      - description: Filter by discounted addons only
+        in: query
+        name: hasDiscount
+        type: boolean
+      - description: Sort by field
+        enum:
+        - title
+        - price
+        - sort_order
+        in: query
+        name: sortBy
+        type: string
+      - description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.AddonListResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: List addons
+      tags:
+      - Home Services - Customer
+  /homeservices/addons/{slug}:
+    get:
+      description: Get detailed information about an addon
+      parameters:
+      - description: Addon slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.AddonResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get addon details
+      tags:
+      - Home Services - Customer
+  /homeservices/addons/discounted:
+    get:
+      description: Get list of addons with active discounts
+      parameters:
+      - default: 10
+        description: Number of addons to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.AddonListResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get discounted addons
+      tags:
+      - Home Services - Customer
+  /homeservices/categories:
+    get:
+      description: Get list of all available service categories with counts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CategoryListResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get all service categories
+      tags:
+      - Home Services - Customer
+  /homeservices/categories/{categorySlug}:
+    get:
+      description: Get detailed information about a category including all services
+        and addons
+      parameters:
+      - description: Category slug
+        in: path
+        name: categorySlug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CategoryDetailResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get category details
+      tags:
+      - Home Services - Customer
+  /homeservices/orders:
+    get:
+      description: Get paginated list of customer's orders with filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter from date (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        type: string
+      - description: Filter to date (YYYY-MM-DD)
+        in: query
+        name: toDate
+        type: string
+      - description: Sort by field
+        enum:
+        - created_at
+        - booking_date
+        - status
+        in: query
+        name: sortBy
+        type: string
+      - default: true
+        description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderListResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List customer orders
+      tags:
+      - Home Services - Orders
+    post:
+      consumes:
+      - application/json
+      description: Create a new service booking order
+      parameters:
+      - description: Order details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderCreatedResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a new order
+      tags:
+      - Home Services - Orders
+  /homeservices/orders/{id}:
+    get:
+      description: Get detailed information about a specific order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get order details
+      tags:
+      - Home Services - Orders
+  /homeservices/orders/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancel an existing order with a reason
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Cancellation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CancelOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cancel an order
+      tags:
+      - Home Services - Orders
+  /homeservices/orders/{id}/cancel/preview:
+    get:
+      description: Get cancellation fee preview before cancelling an order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.CancellationPreviewResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Preview order cancellation
+      tags:
+      - Home Services - Orders
+  /homeservices/orders/{id}/rate:
+    post:
+      consumes:
+      - application/json
+      description: Submit rating and review for a completed order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rating details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.RateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Rate a completed order
+      tags:
+      - Home Services - Orders
+  /homeservices/search:
+    get:
+      description: Search across services and addons by keyword
+      parameters:
+      - description: Search query (min 2 characters)
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Filter by category slug
+        in: query
+        name: category
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.SearchResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Search services and addons
+      tags:
+      - Home Services - Customer
+  /homeservices/services:
+    get:
+      description: Get paginated list of available services with filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category slug
+        in: query
+        name: category
+        type: string
+      - description: Search in title and description
+        in: query
+        name: search
+        type: string
+      - description: Minimum price
+        in: query
+        name: minPrice
+        type: number
+      - description: Maximum price
+        in: query
+        name: maxPrice
+        type: number
+      - description: Filter by frequent services only
+        in: query
+        name: isFrequent
+        type: boolean
+      - description: Sort by field
+        enum:
+        - title
+        - price
+        - sort_order
+        - popularity
+        in: query
+        name: sortBy
+        type: string
+      - description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.ServiceListResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: List services
+      tags:
+      - Home Services - Customer
+  /homeservices/services/{slug}:
+    get:
+      description: Get detailed information about a service including related addons
+      parameters:
+      - description: Service slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.ServiceDetailResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get service details
+      tags:
+      - Home Services - Customer
+  /homeservices/services/frequent:
+    get:
+      description: Get list of frequently booked services
+      parameters:
+      - default: 10
+        description: Number of services to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.ServiceListResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get frequent services
+      tags:
+      - Home Services - Customer
   /pricing/estimate:
     post:
       consumes:
@@ -2357,6 +6207,673 @@ paths:
       summary: Get all active surge zones
       tags:
       - pricing
+  /provider/availability:
+    patch:
+      consumes:
+      - application/json
+      description: Update provider's availability status and location
+      parameters:
+      - description: Availability update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.UpdateAvailabilityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update availability status
+      tags:
+      - Provider - Profile
+  /provider/categories:
+    get:
+      description: Get provider's registered service categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ServiceCategoryResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get service categories
+      tags:
+      - Provider - Categories
+    post:
+      consumes:
+      - application/json
+      description: Add a new service category to provider's profile
+      parameters:
+      - description: Category details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.AddServiceCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ServiceCategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Add service category
+      tags:
+      - Provider - Categories
+  /provider/categories/{categorySlug}:
+    delete:
+      description: Remove a service category from provider's profile
+      parameters:
+      - description: Category slug
+        in: path
+        name: categorySlug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete service category
+      tags:
+      - Provider - Categories
+    put:
+      consumes:
+      - application/json
+      description: Update a service category
+      parameters:
+      - description: Category slug
+        in: path
+        name: categorySlug
+        required: true
+        type: string
+      - description: Update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.UpdateServiceCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ServiceCategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update service category
+      tags:
+      - Provider - Categories
+  /provider/earnings:
+    get:
+      description: Get provider's earnings for a date range
+      parameters:
+      - description: From date (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        required: true
+        type: string
+      - description: To date (YYYY-MM-DD)
+        in: query
+        name: toDate
+        required: true
+        type: string
+      - description: Group by
+        enum:
+        - day
+        - week
+        - month
+        in: query
+        name: groupBy
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.EarningsSummaryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get earnings
+      tags:
+      - Provider - Statistics
+  /provider/orders:
+    get:
+      description: Get provider's assigned/completed orders
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: From date (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        type: string
+      - description: To date (YYYY-MM-DD)
+        in: query
+        name: toDate
+        type: string
+      - description: Sort by
+        enum:
+        - created_at
+        - booking_date
+        - completed_at
+        in: query
+        name: sortBy
+        type: string
+      - default: true
+        description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderOrderListResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get my orders
+      tags:
+      - Provider - Orders
+  /provider/orders/{id}:
+    get:
+      description: Get details of a provider's order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderOrderResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get my order detail
+      tags:
+      - Provider - Orders
+  /provider/orders/{id}/accept:
+    post:
+      description: Accept an available order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderOrderResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Accept an order
+      tags:
+      - Provider - Orders
+  /provider/orders/{id}/complete:
+    post:
+      consumes:
+      - application/json
+      description: Mark an in-progress order as completed
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Completion notes
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.CompleteOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderOrderResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Complete an order
+      tags:
+      - Provider - Orders
+  /provider/orders/{id}/rate:
+    post:
+      consumes:
+      - application/json
+      description: Submit rating for a completed order's customer
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rating details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.RateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderOrderResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Rate a customer
+      tags:
+      - Provider - Orders
+  /provider/orders/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      description: Reject an assigned order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rejection reason
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.RejectOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Reject an order
+      tags:
+      - Provider - Orders
+  /provider/orders/{id}/start:
+    post:
+      description: Mark an accepted order as in progress
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderOrderResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Start an order
+      tags:
+      - Provider - Orders
+  /provider/orders/available:
+    get:
+      description: Get orders available for the provider to accept
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Filter by booking date (YYYY-MM-DD)
+        in: query
+        name: date
+        type: string
+      - description: Sort by
+        enum:
+        - created_at
+        - booking_date
+        - distance
+        - price
+        in: query
+        name: sortBy
+        type: string
+      - description: Sort descending
+        in: query
+        name: sortDesc
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.AvailableOrderResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get available orders
+      tags:
+      - Provider - Orders
+  /provider/orders/available/{id}:
+    get:
+      description: Get details of an available order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.AvailableOrderResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get available order detail
+      tags:
+      - Provider - Orders
+  /provider/profile:
+    get:
+      description: Get current provider's profile with statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderProfileResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get provider profile
+      tags:
+      - Provider - Profile
+  /provider/statistics:
+    get:
+      description: Get provider's performance statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.ProviderStatistics'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get statistics
+      tags:
+      - Provider - Statistics
   /ratings:
     post:
       consumes:
@@ -3045,6 +7562,27 @@ paths:
           schema:
             $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
       summary: Get category with tabs
+      tags:
+      - home-services
+  /services/category-slugs:
+    get:
+      description: Get list of all distinct category slugs for provider registration
+        dropdown
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+      summary: Get all category slugs
       tags:
       - home-services
   /services/orders:
