@@ -3174,6 +3174,445 @@ definitions:
         minimum: 0
         type: integer
     type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.AddItemDTO:
+    properties:
+      itemType:
+        type: string
+      price:
+        type: number
+      productSlug:
+        description: Changed from ItemType
+        type: string
+      quantity:
+        type: integer
+      serviceSlug:
+        type: string
+      weight:
+        type: number
+    required:
+    - itemType
+    - price
+    - productSlug
+    - quantity
+    - serviceSlug
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.AddLaundryItemsRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.AddItemDTO'
+        minItems: 1
+        type: array
+    required:
+    - items
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.CompleteDeliveryRequest:
+    properties:
+      notes:
+        type: string
+      photoUrl:
+        type: string
+      recipientName:
+        type: string
+      recipientSignature:
+        type: string
+    required:
+    - recipientName
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.CompletePickupRequest:
+    properties:
+      bagCount:
+        type: integer
+      notes:
+        type: string
+      photoUrl:
+        type: string
+    required:
+    - bagCount
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.CreateLaundryOrderRequest:
+    properties:
+      address:
+        type: string
+      isExpress:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.OrderItemRequest'
+        type: array
+      lat:
+        type: number
+      lng:
+        type: number
+      pickupDate:
+        type: string
+      pickupTime:
+        type: string
+      serviceSlug:
+        type: string
+      specialNotes:
+        type: string
+      tip:
+        description: Optional tip for delivery person
+        type: number
+    required:
+    - address
+    - items
+    - lat
+    - lng
+    - pickupDate
+    - pickupTime
+    - serviceSlug
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryDeliveryDTO:
+    properties:
+      arrivedAt:
+        type: string
+      createdAt:
+        type: string
+      deliveredAt:
+        type: string
+      id:
+        type: string
+      notes:
+        type: string
+      orderId:
+        type: string
+      photoUrl:
+        type: string
+      providerId:
+        type: string
+      recipientName:
+        type: string
+      recipientSignature:
+        type: string
+      rescheduleCount:
+        type: integer
+      scheduledAt:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryDeliveryResponse:
+    properties:
+      createdAt:
+        type: string
+      deliveredAt:
+        type: string
+      id:
+        type: string
+      notes:
+        type: string
+      orderId:
+        type: string
+      photoUrl:
+        type: string
+      providerId:
+        type: string
+      recipientName:
+        type: string
+      recipientSignature:
+        type: string
+      scheduledAt:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryIssueResponse:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      issueType:
+        type: string
+      orderId:
+        type: string
+      priority:
+        type: string
+      refundAmount:
+        type: number
+      resolution:
+        type: string
+      resolvedAt:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderItemDTO:
+    properties:
+      createdAt:
+        type: string
+      deliveredAt:
+        type: string
+      hasIssue:
+        type: boolean
+      id:
+        type: string
+      issueDescription:
+        type: string
+      itemType:
+        type: string
+      orderId:
+        type: string
+      packedAt:
+        type: string
+      price:
+        type: number
+      productSlug:
+        type: string
+      qrCode:
+        type: string
+      quantity:
+        type: integer
+      receivedAt:
+        type: string
+      status:
+        type: string
+      weight:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderItemResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      itemType:
+        type: string
+      orderId:
+        type: string
+      price:
+        type: number
+      qrCode:
+        type: string
+      quantity:
+        type: integer
+      serviceSlug:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      weight:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderResponse:
+    properties:
+      address:
+        type: string
+      createdAt:
+        type: string
+      customerId:
+        type: string
+      delivery:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryDeliveryDTO'
+      id:
+        type: string
+      isExpress:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderItemDTO'
+        type: array
+      lat:
+        type: number
+      lng:
+        type: number
+      orderNumber:
+        type: string
+      pickup:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryPickupDTO'
+      providerId:
+        type: string
+      serviceSlug:
+        type: string
+      status:
+        type: string
+      tip:
+        type: number
+      totalPrice:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryPickupDTO:
+    properties:
+      arrivedAt:
+        type: string
+      bagCount:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: string
+      notes:
+        type: string
+      orderId:
+        type: string
+      photoUrl:
+        type: string
+      pickedUpAt:
+        type: string
+      providerId:
+        type: string
+      scheduledAt:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryPickupResponse:
+    properties:
+      bagCount:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: string
+      notes:
+        type: string
+      orderId:
+        type: string
+      photoUrl:
+        type: string
+      pickedUpAt:
+        type: string
+      providerId:
+        type: string
+      scheduledAt:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryServiceResponse:
+    properties:
+      basePrice:
+        type: number
+      colorCode:
+        type: string
+      description:
+        type: string
+      expressFee:
+        type: number
+      expressHours:
+        type: integer
+      id:
+        type: string
+      pricingUnit:
+        type: string
+      slug:
+        type: string
+      title:
+        type: string
+      turnaroundHours:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.OrderItemRequest:
+    properties:
+      notes:
+        type: string
+      productSlug:
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+      weight:
+        description: Optional, can be calculated from product
+        type: number
+    required:
+    - productSlug
+    - quantity
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.ProductResponse:
+    properties:
+      description:
+        type: string
+      iconUrl:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+      pricingUnit:
+        type: string
+      requiresSpecialCare:
+        type: boolean
+      slug:
+        type: string
+      specialCareFee:
+        type: number
+      typicalWeight:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.ReportIssueRequest:
+    properties:
+      description:
+        type: string
+      issueType:
+        enum:
+        - missing_item
+        - damage
+        - poor_cleaning
+        - late_delivery
+        - wrong_item
+        - stain_not_removed
+        - color_bleeding
+        - shrinkage
+        - other
+        type: string
+      priority:
+        enum:
+        - low
+        - medium
+        - high
+        - urgent
+        type: string
+    required:
+    - description
+    - issueType
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.ResolveIssueRequest:
+    properties:
+      compensationType:
+        enum:
+        - refund
+        - discount
+        - re_clean
+        - replacement
+        - voucher
+        type: string
+      refundAmount:
+        type: number
+      resolution:
+        type: string
+    required:
+    - resolution
+    type: object
+  github_com_umar5678_go-backend_internal_modules_laundry_dto.UpdateItemStatusRequest:
+    properties:
+      status:
+        enum:
+        - pending
+        - received
+        - washing
+        - drying
+        - pressing
+        - packed
+        - delivered
+        type: string
+    required:
+    - status
+    type: object
   github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateRequest:
     properties:
       dropoffLat:
@@ -5112,6 +5551,394 @@ paths:
       summary: Suspend a user (Admin)
       tags:
       - Admin routes
+  /api/v1/laundry/orders:
+    post:
+      consumes:
+      - application/json
+      description: 'Create a new laundry order with selected products. The system
+        will:'
+      parameters:
+      - description: Order creation request with product selections
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.CreateLaundryOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Order created successfully with calculated pricing
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderResponse'
+        "400":
+          description: Invalid request or validation failed
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Failed to create order
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Create Laundry Order
+      tags:
+      - Laundry Orders
+  /api/v1/laundry/orders/{id}:
+    get:
+      description: Retrieve full details of a laundry order including pickup, delivery,
+        items, and issues
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order details
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Order Details
+      tags:
+      - Laundry Orders
+  /api/v1/laundry/orders/{id}/issues:
+    post:
+      consumes:
+      - application/json
+      description: Report a problem with a laundry order (e.g., missing item, damage,
+        poor cleaning, late delivery)
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Issue report
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.ReportIssueRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Issue created
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryIssueResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Report Issue on Order
+      tags:
+      - Laundry Issues
+  /api/v1/laundry/orders/{id}/pickup/start:
+    post:
+      description: |-
+        Report a problem with a laundry order (e.g., missing item, damage, poor cleaning, late delivery)
+        Start a pickup for a laundry order at the specified location
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pickup initiated
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryPickupResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Initiate Pickup for Order
+      tags:
+      - Provider - Pickups
+  /api/v1/laundry/provider/deliveries:
+    get:
+      description: Retrieve all pending deliveries assigned to the authenticated service
+        provider
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of pending deliveries
+          schema:
+            items:
+              $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryDeliveryResponse'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Get Provider Deliveries
+      tags:
+      - Provider - Deliveries
+  /api/v1/laundry/provider/issues:
+    get:
+      description: Retrieve all open issues reported for orders assigned to the authenticated
+        service provider
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of open issues
+          schema:
+            items:
+              $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryIssueResponse'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Get Provider Issues
+      tags:
+      - Provider - Issues
+  /api/v1/laundry/provider/issues/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Resolve a customer issue (mark as resolved or rejected) and optionally
+        process a refund
+      parameters:
+      - description: Issue ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resolution details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.ResolveIssueRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Issue resolved
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryIssueResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Resolve Issue
+      tags:
+      - Provider - Issues
+  /api/v1/laundry/provider/items/{qrCode}/status:
+    patch:
+      consumes:
+      - application/json
+      description: 'Update the processing status of a laundry item (garment). Valid
+        statuses: pending, received, washing, drying, pressing, packed, delivered'
+      parameters:
+      - description: Item QR Code (e.g., LDY-abc12345)
+        in: path
+        name: qrCode
+        required: true
+        type: string
+      - description: New status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.UpdateItemStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item status updated
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderItemResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update Item Status
+      tags:
+      - Provider - Items
+  /api/v1/laundry/provider/orders/{id}/delivery/complete:
+    post:
+      consumes:
+      - application/json
+      description: Mark a delivery as completed and record delivery details
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Delivery completion details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.CompleteDeliveryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delivery completed successfully
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryDeliveryResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Complete Delivery
+      tags:
+      - Provider - Deliveries
+  /api/v1/laundry/provider/orders/{id}/delivery/start:
+    post:
+      description: Mark a laundry order delivery as initiated (provider is en route
+        to deliver)
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delivery initiated
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryDeliveryResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Initiate Delivery
+      tags:
+      - Provider - Deliveries
+  /api/v1/laundry/provider/orders/{id}/items:
+    post:
+      consumes:
+      - application/json
+      description: Add laundry items (garments) to an order after pickup is completed.
+        Each item gets a unique QR code
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Items to add
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.AddLaundryItemsRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Items created with QR codes
+          schema:
+            items:
+              $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderItemResponse'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Add Items to Order
+      tags:
+      - Provider - Items
+  /api/v1/laundry/provider/orders/{id}/pickup/complete:
+    post:
+      consumes:
+      - application/json
+      description: Mark a pickup as completed and record pickup details
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Pickup completion details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.CompletePickupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pickup completed successfully
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryPickupResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Complete Pickup
+      tags:
+      - Provider - Pickups
+  /api/v1/laundry/provider/pickups:
+    get:
+      description: Retrieve all pending pickups assigned to the authenticated service
+        provider
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of pending pickups
+          schema:
+            items:
+              $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryPickupResponse'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Get Provider Pickups
+      tags:
+      - Provider - Pickups
+  /api/v1/laundry/services:
+    get:
+      description: Retrieve all available laundry services with nested products, pricing
+        information, and turnaround times
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Services with products
+          schema:
+            items:
+              $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryServiceResponse'
+            type: array
+        "500":
+          description: Failed to fetch services
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get Services With Products
+      tags:
+      - Laundry Services
+  /api/v1/laundry/services/{slug}/products:
+    get:
+      description: Retrieve all products available for a specific laundry service,
+        including pricing and specifications
+      parameters:
+      - description: Service slug (e.g., wash-fold, dry-clean)
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products for the service
+          schema:
+            items:
+              $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.ProductResponse'
+            type: array
+        "404":
+          description: Service not found
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Failed to fetch products
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      summary: Get Products for Service
+      tags:
+      - Laundry Services
   /auth/email/login:
     post:
       consumes:
