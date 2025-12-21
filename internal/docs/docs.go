@@ -11974,8 +11974,7 @@ const docTemplate = `{
             "required": [
                 "categorySlug",
                 "latitude",
-                "longitude",
-                "serviceIds"
+                "longitude"
             ],
             "properties": {
                 "businessName": {
@@ -12000,13 +11999,6 @@ const docTemplate = `{
                 },
                 "photo": {
                     "type": "string"
-                },
-                "serviceIds": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },

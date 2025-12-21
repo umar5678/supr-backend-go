@@ -212,18 +212,17 @@ type CreateOptionChoiceRequest struct {
 
 // RegisterProviderRequest for new provider registration
 type RegisterProviderRequest struct {
-	ServiceIDs   []string `json:"serviceIds" binding:"required,min=1,dive,min=1"`
-	CategorySlug string   `json:"categorySlug" binding:"required,min=2,max=100"`
-	Latitude     float64  `json:"latitude" binding:"required,latitude"`
-	Longitude    float64  `json:"longitude" binding:"required,longitude"`
-	Photo        *string  `json:"photo" binding:"omitempty,url"`
-	BusinessName *string  `json:"businessName" binding:"omitempty,min=2,max=255"`
-	Description  *string  `json:"description" binding:"omitempty,max=1000"`
+	CategorySlug string  `json:"categorySlug" binding:"required,min=2,max=100"`
+	Latitude     float64 `json:"latitude" binding:"required,latitude"`
+	Longitude    float64 `json:"longitude" binding:"required,longitude"`
+	Photo        *string `json:"photo" binding:"omitempty,url"`
+	BusinessName *string `json:"businessName" binding:"omitempty,min=2,max=255"`
+	Description  *string `json:"description" binding:"omitempty,max=1000"`
 }
 
 func (r *RegisterProviderRequest) Validate() error {
-	if len(r.ServiceIDs) == 0 {
-		return errors.New("at least one service qualification is required")
+	if r.CategorySlug == "" {
+		return errors.New("category slug is required")
 	}
 	return nil
 }

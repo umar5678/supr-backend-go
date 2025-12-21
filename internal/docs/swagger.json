@@ -11966,8 +11966,7 @@
             "required": [
                 "categorySlug",
                 "latitude",
-                "longitude",
-                "serviceIds"
+                "longitude"
             ],
             "properties": {
                 "businessName": {
@@ -11992,13 +11991,6 @@
                 },
                 "photo": {
                     "type": "string"
-                },
-                "serviceIds": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },

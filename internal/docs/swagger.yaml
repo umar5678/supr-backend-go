@@ -2542,16 +2542,10 @@ definitions:
         type: number
       photo:
         type: string
-      serviceIds:
-        items:
-          type: string
-        minItems: 1
-        type: array
     required:
     - categorySlug
     - latitude
     - longitude
-    - serviceIds
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_dto.SelectedOptionRequest:
     properties:
