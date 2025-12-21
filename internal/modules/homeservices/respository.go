@@ -413,18 +413,19 @@ func (r *repository) AssignProviderToOrder(ctx context.Context, providerID, orde
 func (r *repository) FindNearestAvailableProviders(ctx context.Context, serviceIDs []uint, lat, lon float64, radiusMeters int) ([]models.ServiceProvider, error) {
 	var providers []models.ServiceProvider
 
-	// Complex query using PostGIS for geospatial search
+	// Query to find providers by their service category
+	// Providers are matched based on their registered service category, not explicit service assignments
+	// This way, providers automatically get access to all services in their category, including future ones
 	err := r.db.WithContext(ctx).
 		Table("service_providers").
 		Select("DISTINCT service_providers.*").
-		Joins("JOIN provider_qualified_services pqs ON pqs.provider_id = service_providers.id").
+		Joins("JOIN services ON services.category_slug = service_providers.service_category").
 		Where("service_providers.status = ?", "available").
 		Where("service_providers.is_verified = ?", true).
-		Where("pqs.service_id IN ?", serviceIDs).
+		Where("services.id IN ?", serviceIDs).
 		Where("ST_DWithin(service_providers.location::geography, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)",
 			lon, lat, radiusMeters).
 		Group("service_providers.id").
-		Having("COUNT(DISTINCT pqs.service_id) = ?", len(serviceIDs)). // Must be qualified for ALL services
 		Order(fmt.Sprintf("ST_Distance(service_providers.location::geography, ST_SetSRID(ST_MakePoint(%f, %f), 4326)::geography)", lon, lat)).
 		Limit(10). // Top 10 nearest
 		Scan(&providers).Error

@@ -240,21 +240,19 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 		}
 	}
 
-	// 5. Assign qualified services
-	for _, serviceID := range req.ServiceIDs {
-		if err := s.repo.AssignServiceToProvider(ctx, providerID, serviceID); err != nil {
-			logger.Error("failed to assign service to provider",
-				"error", err,
-				"providerID", providerID,
-				"serviceID", serviceID)
-			// Continue with other services even if one fails
-		}
-	}
+	// 5. Skip explicit service assignment
+	// Providers automatically get ALL services in their registered category
+	// This ensures they get access to services added in the future without manual updates
+	logger.Info("provider registered with category-based dynamic service assignment",
+		"providerID", providerID,
+		"userID", userID,
+		"category", req.CategorySlug,
+	)
 
 	logger.Info("provider registered successfully",
 		"providerID", providerID,
 		"userID", userID,
-		"services", len(req.ServiceIDs),
+		"category", req.CategorySlug,
 	)
 
 	// 5. Fetch complete profile for response

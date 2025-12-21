@@ -26,6 +26,7 @@ import (
 	homeservicesCustomer "github.com/umar5678/go-backend/internal/modules/homeservices/customer"
 	_ "github.com/umar5678/go-backend/internal/modules/homeservices/dto" // Alias for clarity
 	homeservicesProvider "github.com/umar5678/go-backend/internal/modules/homeservices/provider"
+	"github.com/umar5678/go-backend/internal/modules/laundry"
 	"github.com/umar5678/go-backend/internal/modules/pricing"
 	_ "github.com/umar5678/go-backend/internal/modules/ratings/dto"
 	"github.com/umar5678/go-backend/internal/modules/riders"
@@ -294,6 +295,9 @@ func main() {
 			homeservicesProviderHandler,
 			authMiddleware,
 		)
+
+		// Laundry Service module
+		laundry.RegisterRoutes(router, db, cfg)
 
 		// Add other modules here...
 	}
