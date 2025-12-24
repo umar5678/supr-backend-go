@@ -340,10 +340,11 @@ func (r *repository) GetOrderByIDWithDetails(ctx context.Context, id string) (*m
 }
 
 func (r *repository) ListUserOrders(ctx context.Context, userID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error) {
-	var orders []*models.ServiceOrder
+	var ordersNew []*models.ServiceOrderNew
 	var total int64
 
-	db := r.db.WithContext(ctx).Model(&models.ServiceOrder{}).Where("user_id = ?", userID)
+	// Query ServiceOrderNew which has customer_id field
+	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).Where("customer_id = ?", userID)
 
 	if query.Status != nil {
 		db = db.Where("status = ?", *query.Status)
@@ -358,18 +359,27 @@ func (r *repository) ListUserOrders(ctx context.Context, userID string, query ho
 	err := db.Order("created_at DESC").
 		Offset(query.GetOffset()).
 		Limit(query.Limit).
-		Preload("Items").
-		Preload("AddOns").
-		Find(&orders).Error
+		Find(&ordersNew).Error
 
-	return orders, total, err
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Convert ServiceOrderNew to ServiceOrder for API compatibility
+	orders := make([]*models.ServiceOrder, len(ordersNew))
+	for i, orderNew := range ordersNew {
+		orders[i] = convertServiceOrderNewToServiceOrder(orderNew)
+	}
+
+	return orders, total, nil
 }
 
 func (r *repository) ListProviderOrders(ctx context.Context, providerID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error) {
-	var orders []*models.ServiceOrder
+	var ordersNew []*models.ServiceOrderNew
 	var total int64
 
-	db := r.db.WithContext(ctx).Model(&models.ServiceOrder{}).Where("provider_id = ?", providerID)
+	// Query ServiceOrderNew which has assigned_provider_id field
+	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).Where("assigned_provider_id = ?", providerID)
 
 	if query.Status != nil {
 		db = db.Where("status = ?", *query.Status)
@@ -381,14 +391,22 @@ func (r *repository) ListProviderOrders(ctx context.Context, providerID string, 
 	}
 
 	// Fetch with pagination
-	err := db.Order("service_date ASC").
+	err := db.Order("created_at ASC").
 		Offset(query.GetOffset()).
 		Limit(query.Limit).
-		Preload("Items").
-		Preload("AddOns").
-		Find(&orders).Error
+		Find(&ordersNew).Error
 
-	return orders, total, err
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Convert ServiceOrderNew to ServiceOrder for API compatibility
+	orders := make([]*models.ServiceOrder, len(ordersNew))
+	for i, orderNew := range ordersNew {
+		orders[i] = convertServiceOrderNewToServiceOrder(orderNew)
+	}
+
+	return orders, total, nil
 }
 
 func (r *repository) UpdateOrderStatus(ctx context.Context, orderID, status string) error {
@@ -570,4 +588,31 @@ func (r *repository) GetProviderCategory(ctx context.Context, providerID string,
 		return nil, err
 	}
 	return &category, nil
+}
+
+// convertServiceOrderNewToServiceOrder converts ServiceOrderNew to ServiceOrder for API compatibility
+func convertServiceOrderNewToServiceOrder(orderNew *models.ServiceOrderNew) *models.ServiceOrder {
+	if orderNew == nil {
+		return nil
+	}
+
+	return &models.ServiceOrder{
+		ID:           orderNew.ID,
+		Code:         orderNew.OrderNumber,
+		UserID:       orderNew.CustomerID,
+		Status:       orderNew.Status,
+		Address:      orderNew.CustomerInfo.Address,
+		Latitude:     orderNew.CustomerInfo.Lat,
+		Longitude:    orderNew.CustomerInfo.Lng,
+		ServiceDate:  orderNew.CreatedAt,
+		CategorySlug: orderNew.CategorySlug,
+		Subtotal:     orderNew.ServicesTotal,
+		Total:        orderNew.TotalPrice,
+		PlatformFee:  orderNew.PlatformCommission,
+		CreatedAt:    orderNew.CreatedAt,
+		AcceptedAt:   orderNew.ProviderAcceptedAt,
+		StartedAt:    orderNew.ProviderStartedAt,
+		CompletedAt:  orderNew.ProviderCompletedAt,
+		CancelledAt:  orderNew.CompletedAt, // Map completed time as fallback
+	}
 }
