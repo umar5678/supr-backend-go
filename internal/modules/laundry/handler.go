@@ -109,7 +109,14 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, order, "Order created successfully", "LAUNDRY_ORDER_CREATED")
+	// Convert to response DTO for consistent frontend data
+	orderResponse, err := h.service.GetOrder(c, order.ID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, orderResponse, "Order created successfully", "LAUNDRY_ORDER_CREATED")
 }
 
 // GetOrder - GET /api/v1/laundry/orders/:id
@@ -134,6 +141,37 @@ func (h *Handler) GetOrder(c *gin.Context) {
 		return
 	}
 	response.Success(c, order, "Order retrieved successfully")
+}
+
+// GetAvailableOrders - GET /api/v1/laundry/provider/orders/available
+// @Summary Get Available Orders for Provider
+// @Description Get all available laundry orders that match provider's service category
+// The system automatically filters orders based on the provider's registered category.
+// Providers see all orders in their category and can accept any of them.
+// @Tags Provider - Orders
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {array} dto.LaundryOrderResponse "Available orders for provider"
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 500 {object} response.Response "Failed to fetch available orders"
+// @Router /api/v1/laundry/provider/orders/available [get]
+func (h *Handler) GetAvailableOrders(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Error(response.UnauthorizedError("User ID not found in context"))
+		return
+	}
+
+	// Get provider ID from user (user ID is provider ID in this context)
+	providerID := userID.(string)
+
+	orders, err := h.service.GetAvailableOrders(c, providerID)
+	if err != nil {
+		c.Error(response.InternalServerError("Failed to fetch available orders", err))
+		return
+	}
+
+	response.Success(c, orders, "Available orders retrieved successfully")
 }
 
 // InitiatePickup - POST /api/v1/laundry/orders/:id/pickup/start

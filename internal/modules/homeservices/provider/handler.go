@@ -3,6 +3,7 @@ package provider
 import (
 	"github.com/gin-gonic/gin"
 
+   	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/homeservices/provider/dto"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -18,11 +19,21 @@ func NewHandler(service Service) *Handler {
 }
 
 // getProviderIDFromContext extracts userID and converts it to providerID
+// Returns empty string if user is service_provider role but doesn't have profile yet (during registration)
 func (h *Handler) getProviderIDFromContext(c *gin.Context) (string, error) {
 	userID, _ := c.Get("userID")
+	userRole, _ := c.Get("userRole")
+
 	providerID, err := h.service.GetProviderIDByUserID(c.Request.Context(), userID.(string))
 	if err != nil {
-		return "", err
+		// Check if user is a service provider (allow during registration process)
+		if userRole == string(models.RoleServiceProvider) {
+			// User is a service provider but doesn't have a profile yet
+			// This is OK during registration - return empty string to indicate "not yet registered"
+			return "", nil
+		}
+		// User is not a service provider, deny access
+		return "", response.UnauthorizedError("You must be a service provider to access this endpoint")
 	}
 	return providerID, nil
 }
@@ -92,7 +103,7 @@ func (h *Handler) UpdateAvailability(c *gin.Context) {
 
 // GetServiceCategories godoc
 // @Summary Get service categories
-// @Description Get provider's registered service categories
+// @Description Get provider's registered service categories. Returns empty list if provider is still in registration process.
 // @Tags Provider - Categories
 // @Produce json
 // @Security BearerAuth
@@ -103,6 +114,12 @@ func (h *Handler) GetServiceCategories(c *gin.Context) {
 	providerID, err := h.getProviderIDFromContext(c)
 	if err != nil {
 		c.Error(err)
+		return
+	}
+
+	// If providerID is empty, user is service provider but not yet registered
+	if providerID == "" {
+		response.Success(c, []dto.ServiceCategoryResponse{}, "No categories yet - user is in registration process")
 		return
 	}
 
@@ -117,7 +134,7 @@ func (h *Handler) GetServiceCategories(c *gin.Context) {
 
 // AddServiceCategory godoc
 // @Summary Add service category
-// @Description Add a new service category to provider's profile
+// @Description Add a new service category to provider's profile. If provider doesn't exist yet, creates the profile during first registration.
 // @Tags Provider - Categories
 // @Accept json
 // @Produce json
@@ -129,6 +146,7 @@ func (h *Handler) GetServiceCategories(c *gin.Context) {
 // @Failure 409 {object} response.Response
 // @Router /provider/categories [post]
 func (h *Handler) AddServiceCategory(c *gin.Context) {
+	userID, _ := c.Get("userID")
 	providerID, err := h.getProviderIDFromContext(c)
 	if err != nil {
 		c.Error(err)
@@ -141,13 +159,20 @@ func (h *Handler) AddServiceCategory(c *gin.Context) {
 		return
 	}
 
+	// If providerID is empty, create the provider profile first
+	if providerID == "" {
+		// Create provider profile on first category registration
+		// This is part of the registration flow
+		providerID = h.service.CreateProviderOnFirstCategory(c.Request.Context(), userID.(string))
+	}
+
 	category, err := h.service.AddServiceCategory(c.Request.Context(), providerID, req)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	response.Success(c, category, "Category added successfully")
+	response.Success(c, category, "Category added successfully", "PROVIDER_CATEGORY_ADDED")
 }
 
 // UpdateServiceCategory godoc

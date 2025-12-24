@@ -110,11 +110,28 @@ func (r *repository) CreateCategory(ctx context.Context, category *models.Servic
 
 func (r *repository) GetAllCategorySlugs(ctx context.Context) ([]string, error) {
 	var slugs []string
+
+	// Get distinct category slugs from all sources (ServiceNew, services, laundry products, etc.)
+	// Using UNION to combine results from multiple tables
 	err := r.db.WithContext(ctx).
-		Model(&models.ServiceNew{}).
-		Distinct("category_slug").
-		Order("category_slug ASC").
-		Pluck("category_slug", &slugs).Error
+		Raw(`
+			SELECT DISTINCT category_slug FROM (
+				-- From ServiceNew table
+				SELECT DISTINCT category_slug FROM services WHERE category_slug IS NOT NULL AND category_slug != ''
+				UNION
+				-- From services table
+				SELECT DISTINCT category_slug FROM services WHERE category_slug IS NOT NULL AND category_slug != ''
+				UNION
+				-- From laundry_service_products table
+				SELECT DISTINCT category_slug FROM laundry_service_products WHERE category_slug IS NOT NULL AND category_slug != ''
+				UNION
+				-- From laundry_service_catalog table
+				SELECT DISTINCT category_slug FROM laundry_service_catalog WHERE category_slug IS NOT NULL AND category_slug != ''
+			) AS all_slugs
+			ORDER BY category_slug ASC
+		`).
+		Scan(&slugs).Error
+
 	return slugs, err
 }
 

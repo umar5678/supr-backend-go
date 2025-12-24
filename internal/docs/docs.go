@@ -2497,6 +2497,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/laundry/provider/orders/available": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get all available laundry orders that match provider's service category",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provider - Orders"
+                ],
+                "summary": "Get Available Orders for Provider",
+                "responses": {
+                    "200": {
+                        "description": "Available orders for provider",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch available orders",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/laundry/provider/orders/{id}/delivery/complete": {
             "post": {
                 "security": [
@@ -4667,7 +4707,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get provider's registered service categories",
+                "description": "Get provider's registered service categories. Returns empty list if provider is still in registration process.",
                 "produces": [
                     "application/json"
                 ],
@@ -4711,7 +4751,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Add a new service category to provider's profile",
+                "description": "Add a new service category to provider's profile. If provider doesn't exist yet, creates the profile during first registration.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6855,7 +6895,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "home-services"
+                    "Provider - Profile"
                 ],
                 "summary": "Get all category slugs",
                 "responses": {
@@ -13416,6 +13456,9 @@ const docTemplate = `{
                 "basePrice": {
                     "type": "number"
                 },
+                "categorySlug": {
+                    "type": "string"
+                },
                 "colorCode": {
                     "type": "string"
                 },
@@ -13471,6 +13514,9 @@ const docTemplate = `{
         "github_com_umar5678_go-backend_internal_modules_laundry_dto.ProductResponse": {
             "type": "object",
             "properties": {
+                "categorySlug": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },

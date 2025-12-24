@@ -23,8 +23,9 @@ type LaundryServiceCatalog struct {
 	TurnaroundHours int       `gorm:"default:48" json:"turnaroundHours"`
 	ExpressFee      float64   `gorm:"type:decimal(10,2)" json:"expressFee"`
 	ExpressHours    int       `gorm:"default:24" json:"expressHours"`
-	IsActive        bool      `gorm:"default:true" json:"isActive"`
 	DisplayOrder    int       `gorm:"default:0" json:"displayOrder"`
+	CategorySlug    string    `gorm:"type:varchar(100);default:'laundry';index" json:"categorySlug"`
+	IsActive        bool      `gorm:"default:true" json:"isActive"`
 	CreatedAt       time.Time `json:"createdAt"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 
@@ -50,6 +51,7 @@ type LaundryServiceProduct struct {
 	RequiresSpecialCare bool      `gorm:"default:false" json:"requiresSpecialCare"`
 	SpecialCareFee      float64   `gorm:"type:decimal(10,2);default:0" json:"specialCareFee"`
 	DisplayOrder        int       `gorm:"default:0" json:"displayOrder"`
+	CategorySlug        string    `gorm:"type:varchar(100);default:'laundry';index" json:"categorySlug"`
 	IsActive            bool      `gorm:"default:true" json:"isActive"`
 	CreatedAt           time.Time `json:"createdAt"`
 	UpdatedAt           time.Time `json:"updatedAt"`
@@ -218,7 +220,8 @@ type LaundryOrder struct {
 	// Dates & pricing
 	ServiceDate *time.Time `json:"serviceDate,omitempty"`
 	Total       float64    `gorm:"type:decimal(10,2);not null" json:"total"`
-	Tip         *float64   `gorm:"type:decimal(10,2)" json:"tip,omitempty"` // Optional tip for delivery person
+	Tip         *float64   `gorm:"type:decimal(10,2)" json:"tip,omitempty"`     // Optional tip for delivery person
+	IsExpress   bool       `gorm:"type:boolean;default:false" json:"isExpress"` // Express delivery flag
 
 	// Provider (optional)
 	ProviderID *string `gorm:"type:uuid;index" json:"providerId,omitempty"`

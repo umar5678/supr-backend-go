@@ -53,17 +53,17 @@ func (b *BookingInfoRequest) Validate() error {
 		return fmt.Errorf("invalid time format, expected HH:MM")
 	}
 
-	// Validate booking is in the future (at least 2 hours from now)
+	// Validate booking is in the future (at least 30 minutes from now)
 	bookingDateTime, _ := time.Parse("2006-01-02 15:04", b.Date+" "+b.Time)
-	minBookingTime := time.Now().Add(2 * time.Hour)
+	minBookingTime := time.Now().Add(30 * time.Minute)
 	if bookingDateTime.Before(minBookingTime) {
-		return fmt.Errorf("booking must be at least 2 hours in the future")
+		return fmt.Errorf("booking must be at least 30 minutes in the future")
 	}
 
-	// Validate booking is not too far in the future (max 30 days)
-	maxBookingTime := time.Now().AddDate(0, 0, 30)
+	// Validate booking is not too far in the future (max 90 days)
+	maxBookingTime := time.Now().AddDate(0, 0, 90)
 	if bookingDateTime.After(maxBookingTime) {
-		return fmt.Errorf("booking cannot be more than 30 days in the future")
+		return fmt.Errorf("booking cannot be more than 90 days in the future")
 	}
 
 	// Set day of week

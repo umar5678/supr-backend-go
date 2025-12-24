@@ -180,7 +180,8 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 		return nil, response.BadRequest("User is already registered as a service provider")
 	}
 
-	// 3. Create provider profile
+	// 2. Create provider profile with category-based assignment
+	// Provider is automatically assigned ALL services in their registered category
 	providerID := uuid.New().String()
 	provider := &models.ServiceProviderProfile{
 		ID:              providerID,
@@ -197,7 +198,7 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 		return nil, response.InternalServerError("Failed to create provider profile", err)
 	}
 
-	// 4. Register provider category selection (so provider receives notifications for this category)
+	// 3. Register provider category selection (so provider receives notifications for this category)
 	if req.CategorySlug != "" {
 		category := &models.ProviderServiceCategory{
 			ProviderID:        providerID,
@@ -212,7 +213,7 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 		}
 	}
 
-	// 5. Skip explicit service assignment
+	// 4. Dynamic service assignment
 	// Providers automatically get ALL services in their registered category
 	// This ensures they get access to services added in the future without manual updates
 	logger.Info("provider registered with category-based dynamic service assignment",

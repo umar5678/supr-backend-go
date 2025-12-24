@@ -3490,6 +3490,8 @@ definitions:
     properties:
       basePrice:
         type: number
+      categorySlug:
+        type: string
       colorCode:
         type: string
       description:
@@ -3527,6 +3529,8 @@ definitions:
     type: object
   github_com_umar5678_go-backend_internal_modules_laundry_dto.ProductResponse:
     properties:
+      categorySlug:
+        type: string
       description:
         type: string
       iconUrl:
@@ -5865,6 +5869,32 @@ paths:
       summary: Complete Pickup
       tags:
       - Provider - Pickups
+  /api/v1/laundry/provider/orders/available:
+    get:
+      description: Get all available laundry orders that match provider's service
+        category
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Available orders for provider
+          schema:
+            items:
+              $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_laundry_dto.LaundryOrderResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Failed to fetch available orders
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Available Orders for Provider
+      tags:
+      - Provider - Orders
   /api/v1/laundry/provider/pickups:
     get:
       description: Retrieve all pending pickups assigned to the authenticated service
@@ -7062,7 +7092,8 @@ paths:
       - Provider - Profile
   /provider/categories:
     get:
-      description: Get provider's registered service categories
+      description: Get provider's registered service categories. Returns empty list
+        if provider is still in registration process.
       produces:
       - application/json
       responses:
@@ -7089,7 +7120,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Add a new service category to provider's profile
+      description: Add a new service category to provider's profile. If provider doesn't
+        exist yet, creates the profile during first registration.
       parameters:
       - description: Category details
         in: body
@@ -8405,7 +8437,7 @@ paths:
               type: object
       summary: Get all category slugs
       tags:
-      - home-services
+      - Provider - Profile
   /services/orders:
     get:
       description: Get authenticated user's service orders

@@ -211,6 +211,8 @@ type CreateOptionChoiceRequest struct {
 }
 
 // RegisterProviderRequest for new provider registration
+// Note: Providers are automatically assigned ALL services in their registered category
+// This enables dynamic service assignment - future services are automatically available
 type RegisterProviderRequest struct {
 	CategorySlug string  `json:"categorySlug" binding:"required,min=2,max=100"`
 	Latitude     float64 `json:"latitude" binding:"required,latitude"`

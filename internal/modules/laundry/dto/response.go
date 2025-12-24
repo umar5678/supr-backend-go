@@ -108,6 +108,7 @@ type LaundryServiceDTO struct {
 	TurnaroundHours int               `json:"turnaroundHours"`
 	ExpressFee      float64           `json:"expressFee"`
 	ExpressHours    int               `json:"expressHours"`
+	CategorySlug    string            `json:"categorySlug"`
 	IsActive        bool              `json:"isActive"`
 	ProductCount    int               `json:"productCount"`
 	Products        []ProductResponse `json:"products"`
@@ -188,6 +189,7 @@ type GetServicesWithProductsResponse struct {
 	TurnaroundHours int               `json:"turnaroundHours"`
 	ExpressFee      float64           `json:"expressFee"`
 	ExpressHours    int               `json:"expressHours"`
+	CategorySlug    string            `json:"categorySlug"`
 	ProductCount    int               `json:"productCount"`
 	Products        []ProductResponse `json:"products"`
 }
@@ -203,6 +205,7 @@ type ProductResponse struct {
 	TypicalWeight       *float64 `json:"typicalWeight,omitempty"`
 	RequiresSpecialCare bool     `json:"requiresSpecialCare"`
 	SpecialCareFee      float64  `json:"specialCareFee"`
+	CategorySlug        string   `json:"categorySlug"`
 }
 
 // LaundryPickupResponse represents a pickup event response
@@ -278,13 +281,14 @@ type LaundryServiceResponse struct {
 	TurnaroundHours int     `json:"turnaroundHours"`
 	ExpressFee      float64 `json:"expressFee"`
 	ExpressHours    int     `json:"expressHours"`
+	CategorySlug    string  `json:"categorySlug"`
 }
 
-// ToLaundryOrderResponse converts a ServiceOrder model to response DTO
-func ToLaundryOrderResponse(order *models.ServiceOrder) *LaundryOrderResponse {
+// ToLaundryOrderResponse converts a LaundryOrder model to response DTO
+func ToLaundryOrderResponse(order *models.LaundryOrder) *LaundryOrderResponse {
 	return &LaundryOrderResponse{
 		ID:          order.ID,
-		OrderNumber: order.Code,
+		OrderNumber: order.OrderNumber,
 		Status:      order.Status,
 		TotalPrice:  order.Total,
 		CreatedAt:   order.CreatedAt,
@@ -378,6 +382,7 @@ func ToLaundryServiceResponse(service *models.LaundryServiceCatalog) *LaundrySer
 		TurnaroundHours: service.TurnaroundHours,
 		ExpressFee:      service.ExpressFee,
 		ExpressHours:    service.ExpressHours,
+		CategorySlug:    service.CategorySlug,
 	}
 }
 

@@ -23,7 +23,8 @@ type Service interface {
 	// Orders
 	CreateOrder(ctx context.Context, customerID string, req *dto.CreateLaundryOrderRequest) (*models.LaundryOrder, error)
 	GetOrder(ctx context.Context, orderID string) (*dto.LaundryOrderResponse, error)
-	GetOrderWithDetails(ctx context.Context, orderID string) (*models.ServiceOrder, error)
+	GetOrderWithDetails(ctx context.Context, orderID string) (*models.LaundryOrder, error)
+	GetAvailableOrders(ctx context.Context, providerID string) ([]*models.LaundryOrder, error)
 
 	// Pickups
 	InitiatePickup(ctx context.Context, orderID string, providerID string) (*models.LaundryPickup, error)
@@ -84,6 +85,7 @@ func (s *service) GetServicesWithProducts(ctx context.Context) ([]*dto.LaundrySe
 			TurnaroundHours: service.TurnaroundHours,
 			ExpressFee:      service.ExpressFee,
 			ExpressHours:    service.ExpressHours,
+			CategorySlug:    service.CategorySlug,
 			IsActive:        service.IsActive,
 			ProductCount:    len(service.Products),
 			Products:        make([]dto.ProductResponse, 0, len(service.Products)),
@@ -101,6 +103,7 @@ func (s *service) GetServicesWithProducts(ctx context.Context) ([]*dto.LaundrySe
 				TypicalWeight:       product.TypicalWeight,
 				RequiresSpecialCare: product.RequiresSpecialCare,
 				SpecialCareFee:      product.SpecialCareFee,
+				CategorySlug:        product.CategorySlug,
 			}
 			serviceDTO.Products = append(serviceDTO.Products, productDTO)
 		}
@@ -148,7 +151,6 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 
 	// Calculate total price from products
 	totalPrice := 0.0
-	totalWeight := 0.0
 
 	for _, item := range req.Items {
 		// Get product details
@@ -163,23 +165,11 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 
 		// Calculate price based on pricing unit
 		itemPrice := 0.0
-		itemWeight := 0.0
 
 		if service.PricingUnit == "kg" {
-			// Weight-based pricing: weight * base_price + product_price
-			weight := 0.0
-			if item.Weight != nil && *item.Weight > 0 {
-				weight = *item.Weight
-			} else if product.TypicalWeight != nil {
-				// Use typical weight if not provided or is 0
-				weight = *product.TypicalWeight * float64(item.Quantity)
-			}
-			itemWeight = weight
-			// Weight-based cost
-			itemPrice = weight * service.BasePrice
-			// Add product-specific price if available
+			// For weight-based services, only use product price (no base price per kg)
 			if product.Price != nil {
-				itemPrice += *product.Price * float64(item.Quantity)
+				itemPrice = *product.Price * float64(item.Quantity)
 			}
 		} else {
 			// Item-based pricing: base_price + product_price per item
@@ -196,7 +186,6 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		}
 
 		totalPrice += itemPrice
-		totalWeight += itemWeight
 	}
 
 	// Add express fee if requested
@@ -212,11 +201,9 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 	logger.Info("CreateOrder: calculated pricing",
 		"customerID", customerID,
 		"totalPrice", totalPrice,
-		"totalWeight", totalWeight,
 		"isExpress", req.IsExpress,
 	)
 
-	// Get a random available provider from service providers (for now, we'll use nil and let it be assigned later)
 	// In a real system, this could be based on availability, location, ratings, etc.
 	logger.Info("CreateOrder: preparing order creation",
 		"customerID", customerID,
@@ -238,11 +225,11 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		Longitude:    req.Lng,
 		ServiceDate:  nil, // Will be set when pickup is created
 		Total:        totalPrice,
-		Tip:          req.Tip, // Store the tip
-
-		ProviderID: nil, // Will be assigned when provider accepts
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		Tip:          req.Tip,       // Store the tip
+		IsExpress:    req.IsExpress, // Store the express flag
+		ProviderID:   nil,           // Will be assigned when provider accepts
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
 	if err := s.db.WithContext(ctx).Create(order).Error; err != nil {
@@ -266,20 +253,18 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 	for i, item := range req.Items {
 		product, _ := s.repo.GetProductBySlug(ctx, req.ServiceSlug, item.ProductSlug)
 
-		// Calculate item price
+		// Calculate item price (use same logic as total calculation)
 		itemPrice := 0.0
 		if service.PricingUnit == "kg" {
-			weight := 0.0
-			if item.Weight != nil {
-				weight = *item.Weight
-			} else if product.TypicalWeight != nil {
-				weight = *product.TypicalWeight * float64(item.Quantity)
+			// For weight-based services, only use product price (no base price per kg)
+			if product.Price != nil {
+				itemPrice = *product.Price * float64(item.Quantity)
 			}
-			itemPrice = weight * service.BasePrice
 		} else {
+			// Item-based pricing: base_price + product_price per item
 			price := service.BasePrice
 			if product.Price != nil {
-				price = *product.Price
+				price += *product.Price
 			}
 			itemPrice = price * float64(item.Quantity)
 		}
@@ -481,14 +466,26 @@ func (s *service) GetOrder(ctx context.Context, orderID string) (*dto.LaundryOrd
 		}
 	}
 
+	customerID := ""
+	if order.UserID != nil {
+		customerID = *order.UserID
+	}
+
+	providerID := ""
+	if order.ProviderID != nil {
+		providerID = *order.ProviderID
+	}
+
 	response := &dto.LaundryOrderResponse{
 		ID:          order.ID,
-		OrderNumber: order.Code,
-		CustomerID:  order.UserID,
-		ProviderID:  *order.ProviderID,
+		OrderNumber: order.OrderNumber,
+		CustomerID:  customerID,
+		ProviderID:  providerID,
 		ServiceSlug: order.CategorySlug,
 		Status:      order.Status,
 		TotalPrice:  order.Total,
+		Tip:         order.Tip,
+		IsExpress:   order.IsExpress,
 		Address:     order.Address,
 		Lat:         order.Latitude,
 		Lng:         order.Longitude,
@@ -496,14 +493,14 @@ func (s *service) GetOrder(ctx context.Context, orderID string) (*dto.LaundryOrd
 		Pickup:      pickupDTO,
 		Delivery:    deliveryDTO,
 		CreatedAt:   order.CreatedAt,
-		UpdatedAt:   *order.AcceptedAt,
+		UpdatedAt:   order.UpdatedAt,
 	}
 
 	return response, nil
 }
 
-func (s *service) GetOrderWithDetails(ctx context.Context, orderID string) (*models.ServiceOrder, error) {
-	var order models.ServiceOrder
+func (s *service) GetOrderWithDetails(ctx context.Context, orderID string) (*models.LaundryOrder, error) {
+	var order models.LaundryOrder
 	if err := s.db.WithContext(ctx).First(&order, "id = ?", orderID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("order not found")
@@ -511,6 +508,65 @@ func (s *service) GetOrderWithDetails(ctx context.Context, orderID string) (*mod
 		return nil, fmt.Errorf("failed to fetch order: %w", err)
 	}
 	return &order, nil
+}
+
+// GetAvailableOrders gets all available laundry orders for a provider to accept
+// Available orders are those that match provider's category and are not yet assigned
+func (s *service) GetAvailableOrders(ctx context.Context, providerID string) ([]*models.LaundryOrder, error) {
+	// Get provider's service category
+	provider, err := s.repo.GetProviderByID(ctx, providerID)
+	if err != nil {
+		logger.Error("GetAvailableOrders: failed to get provider",
+			"error", err,
+			"providerID", providerID,
+		)
+		return nil, fmt.Errorf("provider not found: %w", err)
+	}
+
+	if provider.ServiceCategory == "" {
+		logger.Warn("GetAvailableOrders: provider has no service category",
+			"providerID", providerID,
+		)
+		return nil, errors.New("provider not registered with a service category")
+	}
+
+	// Get all active services for this category
+	serviceSlugs, err := s.repo.GetProviderServices(ctx, providerID)
+	if err != nil {
+		logger.Error("GetAvailableOrders: failed to get provider services",
+			"error", err,
+			"providerID", providerID,
+			"category", provider.ServiceCategory,
+		)
+		return nil, fmt.Errorf("failed to get available services: %w", err)
+	}
+
+	if len(serviceSlugs) == 0 {
+		logger.Warn("GetAvailableOrders: no active services for provider's category",
+			"providerID", providerID,
+			"category", provider.ServiceCategory,
+		)
+		return []*models.LaundryOrder{}, nil
+	}
+
+	// Get available orders matching provider's category
+	orders, err := s.repo.GetAvailableOrdersByCategory(ctx, provider.ServiceCategory, serviceSlugs)
+	if err != nil {
+		logger.Error("GetAvailableOrders: failed to get available orders",
+			"error", err,
+			"providerID", providerID,
+			"category", provider.ServiceCategory,
+		)
+		return nil, fmt.Errorf("failed to get available orders: %w", err)
+	}
+
+	logger.Info("GetAvailableOrders: fetched available orders",
+		"providerID", providerID,
+		"category", provider.ServiceCategory,
+		"orderCount", len(orders),
+	)
+
+	return orders, nil
 }
 
 // =====================================================
@@ -526,8 +582,11 @@ func (s *service) InitiatePickup(ctx context.Context, orderID string, providerID
 		return nil, errors.New("pickup not found for this order")
 	}
 
-	// Verify provider ownership
-	if pickup.ProviderID == nil || *pickup.ProviderID != providerID {
+	// If pickup is not yet assigned, assign it to this provider
+	if pickup.ProviderID == nil {
+		pickup.ProviderID = &providerID
+	} else if *pickup.ProviderID != providerID {
+		// If already assigned to someone else, deny access
 		return nil, errors.New("unauthorized: you are not assigned to this pickup")
 	}
 
@@ -552,7 +611,7 @@ func (s *service) CompletePickup(ctx context.Context, orderID string, req *dto.C
 
 	// Update order status to "pickup_completed"
 	if err := s.db.WithContext(ctx).
-		Model(&models.ServiceOrder{}).
+		Model(&models.LaundryOrder{}).
 		Where("id = ?", orderID).
 		Updates(map[string]interface{}{
 			"status":     "pickup_completed",
@@ -613,7 +672,7 @@ func (s *service) AddItems(ctx context.Context, orderID string, req *dto.AddLaun
 
 	// Update order status to "processing"
 	s.db.WithContext(ctx).
-		Model(&models.ServiceOrder{}).
+		Model(&models.LaundryOrder{}).
 		Where("id = ?", orderID).
 		Update("status", "processing")
 
@@ -669,8 +728,11 @@ func (s *service) InitiateDelivery(ctx context.Context, orderID string, provider
 		return nil, errors.New("delivery not found for this order")
 	}
 
-	// Verify provider ownership
-	if delivery.ProviderID == nil || *delivery.ProviderID != providerID {
+	// If delivery is not yet assigned, assign it to this provider
+	if delivery.ProviderID == nil {
+		delivery.ProviderID = &providerID
+	} else if *delivery.ProviderID != providerID {
+		// If already assigned to someone else, deny access
 		return nil, errors.New("unauthorized: you are not assigned to this delivery")
 	}
 
@@ -705,7 +767,7 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 
 	// Update order status to "completed"
 	if err := s.db.WithContext(ctx).
-		Model(&models.ServiceOrder{}).
+		Model(&models.LaundryOrder{}).
 		Where("id = ?", orderID).
 		Updates(map[string]interface{}{
 			"status":     "completed",
@@ -726,7 +788,7 @@ func (s *service) GetProviderDeliveries(ctx context.Context, providerID string) 
 // Issues
 // =====================================================
 
-func (s *service) ReportIssue(ctx context.Context, orderID, customerID, providerID string, req *dto.ReportIssueRequest) (*models.LaundryIssue, error) {
+func (s *service) ReportIssue(ctx context.Context, orderID, userID, providerID string, req *dto.ReportIssueRequest) (*models.LaundryIssue, error) {
 	if req == nil {
 		return nil, errors.New("request is required")
 	}
@@ -737,7 +799,7 @@ func (s *service) ReportIssue(ctx context.Context, orderID, customerID, provider
 		return nil, err
 	}
 
-	if order.UserID != customerID {
+	if order.UserID != &userID {
 		return nil, errors.New("unauthorized: this order does not belong to you")
 	}
 
@@ -754,7 +816,7 @@ func (s *service) ReportIssue(ctx context.Context, orderID, customerID, provider
 	issue := &models.LaundryIssue{
 		ID:          uuid.New().String(),
 		OrderID:     orderID,
-		CustomerID:  customerID,
+		CustomerID:  userID,
 		ProviderID:  providerID,
 		IssueType:   req.IssueType,
 		Description: req.Description,

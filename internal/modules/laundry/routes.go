@@ -31,6 +31,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		customer.POST("/orders", handler.CreateOrder)
 		customer.GET("/orders/:id", handler.GetOrder)
 
+		// Pickup & Delivery management (customer can also manage these)
+		customer.POST("/orders/:id/pickup/start", handler.InitiatePickup)
+		customer.POST("/orders/:id/pickup/complete", handler.CompletePickup)
+		customer.POST("/orders/:id/delivery/start", handler.InitiateDelivery)
+		customer.POST("/orders/:id/delivery/complete", handler.CompleteDelivery)
+
 		// Issue reporting
 		customer.POST("/orders/:id/issues", handler.ReportIssue)
 	}
@@ -40,6 +46,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	provider.Use(middleware.Auth(cfg))
 	provider.Use(middleware.RequireRole("service_provider")) // Ensure user is a provider
 	{
+		// View available orders for provider
+		provider.GET("/orders/available", handler.GetAvailableOrders)
+
 		// View assigned work
 		provider.GET("/pickups", handler.GetProviderPickups)
 		provider.GET("/deliveries", handler.GetProviderDeliveries)

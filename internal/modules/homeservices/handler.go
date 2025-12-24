@@ -39,7 +39,7 @@ func (h *Handler) ListCategories(c *gin.Context) {
 // GetAllCategorySlugs godoc
 // @Summary Get all category slugs
 // @Description Get list of all distinct category slugs for provider registration dropdown
-// @Tags home-services
+// @Tags Provider - Profile
 // @Produce json
 // @Success 200 {object} response.Response{data=[]string}
 // @Router /services/category-slugs [get]

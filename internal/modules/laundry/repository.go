@@ -107,6 +107,11 @@ func (r *repository) GetProductBySlug(ctx context.Context, serviceSlug, productS
 			First(&product).Error
 	}
 
+	// If product ID is empty, it means not found
+	if product.ID == "" {
+		return nil, gorm.ErrRecordNotFound
+	}
+
 	return &product, err
 }
 

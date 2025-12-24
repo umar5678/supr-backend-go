@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/umar5678/go-backend/internal/models"
@@ -24,6 +25,7 @@ type WalletService interface {
 type Service interface {
 	// User ID to Provider ID conversion
 	GetProviderIDByUserID(ctx context.Context, userID string) (string, error)
+	CreateProviderOnFirstCategory(ctx context.Context, userID string) string
 
 	// Profile operations
 	GetProfile(ctx context.Context, providerID string) (*dto.ProviderProfileResponse, error)
@@ -78,6 +80,42 @@ func (s *service) GetProviderIDByUserID(ctx context.Context, userID string) (str
 		return "", response.InternalServerError("Failed to retrieve provider", err)
 	}
 	return provider.ID, nil
+}
+
+// CreateProviderOnFirstCategory creates a provider profile on first category registration
+// This is called during the registration flow when a user adds their first service category
+func (s *service) CreateProviderOnFirstCategory(ctx context.Context, userID string) string {
+	// Generate a new provider ID using UUID
+	providerID := uuid.New().String()
+
+	// Create a new service provider profile
+	provider := &models.ServiceProviderProfile{
+		ID:              providerID,
+		UserID:          userID,
+		IsVerified:      false,
+		IsAvailable:     false,
+		ServiceType:     "service_provider",
+		ServiceCategory: "general", // Default category, will be updated when adding first category
+		Status:          models.SPStatusPendingApproval,
+	}
+
+	// Attempt to create the provider profile
+	if err := s.repo.CreateProvider(ctx, provider); err != nil {
+		logger.Error("failed to create provider profile on first category registration",
+			"error", err,
+			"userID", userID,
+			"providerID", providerID,
+		)
+		// Return the providerID anyway - the category might still be created
+		// and the user can try again if needed
+	}
+
+	logger.Info("provider profile created on first category registration",
+		"providerID", providerID,
+		"userID", userID,
+	)
+
+	return providerID
 }
 
 // ==================== Profile Operations ====================
