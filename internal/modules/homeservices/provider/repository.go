@@ -99,7 +99,7 @@ func NewRepository(db *gorm.DB) Repository {
 
 func (r *repository) AssignOrderToProvider(ctx context.Context, orderID, providerID string) error {
 	now := time.Now()
-	
+
 	// Try to update service_orders table
 	result := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
@@ -109,13 +109,13 @@ func (r *repository) AssignOrderToProvider(ctx context.Context, orderID, provide
 			"status":               shared.OrderStatusAssigned,
 			"updated_at":           now,
 		})
-	
+
 	// If service order was updated, we're done
 	if result.Error == nil && result.RowsAffected > 0 {
 		logger.Info("assigned service order to provider", "orderID", orderID, "providerID", providerID)
 		return nil
 	}
-	
+
 	// Try to update laundry_orders table
 	result = r.db.WithContext(ctx).
 		Model(&models.LaundryOrder{}).
@@ -125,17 +125,17 @@ func (r *repository) AssignOrderToProvider(ctx context.Context, orderID, provide
 			"status":      shared.OrderStatusAssigned,
 			"updated_at":  now,
 		})
-	
+
 	if result.Error != nil {
 		logger.Error("failed to assign order to provider", "error", result.Error, "orderID", orderID, "providerID", providerID)
 		return result.Error
 	}
-	
+
 	if result.RowsAffected == 0 {
 		logger.Warn("order not found in either table", "orderID", orderID)
 		return gorm.ErrRecordNotFound
 	}
-	
+
 	logger.Info("assigned laundry order to provider", "orderID", orderID, "providerID", providerID)
 	return nil
 }
@@ -302,11 +302,11 @@ func (r *repository) convertLaundryOrderToServiceOrder(ctx context.Context, orde
 		OrderNumber:        laundryOrder.OrderNumber,
 		CustomerID:         customerID,
 		CategorySlug:       laundryOrder.CategorySlug,
-		ServicesTotal:      laundryOrder.Total,  // Base price (without tip)
-		Subtotal:           laundryOrder.Total,  // No separate subtotal for laundry
-		TotalPrice:         totalPrice,          // Total including tip
-		PlatformCommission: 0,                   // Laundry doesn't track separately
-		AddonsTotal:        0,                   // No addons for laundry
+		ServicesTotal:      laundryOrder.Total, // Base price (without tip)
+		Subtotal:           laundryOrder.Total, // No separate subtotal for laundry
+		TotalPrice:         totalPrice,         // Total including tip
+		PlatformCommission: 0,                  // Laundry doesn't track separately
+		AddonsTotal:        0,                  // No addons for laundry
 		Status:             laundryOrder.Status,
 		AssignedProviderID: laundryOrder.ProviderID,
 		CreatedAt:          laundryOrder.CreatedAt,
@@ -428,11 +428,11 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 			OrderNumber:        laundryOrder.OrderNumber,
 			CustomerID:         customerID,
 			CategorySlug:       laundryOrder.CategorySlug,
-			ServicesTotal:      laundryOrder.Total,  // Base price (without tip)
-			Subtotal:           laundryOrder.Total,  // No separate subtotal for laundry
-			TotalPrice:         totalPrice,          // Total including tip
-			PlatformCommission: 0,                   // Laundry doesn't track separately
-			AddonsTotal:        0,                   // No addons for laundry
+			ServicesTotal:      laundryOrder.Total, // Base price (without tip)
+			Subtotal:           laundryOrder.Total, // No separate subtotal for laundry
+			TotalPrice:         totalPrice,         // Total including tip
+			PlatformCommission: 0,                  // Laundry doesn't track separately
+			AddonsTotal:        0,                  // No addons for laundry
 			Status:             laundryOrder.Status,
 			AssignedProviderID: laundryOrder.ProviderID,
 			CreatedAt:          laundryOrder.CreatedAt,
@@ -533,6 +533,7 @@ func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, 
 	logger.Warn("available order not found", "orderID", orderID, "categorySlugs", categorySlugs)
 	return nil, err
 }
+
 // func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, categorySlugs []string) (*models.ServiceOrderNew, error) {
 // 	var order models.ServiceOrderNew
 
@@ -734,11 +735,11 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 			OrderNumber:        laundryOrder.OrderNumber,
 			CustomerID:         customerID,
 			CategorySlug:       laundryOrder.CategorySlug,
-			ServicesTotal:      laundryOrder.Total,  // Base price (without tip)
-			Subtotal:           laundryOrder.Total,  // No separate subtotal for laundry
-			TotalPrice:         totalPrice,          // Total including tip
-			PlatformCommission: 0,                   // Laundry doesn't track separately
-			AddonsTotal:        0,                   // No addons for laundry
+			ServicesTotal:      laundryOrder.Total, // Base price (without tip)
+			Subtotal:           laundryOrder.Total, // No separate subtotal for laundry
+			TotalPrice:         totalPrice,         // Total including tip
+			PlatformCommission: 0,                  // Laundry doesn't track separately
+			AddonsTotal:        0,                  // No addons for laundry
 			Status:             laundryOrder.Status,
 			AssignedProviderID: laundryOrder.ProviderID,
 			CreatedAt:          laundryOrder.CreatedAt,
@@ -813,25 +814,26 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND assigned_provider_id = ?", orderID, providerID).
 		First(&order).Error
-	
+
 	if err == nil {
 		return &order, nil
 	}
-	
+
 	// Try laundry_orders table
 	if err == gorm.ErrRecordNotFound {
 		var laundryOrder models.LaundryOrder
 		err = r.db.WithContext(ctx).
 			Where("id = ? AND provider_id = ?", orderID, providerID).
 			First(&laundryOrder).Error
-		
+
 		if err == nil {
 			return r.convertLaundryOrderToServiceOrder(ctx, orderID)
 		}
 	}
-	
+
 	return nil, err
 }
+
 // func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error) {
 // 	var order models.ServiceOrderNew
 // 	err := r.db.WithContext(ctx).
@@ -842,7 +844,6 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 // 	}
 // 	return &order, nil
 // }
-
 
 func (r *repository) CountProviderActiveOrders(ctx context.Context, providerID string) (int64, error) {
 	var serviceOrderCount int64
@@ -873,9 +874,10 @@ func (r *repository) CountProviderActiveOrders(ctx context.Context, providerID s
 
 	total := serviceOrderCount + laundryOrderCount
 	logger.Info("counted active orders", "providerID", providerID, "serviceOrders", serviceOrderCount, "laundryOrders", laundryOrderCount, "total", total)
-	
+
 	return total, nil
 }
+
 // func (r *repository) CountProviderActiveOrders(ctx context.Context, providerID string) (int64, error) {
 // 	var serviceOrderCount int64
 // 	var laundryOrderCount int64
@@ -907,18 +909,18 @@ func (r *repository) CountProviderActiveOrders(ctx context.Context, providerID s
 
 func (r *repository) GetOrderByID(ctx context.Context, orderID string) (*models.ServiceOrderNew, error) {
 	var order models.ServiceOrderNew
-	
+
 	// Try service_orders table first
 	err := r.db.WithContext(ctx).Where("id = ?", orderID).First(&order).Error
 	if err == nil {
 		return &order, nil
 	}
-	
+
 	// If not found, try laundry_orders table
 	if err == gorm.ErrRecordNotFound {
 		return r.convertLaundryOrderToServiceOrder(ctx, orderID)
 	}
-	
+
 	return nil, err
 }
 
@@ -958,6 +960,7 @@ func (r *repository) UpdateOrder(ctx context.Context, order *models.ServiceOrder
 
 	return err
 }
+
 // func (r *repository) GetOrderByID(ctx context.Context, orderID string) (*models.ServiceOrderNew, error) {
 // 	var order models.ServiceOrderNew
 // 	err := r.db.WithContext(ctx).Where("id = ?", orderID).First(&order).Error

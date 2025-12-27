@@ -39,6 +39,7 @@ type Repository interface {
 	CreateOrder(ctx context.Context, order *models.ServiceOrder) error
 	GetOrderByID(ctx context.Context, id string) (*models.ServiceOrder, error)
 	GetOrderByIDWithDetails(ctx context.Context, id string) (*models.ServiceOrder, error)
+	GetServiceOrderNewByID(ctx context.Context, id string) (*models.ServiceOrderNew, error)
 	ListUserOrders(ctx context.Context, userID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error)
 	ListProviderOrders(ctx context.Context, providerID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error)
 	UpdateOrderStatus(ctx context.Context, orderID, status string) error
@@ -322,21 +323,51 @@ func (r *repository) CreateOrder(ctx context.Context, order *models.ServiceOrder
 }
 
 func (r *repository) GetOrderByID(ctx context.Context, id string) (*models.ServiceOrder, error) {
-	var order models.ServiceOrder
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&order).Error
-	return &order, err
+	// Query new schema directly (actual database uses ServiceOrderNew)
+	var orderNew models.ServiceOrderNew
+	err := r.db.WithContext(ctx).Where("id = ?", id).First(&orderNew).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to ServiceOrder for API compatibility
+	conv := convertServiceOrderNewToServiceOrder(&orderNew)
+	if conv == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return conv, nil
 }
 
 func (r *repository) GetOrderByIDWithDetails(ctx context.Context, id string) (*models.ServiceOrder, error) {
-	var order models.ServiceOrder
+	// Query new schema directly (actual database uses ServiceOrderNew)
+	var orderNew models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
-		Preload("Items").
-		Preload("AddOns").
-		Preload("Provider").
-		// Preload("Provider.User").
 		Where("id = ?", id).
-		First(&order).Error
-	return &order, err
+		First(&orderNew).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to ServiceOrder for API compatibility
+	conv := convertServiceOrderNewToServiceOrder(&orderNew)
+	if conv == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return conv, nil
+}
+
+// GetServiceOrderNewByID fetches order directly from ServiceOrderNew schema
+func (r *repository) GetServiceOrderNewByID(ctx context.Context, id string) (*models.ServiceOrderNew, error) {
+	var orderNew models.ServiceOrderNew
+	err := r.db.WithContext(ctx).
+		Preload("AssignedProvider").
+		Preload("AssignedProvider.User").
+		Where("id = ?", id).
+		First(&orderNew).Error
+	return &orderNew, err
 }
 
 func (r *repository) ListUserOrders(ctx context.Context, userID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error) {
@@ -414,32 +445,32 @@ func (r *repository) UpdateOrderStatus(ctx context.Context, orderID, status stri
 		"status": status,
 	}
 
-	// Set timestamp based on status
+	// Set timestamp based on status using ServiceOrderNew field names
 	switch status {
 	case "accepted":
-		updates["accepted_at"] = gorm.Expr("NOW()")
+		updates["provider_accepted_at"] = gorm.Expr("NOW()")
 	case "in_progress":
-		updates["started_at"] = gorm.Expr("NOW()")
+		updates["provider_started_at"] = gorm.Expr("NOW()")
 	case "completed":
-		updates["completed_at"] = gorm.Expr("NOW()")
+		updates["provider_completed_at"] = gorm.Expr("NOW()")
 	case "cancelled":
-		updates["cancelled_at"] = gorm.Expr("NOW()")
+		updates["completed_at"] = gorm.Expr("NOW()")
 	}
 
 	return r.db.WithContext(ctx).
-		Model(&models.ServiceOrder{}).
+		Model(&models.ServiceOrderNew{}).
 		Where("id = ?", orderID).
 		Updates(updates).Error
 }
 
 func (r *repository) AssignProviderToOrder(ctx context.Context, providerID, orderID string) error {
 	return r.db.WithContext(ctx).
-		Model(&models.ServiceOrder{}).
+		Model(&models.ServiceOrderNew{}).
 		Where("id = ?", orderID).
 		Updates(map[string]interface{}{
-			"provider_id": providerID,
-			"status":      "accepted",
-			"accepted_at": gorm.Expr("NOW()"),
+			"assigned_provider_id": providerID,
+			"status":               "assigned",
+			"provider_accepted_at": gorm.Expr("NOW()"),
 		}).Error
 }
 
@@ -596,14 +627,28 @@ func convertServiceOrderNewToServiceOrder(orderNew *models.ServiceOrderNew) *mod
 		return nil
 	}
 
+	// Initialize empty slices instead of nil to avoid panics in response building
+	items := make([]models.OrderItem, 0)
+	addOns := make([]models.OrderAddOn, 0)
+
+	// Safely extract customer info - handle zero struct case
+	address := ""
+	lat := 0.0
+	lng := 0.0
+	if orderNew.CustomerInfo.Address != "" {
+		address = orderNew.CustomerInfo.Address
+		lat = orderNew.CustomerInfo.Lat
+		lng = orderNew.CustomerInfo.Lng
+	}
+
 	return &models.ServiceOrder{
 		ID:           orderNew.ID,
 		Code:         orderNew.OrderNumber,
 		UserID:       orderNew.CustomerID,
 		Status:       orderNew.Status,
-		Address:      orderNew.CustomerInfo.Address,
-		Latitude:     orderNew.CustomerInfo.Lat,
-		Longitude:    orderNew.CustomerInfo.Lng,
+		Address:      address,
+		Latitude:     lat,
+		Longitude:    lng,
 		ServiceDate:  orderNew.CreatedAt,
 		CategorySlug: orderNew.CategorySlug,
 		Subtotal:     orderNew.ServicesTotal,
@@ -614,5 +659,7 @@ func convertServiceOrderNewToServiceOrder(orderNew *models.ServiceOrderNew) *mod
 		StartedAt:    orderNew.ProviderStartedAt,
 		CompletedAt:  orderNew.ProviderCompletedAt,
 		CancelledAt:  orderNew.CompletedAt, // Map completed time as fallback
+		Items:        items,                // Empty slice to avoid nil panics
+		AddOns:       addOns,               // Empty slice to avoid nil panics
 	}
 }

@@ -771,20 +771,35 @@ func (s *service) GetMyOrders(ctx context.Context, userID string, query homeserv
 }
 
 func (s *service) GetOrderDetails(ctx context.Context, userID, orderID string) (*homeservicedto.OrderResponse, error) {
-	order, err := s.repo.GetOrderByIDWithDetails(ctx, orderID)
+	// Fetch ServiceOrderNew directly for rich details
+	orderNew, err := s.repo.GetServiceOrderNewByID(ctx, orderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, response.NotFoundError("Order")
 		}
+		logger.Error("failed to fetch order details", "error", err, "orderID", orderID)
 		return nil, response.InternalServerError("Failed to fetch order", err)
 	}
 
+	if orderNew == nil {
+		logger.Error("order is nil after fetch", "orderID", orderID)
+		return nil, response.NotFoundError("Order")
+	}
+
 	// Verify ownership
-	if order.UserID != userID {
+	if orderNew.CustomerID != userID {
+		logger.Warn("unauthorized order access attempt", "orderID", orderID, "requestUserID", userID, "orderUserID", orderNew.CustomerID)
 		return nil, response.ForbiddenError("You don't have access to this order")
 	}
 
-	return homeservicedto.ToOrderResponse(order), nil
+	// Convert to OrderResponse with full details from ServiceOrderNew
+	orderResp := homeservicedto.ToOrderResponseFromNew(orderNew)
+	if orderResp == nil {
+		logger.Error("failed to convert order to response", "orderID", orderID)
+		return nil, response.InternalServerError("Failed to format order response", nil)
+	}
+
+	return orderResp, nil
 }
 
 // func (s *service) GetOrderDetails(ctx context.Context, userID, orderID string) (*homeservicedto.OrderResponse, error) {

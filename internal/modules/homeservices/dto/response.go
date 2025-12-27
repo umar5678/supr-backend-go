@@ -337,6 +337,7 @@ type OrderAddOnResponse struct {
 type ProviderResponse struct {
 	ID            string  `json:"id"`
 	Name          string  `json:"name"`
+	Phone         *string `json:"phone,omitempty"`
 	Photo         *string `json:"photo,omitempty"`
 	Rating        float64 `json:"rating"`
 	CompletedJobs int     `json:"completedJobs"`
@@ -377,6 +378,10 @@ func ToCategoryWithTabsResponse(cat *models.ServiceCategory) *CategoryWithTabsRe
 	return resp
 }
 func ToOrderResponse(order *models.ServiceOrder) *OrderResponse {
+	if order == nil {
+		return nil
+	}
+
 	resp := &OrderResponse{
 		ID:             order.ID,
 		Code:           order.Code,
@@ -399,7 +404,7 @@ func ToOrderResponse(order *models.ServiceOrder) *OrderResponse {
 		CompletedAt:    order.CompletedAt,
 	}
 
-	if len(order.Items) > 0 {
+	if order.Items != nil && len(order.Items) > 0 {
 		resp.Items = make([]OrderItemResponse, len(order.Items))
 		for i, item := range order.Items {
 			resp.Items[i] = OrderItemResponse{
@@ -414,7 +419,7 @@ func ToOrderResponse(order *models.ServiceOrder) *OrderResponse {
 		}
 	}
 
-	if len(order.AddOns) > 0 {
+	if order.AddOns != nil && len(order.AddOns) > 0 {
 		resp.AddOns = make([]OrderAddOnResponse, len(order.AddOns))
 		for i, addon := range order.AddOns {
 			resp.AddOns[i] = OrderAddOnResponse{
@@ -434,6 +439,86 @@ func ToOrderResponse(order *models.ServiceOrder) *OrderResponse {
 			Photo:         order.Provider.Photo,
 			Rating:        order.Provider.Rating,
 			CompletedJobs: order.Provider.CompletedJobs,
+		}
+	}
+
+	return resp
+}
+
+// ToOrderResponseFromNew converts ServiceOrderNew to OrderResponse with all details
+func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
+	if orderNew == nil {
+		return nil
+	}
+
+	resp := &OrderResponse{
+		ID:             orderNew.ID,
+		Code:           orderNew.OrderNumber,
+		UserID:         orderNew.CustomerID,
+		ProviderID:     orderNew.AssignedProviderID,
+		Status:         orderNew.Status,
+		Address:        orderNew.CustomerInfo.Address,
+		ServiceDate:    orderNew.CreatedAt,
+		Frequency:      "once", // Default value
+		QuantityOfPros: orderNew.BookingInfo.QuantityOfPros,
+		HoursOfService: 0, // Not in ServiceOrderNew
+		Subtotal:       orderNew.Subtotal,
+		Discount:       0, // Not in ServiceOrderNew
+		SurgeFee:       0, // Not in ServiceOrderNew
+		PlatformFee:    orderNew.PlatformCommission,
+		Total:          orderNew.TotalPrice,
+		CouponCode:     nil, // Not in ServiceOrderNew
+		CreatedAt:      orderNew.CreatedAt,
+		AcceptedAt:     orderNew.ProviderAcceptedAt,
+		CompletedAt:    orderNew.ProviderCompletedAt,
+	}
+
+	// Populate Items from SelectedServices JSONB
+	if orderNew.SelectedServices != nil && len(orderNew.SelectedServices) > 0 {
+		resp.Items = make([]OrderItemResponse, len(orderNew.SelectedServices))
+		for i, svc := range orderNew.SelectedServices {
+			resp.Items[i] = OrderItemResponse{
+				ServiceID:       svc.ServiceSlug,
+				ServiceName:     svc.Title,
+				BasePrice:       svc.Price,
+				CalculatedPrice: svc.Price * float64(svc.Quantity),
+				DurationMinutes: 0, // Not in SelectedServiceItem
+				SelectedOptions: make(map[string]interface{}),
+			}
+		}
+	}
+
+	// Populate AddOns from SelectedAddons JSONB
+	if orderNew.SelectedAddons != nil && len(orderNew.SelectedAddons) > 0 {
+		resp.AddOns = make([]OrderAddOnResponse, len(orderNew.SelectedAddons))
+		for i, addon := range orderNew.SelectedAddons {
+			resp.AddOns[i] = OrderAddOnResponse{
+				Title: addon.Title,
+				Price: addon.Price * float64(addon.Quantity),
+			}
+		}
+	}
+
+	// Populate Provider information if assigned
+	if orderNew.AssignedProvider != nil {
+		providerName := "Service Provider"
+		var providerPhone *string
+		var providerPhoto *string
+
+		// Get name, phone and photo from User if available
+		if orderNew.AssignedProvider.User != nil {
+			providerName = orderNew.AssignedProvider.User.Name
+			providerPhone = orderNew.AssignedProvider.User.Phone
+			providerPhoto = orderNew.AssignedProvider.User.ProfilePhotoURL
+		}
+
+		resp.Provider = &ProviderResponse{
+			ID:            orderNew.AssignedProvider.ID,
+			Name:          providerName,
+			Phone:         providerPhone,
+			Photo:         providerPhoto,
+			Rating:        orderNew.AssignedProvider.Rating,
+			CompletedJobs: orderNew.AssignedProvider.CompletedJobs,
 		}
 	}
 
