@@ -93,6 +93,69 @@ coverage: ## Generate coverage report
 	$(GOTEST) -coverprofile=coverage.out ./...
 	$(GOCMD) tool cover -func=coverage.out
 
+# ============================================================
+# k6 Load Testing Targets
+# ============================================================
+
+k6-help: ## Show k6 load testing help
+	@echo ""
+	@echo "🚀 k6 Load Testing Commands"
+	@echo "======================================"
+	@echo ""
+	@echo "Quick Start:"
+	@echo "  make k6-basic      - Run basic load test (recommended first)"
+	@echo "  make k6-realistic  - Run realistic user journey test"
+	@echo "  make k6-ramp       - Run ramp-up test (find breaking point)"
+	@echo ""
+	@echo "Advanced:"
+	@echo "  make k6-spike      - Run spike test"
+	@echo "  make k6-stress     - Run stress test (will crash API!)"
+	@echo "  make k6-endurance  - Run 30+ minute endurance test"
+	@echo ""
+	@echo "Setup:"
+	@echo "  make k6-install    - Install k6"
+	@echo ""
+	@echo "For more info, see: k6/START-HERE.md"
+	@echo ""
+
+k6-install: ## Install k6 for load testing
+	@echo "Installing k6..."
+	@command -v k6 >/dev/null 2>&1 || \
+		( echo "Please install k6 manually:" && \
+		  echo "  Windows: choco install k6" && \
+		  echo "  Linux: sudo apt install k6" && \
+		  exit 1 )
+	@echo "✅ k6 is installed: $$(k6 version)"
+
+k6-basic: ## Run basic load test (50-100 VUs, 9 min)
+	cd k6 && k6 run -e BASE_URL=http://localhost:8080 basic-load-test.js
+
+k6-realistic: ## Run realistic user journey test (50 VUs, 10 min)
+	cd k6 && k6 run -e BASE_URL=http://localhost:8080 realistic-user-journey.js
+
+k6-ramp: ## Run ramp-up test to find breaking point (6 min)
+	cd k6 && k6 run -e BASE_URL=http://localhost:8080 ramp-up-test.js
+
+k6-spike: ## Run spike test (8 min)
+	cd k6 && k6 run -e BASE_URL=http://localhost:8080 spike-test.js
+
+k6-stress: ## Run stress test - WILL CRASH API! (30 min)
+	@echo "⚠️  WARNING: Stress test will crash your API!"
+	@read -p "Continue? (y/n) " ans && [ $${ans:-N} = y ] || exit 1
+	cd k6 && k6 run -e BASE_URL=http://localhost:8080 stress-test.js
+
+k6-endurance: ## Run endurance test (40 min)
+	@echo "⏱️  Starting long-running endurance test..."
+	cd k6 && k6 run -e BASE_URL=http://localhost:8080 endurance-test.js
+
+k6-run-all: ## Run all tests sequentially (1+ hour)
+	@echo "🔄 Running all k6 tests..."
+	make k6-basic && \
+	make k6-realistic && \
+	make k6-ramp && \
+	make k6-spike && \
+	@echo "✅ All tests completed!"
+
 all: clean install swagger build test ## Run all build steps
 
 .DEFAULT_GOAL := help

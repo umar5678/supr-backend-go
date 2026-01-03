@@ -1,0 +1,343 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║  🚀 K6 LOAD TESTING - QUICK START VISUAL GUIDE 🚀             ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+─────────────────────────────────────────────────────────────────
+STEP 1: INSTALL K6 (2 minutes)
+─────────────────────────────────────────────────────────────────
+
+Windows (PowerShell Admin):
+    $ choco install k6
+    $ k6 version
+    ✅ You should see version number
+
+Linux/Hostinger:
+    $ sudo apt install k6
+    $ k6 version
+    ✅ You should see version number
+
+
+─────────────────────────────────────────────────────────────────
+STEP 2: START BACKEND (In Terminal 1)
+─────────────────────────────────────────────────────────────────
+
+    $ go run ./cmd/api/main.go
+    ✅ Should see: "Server listening on :8080"
+
+
+─────────────────────────────────────────────────────────────────
+STEP 3: RUN FIRST TEST (In Terminal 2)
+─────────────────────────────────────────────────────────────────
+
+Using Make (EASIEST):
+    $ make k6-basic
+    ✅ Test starts, shows live stats
+
+Using k6 directly:
+    $ cd k6
+    $ k6 run basic-load-test.js
+    ✅ Test starts, shows live stats
+
+Windows batch:
+    $ cd k6
+    $ .\run-k6-tests.bat basic
+    ✅ Test starts, shows live stats
+
+
+─────────────────────────────────────────────────────────────────
+STEP 4: READ RESULTS (After test completes)
+─────────────────────────────────────────────────────────────────
+
+Look for this section at the end:
+
+    http_req_duration................: avg=250ms p(95)=450ms p(99)=800ms
+    http_req_failed..................: 0.5%
+    http_requests....................: 5000 req/sec
+
+Interpret:
+    ✅ p(95) = 450ms    → Excellent! (want < 500ms)
+    ✅ Error = 0.5%     → Excellent! (want < 1%)
+    ✅ RPS = 5000/sec   → Good throughput!
+
+
+─────────────────────────────────────────────────────────────────
+TESTING ROADMAP
+─────────────────────────────────────────────────────────────────
+
+Timeline      Test              Command         Goal
+────────────────────────────────────────────────────────────────
+Day 1         basic             make k6-basic   Baseline
+              (9 min)                           Record metrics
+
+Day 2         ramp-up           make k6-ramp    Find breaking
+              (6 min)                           point
+
+Day 3         spike             make k6-spike   Test spike
+              (8 min)                           resilience
+
+Day 4         endurance         make k6-        Check for
+              (40 min)          endurance       leaks
+
+Optional:     stress            make k6-        Max capacity
+              (30 min)          stress          (will crash!)
+
+
+─────────────────────────────────────────────────────────────────
+METRICS AT A GLANCE
+─────────────────────────────────────────────────────────────────
+
+RESPONSE TIME (p95):
+    
+    ✅ Excellent:    p(95) < 500ms
+    ⚠️ Acceptable:   p(95) < 1000ms
+    ❌ Bad:          p(95) > 1000ms
+    
+    Think of it as: "95% of users see this latency"
+
+
+ERROR RATE:
+    
+    ✅ Excellent:    < 1%
+    ⚠️ Acceptable:   1-5%
+    ❌ Bad:          > 5%
+    
+    Think of it as: "1 in 100 requests fails"
+
+
+REQUESTS/SECOND (RPS):
+    
+    ✅ Should be CONSISTENT over time
+    ⚠️ If DECLINING over time = degradation
+    ❌ If COLLAPSING = system overloaded
+    
+    Think of it as: "How many requests/second your API handles"
+
+
+─────────────────────────────────────────────────────────────────
+COMMON SCENARIOS & FIXES
+─────────────────────────────────────────────────────────────────
+
+Scenario 1: ERROR RATE HIGH (> 5%)
+─────────────────────────────────
+  Probable Cause:
+    → Backend is crashing/rejecting requests
+    → Database connection pool maxed out
+    → Invalid endpoint URL
+    → Authentication token issue
+  
+  Fix:
+    → Check backend logs: tail -f app.log
+    → Verify endpoint exists: curl http://localhost:8080/health
+    → Check auth token if used
+    → Increase database connection pool
+
+
+Scenario 2: RESPONSE TIME SLOW (p95 > 1000ms)
+──────────────────────────────────────────────
+  Probable Cause:
+    → Missing database indexes
+    → N+1 database queries
+    → No caching layer
+    → Database connection pool too small
+  
+  Fix:
+    → Add indexes: CREATE INDEX idx_name ON table(column);
+    → Enable Redis caching
+    → Optimize SQL queries
+    → Increase connection pool
+
+
+Scenario 3: MEMORY GROWS OVER TIME
+──────────────────────────────────
+  Probable Cause:
+    → Memory leak in code
+    → Database connections not properly closed
+    → Unbounded queue/cache
+  
+  Fix:
+    → Check goroutine count over time
+    → Review connection handling
+    → Add bounds to caches/queues
+    → Profile with pprof
+
+
+Scenario 4: HIGH CPU USAGE
+──────────────────────────
+  Probable Cause:
+    → Inefficient algorithm
+    → No result pagination
+    → CPU-bound operations
+  
+  Fix:
+    → Profile with pprof
+    → Optimize hot functions
+    → Add pagination
+    → Consider async processing
+
+
+─────────────────────────────────────────────────────────────────
+QUICK REFERENCE COMMANDS
+─────────────────────────────────────────────────────────────────
+
+Test Selection:
+    make k6-basic       Run basic 50-100 VU test
+    make k6-realistic   Run realistic user flow
+    make k6-ramp        Find performance breaking point
+    make k6-spike       Test traffic spikes
+    make k6-stress      Find max capacity (will crash!)
+    make k6-endurance   Run 40-min stability test
+    make k6-help        Show all k6 commands
+
+With Custom URL:
+    k6 run -e BASE_URL=http://api.example.com k6/basic-load-test.js
+
+With Authentication:
+    k6 run -e AUTH_TOKEN=your_token k6/basic-load-test.js
+
+Save Results:
+    k6 run -o json=results.json k6/basic-load-test.js
+
+View Results:
+    python3 k6/analyze_results.py results.json
+
+
+─────────────────────────────────────────────────────────────────
+PERFORMANCE RATING SCALE
+─────────────────────────────────────────────────────────────────
+
+90-100 Points: ✅ EXCELLENT
+  - p(95) < 500ms
+  - Error rate < 1%
+  - No timeouts
+  - Stable metrics
+  → Ready for production
+
+70-89 Points: ⚠️ GOOD (Monitor & Optimize)
+  - p(95) 500-800ms
+  - Error rate 1-3%
+  - Occasional timeouts
+  - Slight degradation
+  → Optimize before production
+
+<70 Points: ❌ NEEDS WORK
+  - p(95) > 1000ms
+  - Error rate > 5%
+  - Frequent timeouts
+  - Poor performance
+  → Major optimization needed
+
+
+─────────────────────────────────────────────────────────────────
+FILE LOCATIONS & PURPOSES
+─────────────────────────────────────────────────────────────────
+
+k6/
+├── basic-load-test.js           Start here! Essential first test
+├── realistic-user-journey.js    Real user behavior simulation
+├── ramp-up-test.js              Find breaking point
+├── spike-test.js                Test traffic spikes
+├── stress-test.js               Find max capacity (crashes API!)
+├── endurance-test.js            Long-term stability (40 min)
+│
+├── START-HERE.md                5-minute quick overview ⭐
+├── README.md                    Complete detailed guide
+├── QUICK-REFERENCE.md           Command cheat sheet
+├── TESTING-STRATEGY.md          Full testing workflow
+├── EXAMPLES.sh                  50+ command examples
+│
+├── run-k6-tests.bat             Windows automation
+├── run-k6-tests.sh              Linux/Mac automation
+└── analyze_results.py           Parse JSON results
+
+
+─────────────────────────────────────────────────────────────────
+TROUBLESHOOTING QUICK FIX
+─────────────────────────────────────────────────────────────────
+
+Problem: "Connection refused"
+→ Fix: curl http://localhost:8080/health
+       (Verify backend is running)
+
+Problem: "High error rate"
+→ Fix: Check backend logs, verify endpoints match your API
+
+Problem: "Out of memory"
+→ Fix: k6 run --vus 25 basic-load-test.js
+       (Use fewer virtual users)
+
+Problem: "Too many open files"
+→ Fix: ulimit -n 10000
+       (Increase file descriptor limit on Linux)
+
+Problem: "Slow response times"
+→ Fix: Add database indexes, enable caching, optimize queries
+
+
+─────────────────────────────────────────────────────────────────
+NEXT STEPS
+─────────────────────────────────────────────────────────────────
+
+1. ✅ Install k6
+        choco install k6  (Windows)
+        sudo apt install k6  (Linux)
+
+2. ✅ Start your backend
+        go run ./cmd/api/main.go
+
+3. ✅ Run first test
+        make k6-basic
+
+4. ✅ Review results
+        Note p(95) and error rate
+
+5. ✅ Understand findings
+        Read START-HERE.md
+
+6. ✅ Run other tests
+        make k6-ramp
+        make k6-spike
+        make k6-endurance
+
+7. ✅ Optimize
+        Based on test findings
+
+8. ✅ Re-test
+        Verify improvements
+
+
+─────────────────────────────────────────────────────────────────
+DOCUMENTATION MAP
+─────────────────────────────────────────────────────────────────
+
+NEW? Read this:
+  → START-HERE.md (5 min)
+     Quick overview, essential info
+
+QUICK QUESTION?
+  → QUICK-REFERENCE.md
+     Commands cheat sheet
+
+DETAILED EXPLANATION?
+  → README.md
+     Comprehensive guide
+
+FULL TESTING PLAN?
+  → TESTING-STRATEGY.md
+     Complete workflow
+
+NEED EXAMPLES?
+  → EXAMPLES.sh
+     50+ command samples
+
+
+═════════════════════════════════════════════════════════════════
+
+Ready? Run this now:
+
+    make k6-basic
+
+Then read k6/START-HERE.md for next steps!
+
+═════════════════════════════════════════════════════════════════
