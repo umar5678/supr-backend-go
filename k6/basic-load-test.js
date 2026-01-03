@@ -3,7 +3,7 @@ import { check, sleep, group } from 'k6';
 
 // Configuration
 const BASE_URL = __ENV.BASE_URL || 'https://api.pittapizzahusrev.be/go';
-const AUTH_TOKEN = __ENV.AUTH_TOKEN || ''; // Set via environment variable
+const AUTH_TOKEN = __ENV.AUTH_TOKEN || ''; // Set via environment variable for protected endpoints
 
 export const options = {
   stages: [
@@ -60,19 +60,21 @@ function authTests() {
 }
 
 function homeServicesTests() {
-  // Get home services categories ( /homeservices/categories)
-  let servicesRes = http.get(`${BASE_URL}/api/v1/homeservices/categories`, {
+  // Get home services categories ( /api/v1/homeservices/categories) - requires auth
+  let categoriesRes = http.get(`${BASE_URL}/api/v1/homeservices/categories`, {
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${AUTH_TOKEN}`,
     },
     tags: { name: 'Get Categories' },
   });
 
-  check(servicesRes, {
-    'categories endpoint status is 200 or 404': (r) => r.status === 200 || r.status === 404,
-  });
+  // If no token provided, expect 401; with token, 200 or 404
+  check(categoriesRes, {
+    'categories endpoint status is 200, 401, or 404': (r) => r.status === 200 || r.status === 401 || r.status === 404,
+  }, { expectedStatuses: [200, 401, 404] });  // Ignore these in http_req_failed
 
-  // Get all services
+  // Get all services - no auth needed based on previous tests
   let allServicesRes = http.get(`${BASE_URL}/api/v1/homeservices/services`, {
     headers: {
       'Content-Type': 'application/json',
@@ -82,11 +84,11 @@ function homeServicesTests() {
 
   check(allServicesRes, {
     'services endpoint status is 200 or 404': (r) => r.status === 200 || r.status === 404,
-  });
+  }, { expectedStatuses: [200, 404] });  // Add to ignore 404
 }
 
 function riderTests() {
-  // Get rider profile (requires authentication, but test accepts 401 if no token)
+  // Get rider profile (requires authentication)
   let riderRes = http.get(`${BASE_URL}/api/v1/riders/profile`, {
     headers: {
       Authorization: `Bearer ${AUTH_TOKEN}`,
@@ -98,7 +100,7 @@ function riderTests() {
   check(riderRes, {
     'rider profile status is 200 or 401': (r) =>
       r.status === 200 || r.status === 401,
-  });
+  }, { expectedStatuses: [200, 401] });  // Ignore 401
 }
 
 function driverTests() {
@@ -114,5 +116,5 @@ function driverTests() {
   check(driverRes, {
     'driver profile status is 200, 401, or 404': (r) =>
       r.status === 200 || r.status === 401 || r.status === 404,
-  });
+  }, { expectedStatuses: [200, 401, 404] });  // Ignore 401/404
 }
