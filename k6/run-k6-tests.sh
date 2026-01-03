@@ -52,6 +52,7 @@ if [ $# -eq 0 ]; then
     echo "Usage: ./run-k6-tests.sh [command]"
     echo ""
     echo "Commands:"
+    echo "  diagnose    - Run endpoint diagnostics (START HERE!)"
     echo "  basic       - Run basic load test (recommended first)"
     echo "  realistic   - Run realistic user journey test"
     echo "  spike       - Run spike test"
@@ -69,6 +70,10 @@ if [ $# -eq 0 ]; then
 fi
 
 case "$1" in
+    diagnose)
+        echo "🔍 Running endpoint diagnostics..."
+        run_test "diagnose" "diagnose-endpoints.js" "Endpoint Diagnostics (1 VU)"
+        ;;
     basic)
         run_test "basic-load-test" "basic-load-test.js" "Basic Load Test (50-100 VUs, 9 min)"
         ;;
@@ -106,7 +111,7 @@ case "$1" in
         ;;
     *)
         echo "Unknown command: $1"
-        echo "Use: basic, realistic, spike, stress, endurance, ramp, or all"
+        echo "Use: diagnose, basic, realistic, spike, stress, endurance, ramp, or all"
         exit 1
         ;;
 esac

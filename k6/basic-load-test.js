@@ -60,10 +60,9 @@ function authTests() {
 }
 
 function homeServicesTests() {
-  // Get home services categories
-  let servicesRes = http.get(`${BASE_URL}/api/v1/homeservices/categories`, {
+  // Get home services categories (FIXED: /services/categories not /homeservices/categories)
+  let servicesRes = http.get(`${BASE_URL}/api/v1/services/categories`, {
     headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`,
       'Content-Type': 'application/json',
     },
     tags: { name: 'Get Categories' },
@@ -73,22 +72,21 @@ function homeServicesTests() {
     'categories endpoint status is 200 or 404': (r) => r.status === 200 || r.status === 404,
   });
 
-  // Get service providers
-  let providersRes = http.get(`${BASE_URL}/api/v1/serviceproviders`, {
+  // Get all services
+  let allServicesRes = http.get(`${BASE_URL}/api/v1/services`, {
     headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    tags: { name: 'Get Providers' },
+    tags: { name: 'Get Services' },
   });
 
-  check(providersRes, {
-    'providers endpoint status is 200 or 404': (r) => r.status === 200 || r.status === 404,
+  check(allServicesRes, {
+    'services endpoint status is 200 or 404': (r) => r.status === 200 || r.status === 404,
   });
 }
 
 function riderTests() {
-  // Get rider profile
+  // Get rider profile (requires authentication, but test accepts 401 if no token)
   let riderRes = http.get(`${BASE_URL}/api/v1/riders/profile`, {
     headers: {
       Authorization: `Bearer ${AUTH_TOKEN}`,
@@ -98,8 +96,8 @@ function riderTests() {
   });
 
   check(riderRes, {
-    'rider profile status is 200, 401, or 404': (r) =>
-      r.status === 200 || r.status === 401 || r.status === 404,
+    'rider profile status is 200 or 401': (r) =>
+      r.status === 200 || r.status === 401,
   });
 }
 
