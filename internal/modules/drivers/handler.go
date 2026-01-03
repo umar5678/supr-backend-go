@@ -15,6 +15,8 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
+//  test
+
 // RegisterDriver godoc
 // @Summary Register driver profile
 // @Tags drivers
