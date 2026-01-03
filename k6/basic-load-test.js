@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 
 // Configuration
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const BASE_URL = __ENV.BASE_URL || 'https://api.pittapizzahusrev.be/go';
 const AUTH_TOKEN = __ENV.AUTH_TOKEN || ''; // Set via environment variable
 
 export const options = {

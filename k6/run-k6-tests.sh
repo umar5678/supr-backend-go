@@ -3,7 +3,7 @@
 
 set -e
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
+BASE_URL="${BASE_URL:-https://api.pittapizzahusrev.be/go}"
 AUTH_TOKEN="${AUTH_TOKEN:-}"
 RESULTS_DIR="./k6-results"
 
