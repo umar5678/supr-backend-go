@@ -3,7 +3,7 @@ REM Helper script to run k6 tests on Windows PowerShell
 
 setlocal enabledelayedexpansion
 
-set BASE_URL=http://localhost:8080
+set BASE_URL=https://api.pittapizzahusrev.be/go
 set AUTH_TOKEN=
 set RESULTS_DIR=.\k6-results
 
