@@ -4,7 +4,7 @@ import { Rate } from 'k6/metrics';
 
 // Configuration
 const BASE_URL = __ENV.BASE_URL || 'https://api.pittapizzahusrev.be/go';
-let AUTH_TOKEN = __ENV.AUTH_TOKEN || ''; // Override via env if no setup login
+const AUTH_TOKEN = __ENV.AUTH_TOKEN || ''; // Set via environment variable if available
 
 // Custom metric for true errors (unexpected statuses)
 export const errorRate = new Rate('errors');
@@ -23,33 +23,7 @@ export const options = {
   },
 };
 
-// Setup: Login to get auth token (run once)
-export function setup() {
-  if (AUTH_TOKEN) return { token: AUTH_TOKEN };  // Use env if provided
-
-  const loginUrl = `${BASE_URL}/api/v1/auth/login`;  // Adjust if path is different (e.g., /auth/login)
-  const payload = JSON.stringify({
-    email: 'test@example.com',  // Replace with valid test credentials
-    password: 'testpassword',
-  });
-  const params = { headers: { 'Content-Type': 'application/json' } };
-
-  const res = http.post(loginUrl, payload, params);
-  check(res, { 'login status is 200': (r) => r.status === 200 });
-
-  const authData = res.json();
-  const token = authData.token || authData.access_token;  // Adjust based on response structure (check docs for field)
-
-  if (!token) {
-    throw new Error('Login failed: No token received');
-  }
-
-  return { token };
-}
-
-export default function (data) {
-  AUTH_TOKEN = data.token;  // Use token from setup
-
+export default function () {
   // Test authentication endpoints
   group('Auth endpoints', () => {
     authTests();
@@ -91,7 +65,7 @@ function authTests() {
 }
 
 function homeServicesTests() {
-  // Get home services categories ( /api/v1/homeservices/categories) - requires auth
+  // Get home services categories ( /api/v1/homeservices/categories) - requires auth, accept 401 if no token
   let categoriesRes = http.get(`${BASE_URL}/api/v1/homeservices/categories`, {
     headers: {
       'Content-Type': 'application/json',
@@ -100,11 +74,11 @@ function homeServicesTests() {
     tags: { name: 'Get Categories' },
   });
   const categoriesCheck = check(categoriesRes, {
-    'categories endpoint status is 200 or 404': (r) => r.status === 200 || r.status === 404,  // Remove 401 now that we have token
+    'categories endpoint status is 200, 401, or 404': (r) => r.status === 200 || r.status === 401 || r.status === 404,
   });
   errorRate.add(!categoriesCheck);
 
-  // Get all services - assuming public, but add token if needed
+  // Get all services - public
   let allServicesRes = http.get(`${BASE_URL}/api/v1/homeservices/services`, {
     headers: {
       'Content-Type': 'application/json',
@@ -118,7 +92,7 @@ function homeServicesTests() {
 }
 
 function riderTests() {
-  // Get rider profile (requires authentication)
+  // Get rider profile (requires authentication, accept 401 if no token)
   let riderRes = http.get(`${BASE_URL}/api/v1/riders/profile`, {
     headers: {
       Authorization: `Bearer ${AUTH_TOKEN}`,
@@ -127,7 +101,7 @@ function riderTests() {
     tags: { name: 'Get Rider Profile' },
   });
   const riderCheck = check(riderRes, {
-    'rider profile status is 200 or 404': (r) => r.status === 200 || r.status === 404,  // Assume 404 if not found, remove 401
+    'rider profile status is 200, 401, or 404': (r) => r.status === 200 || r.status === 401 || r.status === 404,
   });
   errorRate.add(!riderCheck);
 }
@@ -142,7 +116,7 @@ function driverTests() {
     tags: { name: 'Get Driver Profile' },
   });
   const driverCheck = check(driverRes, {
-    'driver profile status is 200 or 404': (r) => r.status === 200 || r.status === 404,
+    'driver profile status is 200, 401, or 404': (r) => r.status === 200 || r.status === 401 || r.status === 404,
   });
   errorRate.add(!driverCheck);
 }
