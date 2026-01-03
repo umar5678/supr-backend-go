@@ -60,8 +60,8 @@ function authTests() {
 }
 
 function homeServicesTests() {
-  // Get home services categories (FIXED: /services/categories not /homeservices/categories)
-  let servicesRes = http.get(`${BASE_URL}/api/v1/services/categories`, {
+  // Get home services categories ( /homeservices/categories)
+  let servicesRes = http.get(`${BASE_URL}/api/v1/homeservices/categories`, {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -73,7 +73,7 @@ function homeServicesTests() {
   });
 
   // Get all services
-  let allServicesRes = http.get(`${BASE_URL}/api/v1/services`, {
+  let allServicesRes = http.get(`${BASE_URL}/api/v1/homeservices/services`, {
     headers: {
       'Content-Type': 'application/json',
     },
