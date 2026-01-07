@@ -21,6 +21,10 @@ type Hub struct {
 	// ✅ NEW - Rider clients indexed by riderID
 	riders map[string][]*Client
 
+	// NEW: Role-based clients for fast role broadcasting
+	adminClients      []*Client
+	safetyTeamClients []*Client
+
 	// Mutex for thread-safe access to clients map
 	mu sync.RWMutex
 
@@ -37,12 +41,14 @@ type Hub struct {
 // NewHub creates a new Hub instance
 func NewHub() *Hub {
 	return &Hub{
-		clients:    make(map[string][]*Client),
-		drivers:    make(map[string][]*Client),
-		riders:     make(map[string][]*Client),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		broadcast:  make(chan *Message, 256),
+		clients:           make(map[string][]*Client),
+		drivers:           make(map[string][]*Client),
+		riders:            make(map[string][]*Client),
+		adminClients:      make([]*Client, 0),
+		safetyTeamClients: make([]*Client, 0),
+		register:          make(chan *Client),
+		unregister:        make(chan *Client),
+		broadcast:         make(chan *Message, 256),
 	}
 }
 
@@ -753,4 +759,73 @@ func (h *Hub) GetUserConnectionCount(userID string) int {
 	)
 
 	return count
+}
+
+// BroadcastToRole sends a message to all users with a specific role (safety_team, admin, etc.)
+func (h *Hub) BroadcastToRole(role string, msg *Message) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	logger.Info("broadcasting to role",
+		"role", role,
+		"messageType", msg.Type,
+	)
+
+	var targetClients []*Client
+
+	// Use role-specific maps for faster lookup
+	switch role {
+	case string(RoleAdmin):
+		targetClients = h.adminClients
+	case string(RoleDriver):
+		// Flatten drivers map to slice
+		for _, clients := range h.drivers {
+			targetClients = append(targetClients, clients...)
+		}
+	case string(RoleRider):
+		// Flatten riders map to slice
+		for _, clients := range h.riders {
+			targetClients = append(targetClients, clients...)
+		}
+	default:
+		// Fallback: iterate through all clients
+		for _, clients := range h.clients {
+			for _, client := range clients {
+				if string(client.Role) == role {
+					targetClients = append(targetClients, client)
+				}
+			}
+		}
+	}
+
+	sentCount := 0
+	for _, client := range targetClients {
+		select {
+		case client.send <- msg:
+			sentCount++
+			logger.Debug("message sent to role user",
+				"role", role,
+				"userID", client.UserID,
+				"clientID", client.ID,
+				"messageType", msg.Type,
+			)
+		default:
+			logger.Warn("role send buffer full",
+				"role", role,
+				"userID", client.UserID,
+				"clientID", client.ID,
+			)
+		}
+	}
+
+	logger.Info("broadcast to role completed",
+		"role", role,
+		"messageType", msg.Type,
+		"totalTargets", len(targetClients),
+		"sentToDevices", sentCount,
+	)
+
+	// Publish to Redis for multi-server setup
+	ctx := context.Background()
+	cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }

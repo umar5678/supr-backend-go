@@ -3,6 +3,7 @@ package rides
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/umar5678/go-backend/internal/modules/rides/dto"
+	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
@@ -173,19 +174,34 @@ func (h *Handler) MarkArrived(c *gin.Context) {
 // @Tags rides
 // @Security BearerAuth
 // @Param id path string true "Ride ID"
+// @Param request body dto.StartRideRequest true "Rider PIN"
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/start [post]
 func (h *Handler) StartRide(c *gin.Context) {
 	userID, _ := c.Get("userID") // ✅ User ID from JWT
 	rideID := c.Param("id")
+	logger.Info("StartRide handler called", "userID", userID, "rideID", rideID)
 
-	ride, err := h.service.StartRide(c.Request.Context(), userID.(string), rideID)
+	var req dto.StartRideRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Error("failed to bind request body", "error", err)
+		c.Error(response.BadRequest("Invalid request body"))
+		return
+	}
+	logger.Info("request body parsed", "rideID", rideID)
+
+	logger.Info("calling service.StartRide", "rideID", rideID)
+	ride, err := h.service.StartRide(c.Request.Context(), userID.(string), rideID, req)
 	if err != nil {
+		logger.Error("service.StartRide returned error", "error", err, "rideID", rideID)
 		c.Error(err)
 		return
 	}
+	logger.Info("service.StartRide returned successfully", "rideID", rideID)
 
+	logger.Info("calling response.Success", "rideID", rideID)
 	response.Success(c, ride, "Ride started successfully")
+	logger.Info("response.Success completed", "rideID", rideID)
 }
 
 // CompleteRide godoc
@@ -242,4 +258,48 @@ func (h *Handler) CancelRide(c *gin.Context) {
 	}
 
 	response.Success(c, nil, "Ride cancelled successfully")
+}
+
+// TriggerSOS godoc
+// @Summary Trigger SOS alert during active ride (Rider)
+// @Tags rides
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Ride ID"
+// @Param request body map[string]interface{} true "Location data with latitude and longitude"
+// @Success 200 {object} response.Response
+// @Router /rides/{id}/emergency [post]
+func (h *Handler) TriggerSOS(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	rideID := c.Param("id")
+
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body"))
+		return
+	}
+
+	// Extract location from request
+	var latitude, longitude float64
+	if lat, ok := req["latitude"].(float64); ok {
+		latitude = lat
+	} else {
+		c.Error(response.BadRequest("Latitude is required"))
+		return
+	}
+
+	if lon, ok := req["longitude"].(float64); ok {
+		longitude = lon
+	} else {
+		c.Error(response.BadRequest("Longitude is required"))
+		return
+	}
+
+	if err := h.service.TriggerSOS(c.Request.Context(), userID.(string), rideID, latitude, longitude); err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, nil, "SOS alert triggered - Help is on the way")
 }

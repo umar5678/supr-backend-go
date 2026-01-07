@@ -35,7 +35,16 @@ type Ride struct {
 	ActualFare     *float64 `gorm:"type:decimal(10,2)" json:"actualFare"`
 
 	// Pricing
-	SurgeMultiplier float64 `gorm:"type:decimal(3,2);default:1.0" json:"surgeMultiplier"`
+	SurgeMultiplier         float64  `gorm:"type:decimal(3,2);default:1.0" json:"surgeMultiplier"`
+	WaitTimeCharge          *float64 `gorm:"type:decimal(10,2)" json:"waitTimeCharge"`
+	PromoDiscount           *float64 `gorm:"type:decimal(10,2)" json:"promoDiscount"`
+	PromoCodeID             *string  `gorm:"type:uuid" json:"promoCodeId"`
+	PromoCode               *string  `gorm:"type:varchar(50)" json:"promoCode"`
+	DestinationChangeCharge *float64 `gorm:"type:decimal(10,2)" json:"destinationChangeCharge"`
+
+	// Rating
+	DriverRating *float64 `gorm:"type:decimal(2,1)" json:"driverRating"`
+	RiderRating  *float64 `gorm:"type:decimal(2,1)" json:"riderRating"`
 
 	// Wallet
 	WalletHoldID *string `gorm:"type:uuid" json:"walletHoldId"`

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Address represents a location with coordinates
@@ -35,16 +37,18 @@ func (a *Address) Scan(value interface{}) error {
 
 // RiderProfile model
 type RiderProfile struct {
-	ID                   string    `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	UserID               string    `gorm:"type:uuid;not null;uniqueIndex" json:"userId"`
-	HomeAddress          *Address  `gorm:"type:jsonb" json:"homeAddress,omitempty"`
-	WorkAddress          *Address  `gorm:"type:jsonb" json:"workAddress,omitempty"`
-	PreferredVehicleType *string   `gorm:"type:varchar(50)" json:"preferredVehicleType,omitempty"`
-	Rating               float64   `gorm:"type:decimal(3,2);not null;default:5.0" json:"rating"`
-	TotalRides           int       `gorm:"not null;default:0" json:"totalRides"`
-	CreatedAt            time.Time `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt            time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
-
+	ID                   string         `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	UserID               string         `gorm:"type:uuid;not null;uniqueIndex" json:"userId"`
+	HomeAddress          *Address       `gorm:"type:jsonb" json:"homeAddress,omitempty"`
+	WorkAddress          *Address       `gorm:"type:jsonb" json:"workAddress,omitempty"`
+	PreferredVehicleType *string        `gorm:"type:varchar(50)" json:"preferredVehicleType,omitempty"`
+	Rating               float64        `gorm:"type:decimal(3,2);not null;default:5.0" json:"rating"`
+	TotalRides           int            `gorm:"not null;default:0" json:"totalRides"`
+	TotalSpent           float64        `gorm:"type:decimal(10,2);default:0" json:"totalSpent"`
+	CancellationRate     float64        `gorm:"type:decimal(5,2);default:0" json:"cancellationRate"`
+	CreatedAt            time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+	UpdatedAt            time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+	DeletedAt            gorm.DeletedAt `gorm:"index" json:"-"`
 	// Relations
 	User   User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Wallet Wallet `gorm:"foreignKey:UserID;references:UserID" json:"wallet,omitempty"`

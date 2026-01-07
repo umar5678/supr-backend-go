@@ -25,8 +25,36 @@ type SurgeZoneResponse struct {
 }
 
 type FareBreakdownResponse struct {
-	Components []FareComponent `json:"components"`
-	Total      float64         `json:"total"`
+	Components        []FareComponent `json:"components"`
+	BaseFare          float64         `json:"baseFare"`
+	DistanceCharge    float64         `json:"distanceCharge"`
+	TimeCharge        float64         `json:"timeCharge"`
+	BookingFee        float64         `json:"bookingFee"`
+	SurgeCharge       float64         `json:"surgeCharge"`
+	SurgeMultiplier   float64         `json:"surgeMultiplier"`
+	SubTotal          float64         `json:"subTotal"`
+	TotalFare         float64         `json:"totalFare"`
+	CustomerPrice     float64         `json:"customerPrice"`
+	DriverEarning     float64         `json:"driverEarning"`
+	PlatformFee       float64         `json:"platformFee"`
+	EstimatedDistance float64         `json:"estimatedDistance"`
+	EstimatedDuration int             `json:"estimatedDuration"`
+	PriceCapped       bool            `json:"priceCapped"`
+	PlatformAbsorbed  float64         `json:"platformAbsorbed"`
+}
+
+type WaitTimeChargeResponse struct {
+	RideID           string  `json:"rideId"`
+	TotalWaitMinutes int     `json:"totalWaitMinutes"`
+	ChargeAmount     float64 `json:"chargeAmount"`
+	FreeWaitMinutes  int     `json:"freeWaitMinutes"`
+}
+
+type DestinationChangeResponse struct {
+	RideID             string  `json:"rideId"`
+	AdditionalDistance float64 `json:"additionalDistance"`
+	AdditionalCharge   float64 `json:"additionalCharge"`
+	NewTotalFare       float64 `json:"newTotalFare"`
 }
 
 type FareComponent struct {

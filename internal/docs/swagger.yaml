@@ -269,11 +269,38 @@ definitions:
     required:
     - refreshToken
     type: object
+  github_com_umar5678_go-backend_internal_modules_auth_dto.UpdateProfileRequest:
+    properties:
+      dob:
+        type: string
+      email:
+        type: string
+      gender:
+        enum:
+        - male
+        - female
+        - other
+        type: string
+      name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      phone:
+        type: string
+      profilePhotoUrl:
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse:
     properties:
       createdAt:
         type: string
       email:
+        type: string
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      gender:
         type: string
       id:
         type: string
@@ -284,6 +311,10 @@ definitions:
       phone:
         type: string
       profilePhotoUrl:
+        type: string
+      referralCode:
+        type: string
+      ridePin:
         type: string
       role:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
@@ -509,6 +540,83 @@ definitions:
         type: number
       totalEarnings:
         type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternListResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      patternType:
+        type: string
+      riskScore:
+        type: integer
+      status:
+        type: string
+      userId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternResponse:
+    properties:
+      createdAt:
+        type: string
+      details:
+        type: string
+      driverId:
+        type: string
+      id:
+        type: string
+      patternType:
+        type: string
+      relatedUserId:
+        type: string
+      reviewNotes:
+        type: string
+      reviewedAt:
+        type: string
+      reviewedBy:
+        type: string
+      rideId:
+        type: string
+      riskScore:
+        type: integer
+      status:
+        type: string
+      userId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudStatsResponse:
+    properties:
+      byType:
+        additionalProperties:
+          type: integer
+        type: object
+      confirmedCount:
+        type: integer
+      dismissedCount:
+        type: integer
+      flaggedCount:
+        type: integer
+      highRiskCount:
+        type: integer
+      investigatingCount:
+        type: integer
+      totalPatterns:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_fraud_dto.ReviewFraudPatternRequest:
+    properties:
+      reviewNotes:
+        maxLength: 1000
+        type: string
+      status:
+        enum:
+        - investigating
+        - confirmed
+        - dismissed
+        type: string
+    required:
+    - status
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AddonListResponse:
     properties:
@@ -2518,6 +2626,8 @@ definitions:
         type: string
       name:
         type: string
+      phone:
+        type: string
       photo:
         type: string
       rating:
@@ -3611,6 +3721,193 @@ definitions:
     required:
     - status
     type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.CalculateWaitTimeRequest:
+    properties:
+      arrivedAt:
+        description: ISO 8601 timestamp
+        type: string
+      rideId:
+        type: string
+    required:
+    - arrivedAt
+    - rideId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.ChangeDestinationRequest:
+    properties:
+      newAddress:
+        maxLength: 500
+        type: string
+      newLatitude:
+        maximum: 90
+        minimum: -90
+        type: number
+      newLongitude:
+        maximum: 180
+        minimum: -180
+        type: number
+      rideId:
+        type: string
+    required:
+    - newAddress
+    - newLatitude
+    - newLongitude
+    - rideId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgePricingRuleRequest:
+    properties:
+      baseMultiplier:
+        type: number
+      dayOfWeek:
+        description: -1 = all days
+        type: integer
+      demandMultiplierPerRequest:
+        type: number
+      demandThreshold:
+        type: integer
+      description:
+        type: string
+      enableDemandBasedSurge:
+        type: boolean
+      endTime:
+        description: HH:MM
+        type: string
+      maxMultiplier:
+        type: number
+      minMultiplier:
+        type: number
+      name:
+        type: string
+      startTime:
+        description: HH:MM
+        type: string
+      vehicleTypeId:
+        type: string
+    required:
+    - baseMultiplier
+    - endTime
+    - name
+    - startTime
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.DemandTrackingResponse:
+    properties:
+      availableDrivers:
+        type: integer
+      averageWaitTime:
+        type: integer
+      completedRides:
+        type: integer
+      demandSupplyRatio:
+        type: number
+      id:
+        type: string
+      pendingRequests:
+        type: integer
+      recordedAt:
+        type: string
+      surgeMultiplier:
+        type: number
+      zoneGeohash:
+        type: string
+      zoneId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.DestinationChangeResponse:
+    properties:
+      additionalCharge:
+        type: number
+      additionalDistance:
+        type: number
+      newTotalFare:
+        type: number
+      rideId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.ETAEstimateRequest:
+    properties:
+      dropoffLat:
+        type: number
+      dropoffLon:
+        type: number
+      pickupLat:
+        type: number
+      pickupLon:
+        type: number
+    required:
+    - dropoffLat
+    - dropoffLon
+    - pickupLat
+    - pickupLon
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.ETAEstimateResponse:
+    properties:
+      createdAt:
+        type: string
+      distanceKm:
+        type: number
+      durationSeconds:
+        type: integer
+      estimatedDropoffETA:
+        type: integer
+      estimatedPickupETA:
+        type: integer
+      id:
+        type: string
+      rideId:
+        type: string
+      source:
+        type: string
+      trafficCondition:
+        type: string
+      trafficMultiplier:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.FareBreakdownResponse:
+    properties:
+      baseFare:
+        type: number
+      bookingFee:
+        type: number
+      components:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.FareComponent'
+        type: array
+      customerPrice:
+        type: number
+      distanceCharge:
+        type: number
+      driverEarning:
+        type: number
+      estimatedDistance:
+        type: number
+      estimatedDuration:
+        type: integer
+      platformAbsorbed:
+        type: number
+      platformFee:
+        type: number
+      priceCapped:
+        type: boolean
+      subTotal:
+        type: number
+      surgeCharge:
+        type: number
+      surgeMultiplier:
+        type: number
+      timeCharge:
+        type: number
+      totalFare:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.FareComponent:
+    properties:
+      amount:
+        type: number
+      name:
+        type: string
+      type:
+        description: base, distance, duration, surge, booking_fee
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateRequest:
     properties:
       dropoffLat:
@@ -3667,6 +3964,95 @@ definitions:
       vehicleTypeName:
         type: string
     type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeCalculationRequest:
+    properties:
+      geohash:
+        type: string
+      pickupLat:
+        type: number
+      pickupLon:
+        type: number
+      vehicleTypeId:
+        type: string
+    required:
+    - pickupLat
+    - pickupLon
+    - vehicleTypeId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeCalculationResponse:
+    properties:
+      appliedMultiplier:
+        type: number
+      baseFare:
+        type: number
+      demandBasedMultiplier:
+        type: number
+      details:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetails'
+      reason:
+        description: '''normal'', ''time_based'', ''demand_based'', ''combined'''
+        type: string
+      surgeAmount:
+        type: number
+      timeBasedMultiplier:
+        type: number
+      totalFare:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetails:
+    properties:
+      activePricingRule:
+        type: string
+      availableDrivers:
+        type: integer
+      dayType:
+        description: '"weekday" or "weekend"'
+        type: string
+      demandSupplyRatio:
+        type: number
+      pendingRequests:
+        type: integer
+      timeOfDay:
+        description: '"peak" or "off-peak"'
+        type: string
+      trafficCondition:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgePricingRuleResponse:
+    properties:
+      baseMultiplier:
+        type: number
+      createdAt:
+        type: string
+      dayOfWeek:
+        type: integer
+      demandMultiplierPerRequest:
+        type: number
+      demandThreshold:
+        type: integer
+      description:
+        type: string
+      enableDemandBasedSurge:
+        type: boolean
+      endTime:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      maxMultiplier:
+        type: number
+      minMultiplier:
+        type: number
+      name:
+        type: string
+      startTime:
+        type: string
+      updatedAt:
+        type: string
+      vehicleTypeId:
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeZoneResponse:
     properties:
       areaName:
@@ -3679,6 +4065,288 @@ definitions:
         type: number
       radiusKm:
         type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.WaitTimeChargeResponse:
+    properties:
+      chargeAmount:
+        type: number
+      freeWaitMinutes:
+        type: integer
+      rideId:
+        type: string
+      totalWaitMinutes:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_profile_dto.ApplyReferralRequest:
+    properties:
+      referralCode:
+        maxLength: 20
+        minLength: 6
+        type: string
+    required:
+    - referralCode
+    type: object
+  github_com_umar5678_go-backend_internal_modules_profile_dto.KYCResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      idDocumentUrl:
+        type: string
+      idNumber:
+        type: string
+      idType:
+        type: string
+      rejectionReason:
+        type: string
+      selfieUrl:
+        type: string
+      status:
+        type: string
+      userId:
+        type: string
+      verifiedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_profile_dto.RecentLocationResponse:
+    properties:
+      address:
+        type: string
+      lastUsed:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_profile_dto.ReferralInfoResponse:
+    properties:
+      referralBonus:
+        type: number
+      referralCode:
+        type: string
+      referralCount:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_profile_dto.SaveLocationRequest:
+    properties:
+      address:
+        maxLength: 500
+        type: string
+      customName:
+        maxLength: 100
+        type: string
+      isDefault:
+        type: boolean
+      label:
+        enum:
+        - home
+        - work
+        - custom
+        type: string
+      latitude:
+        maximum: 90
+        minimum: -90
+        type: number
+      longitude:
+        maximum: 180
+        minimum: -180
+        type: number
+    required:
+    - address
+    - label
+    - latitude
+    - longitude
+    type: object
+  github_com_umar5678_go-backend_internal_modules_profile_dto.SavedLocationResponse:
+    properties:
+      address:
+        type: string
+      createdAt:
+        type: string
+      customName:
+        type: string
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      label:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      userId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_profile_dto.SubmitKYCRequest:
+    properties:
+      idDocumentUrl:
+        type: string
+      idNumber:
+        maxLength: 100
+        minLength: 5
+        type: string
+      idType:
+        enum:
+        - national_id
+        - passport
+        - driver_license
+        type: string
+      selfieUrl:
+        type: string
+    required:
+    - idDocumentUrl
+    - idNumber
+    - idType
+    - selfieUrl
+    type: object
+  github_com_umar5678_go-backend_internal_modules_profile_dto.UpdateEmergencyContactRequest:
+    properties:
+      name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      phone:
+        maxLength: 20
+        minLength: 10
+        type: string
+    required:
+    - name
+    - phone
+    type: object
+  github_com_umar5678_go-backend_internal_modules_promotions_dto.AddFreeRideCreditRequest:
+    properties:
+      amount:
+        minimum: 0
+        type: number
+      reason:
+        maxLength: 200
+        type: string
+      userId:
+        type: string
+    required:
+    - amount
+    - reason
+    - userId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_promotions_dto.ApplyPromoCodeRequest:
+    properties:
+      code:
+        type: string
+      rideAmount:
+        minimum: 0
+        type: number
+      rideId:
+        type: string
+    required:
+    - code
+    - rideAmount
+    - rideId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_promotions_dto.ApplyPromoCodeResponse:
+    properties:
+      discountAmount:
+        type: number
+      finalAmount:
+        type: number
+      rideId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_promotions_dto.CreatePromoCodeRequest:
+    properties:
+      code:
+        maxLength: 50
+        minLength: 3
+        type: string
+      description:
+        maxLength: 500
+        type: string
+      discountType:
+        enum:
+        - percentage
+        - flat
+        - free_ride
+        type: string
+      discountValue:
+        minimum: 0
+        type: number
+      maxDiscount:
+        minimum: 0
+        type: number
+      minRideAmount:
+        minimum: 0
+        type: number
+      perUserLimit:
+        minimum: 1
+        type: integer
+      usageLimit:
+        minimum: 0
+        type: integer
+      validFrom:
+        type: string
+      validUntil:
+        type: string
+    required:
+    - code
+    - discountType
+    - discountValue
+    - validFrom
+    - validUntil
+    type: object
+  github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse:
+    properties:
+      code:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      discountType:
+        type: string
+      discountValue:
+        type: number
+      id:
+        type: string
+      isActive:
+        type: boolean
+      maxDiscount:
+        type: number
+      minRideAmount:
+        type: number
+      perUserLimit:
+        type: integer
+      usageCount:
+        type: integer
+      usageLimit:
+        type: integer
+      validFrom:
+        type: string
+      validUntil:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_promotions_dto.ValidatePromoCodeRequest:
+    properties:
+      code:
+        type: string
+      rideAmount:
+        minimum: 0
+        type: number
+    required:
+    - code
+    - rideAmount
+    type: object
+  github_com_umar5678_go-backend_internal_modules_promotions_dto.ValidatePromoCodeResponse:
+    properties:
+      discountAmount:
+        type: number
+      finalAmount:
+        type: number
+      message:
+        type: string
+      valid:
+        type: boolean
     type: object
   github_com_umar5678_go-backend_internal_modules_ratings_dto.CreateRatingRequest:
     properties:
@@ -3695,6 +4363,53 @@ definitions:
     - orderId
     - score
     type: object
+  github_com_umar5678_go-backend_internal_modules_ratings_dto.RateDriverRequest:
+    properties:
+      comment:
+        maxLength: 500
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      rideId:
+        type: string
+    required:
+    - rating
+    - rideId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_ratings_dto.RateRiderRequest:
+    properties:
+      comment:
+        maxLength: 500
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      rideId:
+        type: string
+    required:
+    - rating
+    - rideId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingBreakdownResponse:
+    properties:
+      averageRating:
+        type: number
+      fiveStars:
+        type: integer
+      fourStars:
+        type: integer
+      oneStar:
+        type: integer
+      threeStars:
+        type: integer
+      totalRatings:
+        type: integer
+      twoStars:
+        type: integer
+    type: object
   github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingResponse:
     properties:
       comment:
@@ -3710,6 +4425,26 @@ definitions:
       score:
         type: integer
       userId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingStatsResponse:
+    properties:
+      acceptanceRate:
+        type: number
+      cancellationRate:
+        type: number
+      rating:
+        type: number
+      totalEarnings:
+        type: number
+      totalRides:
+        type: integer
+      totalSpent:
+        type: number
+      userId:
+        type: string
+      userType:
+        description: '''driver'' or ''rider'''
         type: string
     type: object
   github_com_umar5678_go-backend_internal_modules_riders_dto.AddressInput:
@@ -3795,9 +4530,12 @@ definitions:
       actualDuration:
         minimum: 0
         type: integer
+      riderPin:
+        type: string
     required:
     - actualDistance
     - actualDuration
+    - riderPin
     type: object
   github_com_umar5678_go-backend_internal_modules_rides_dto.CreateRideRequest:
     properties:
@@ -3823,8 +4561,19 @@ definitions:
         maximum: 180
         minimum: -180
         type: number
+      promoCode:
+        maxLength: 50
+        minLength: 3
+        type: string
       riderNotes:
         maxLength: 500
+        type: string
+      savedLocationId:
+        type: string
+      useSavedAs:
+        enum:
+        - pickup
+        - dropoff
         type: string
       vehicleTypeId:
         type: string
@@ -3909,6 +4658,8 @@ definitions:
         type: integer
       estimatedFare:
         type: number
+      hasActiveSos:
+        type: boolean
       id:
         type: string
       pickupAddress:
@@ -3917,6 +4668,8 @@ definitions:
         type: number
       pickupLon:
         type: number
+      promoDiscount:
+        type: number
       requestedAt:
         type: string
       rider:
@@ -3924,6 +4677,8 @@ definitions:
       riderId:
         type: string
       riderNotes:
+        type: string
+      sosAlertId:
         type: string
       startedAt:
         type: string
@@ -3937,6 +4692,84 @@ definitions:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse'
       vehicleTypeId:
         type: string
+      waitTimeCharge:
+        type: number
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.StartRideRequest:
+    properties:
+      riderPin:
+        description: 'NEW: 4-digit PIN'
+        type: string
+    required:
+    - riderPin
+    type: object
+  github_com_umar5678_go-backend_internal_modules_sos_dto.ResolveSOSRequest:
+    properties:
+      notes:
+        maxLength: 1000
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertListResponse:
+    properties:
+      alertType:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      rideId:
+        type: string
+      status:
+        type: string
+      userId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertResponse:
+    properties:
+      alertType:
+        type: string
+      createdAt:
+        type: string
+      emergencyContactsNotified:
+        type: boolean
+      id:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      notes:
+        type: string
+      resolvedAt:
+        type: string
+      resolvedBy:
+        type: string
+      rideId:
+        type: string
+      safetyTeamNotifiedAt:
+        type: string
+      status:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+      userId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_sos_dto.TriggerSOSRequest:
+    properties:
+      latitude:
+        maximum: 90
+        minimum: -90
+        type: number
+      longitude:
+        maximum: 180
+        minimum: -180
+        type: number
+      rideId:
+        type: string
+    required:
+    - latitude
+    - longitude
     type: object
   github_com_umar5678_go-backend_internal_modules_tracking_dto.DriverLocationResponse:
     properties:
@@ -5366,6 +6199,108 @@ paths:
       summary: Update service status
       tags:
       - Admin - Home Services
+  /admin/promotions/free-ride-credits:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Credit data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.AddFreeRideCreditRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Add free ride credits (Admin)
+      tags:
+      - Admin routes
+  /admin/promotions/promo-codes:
+    get:
+      parameters:
+      - description: Filter by active status
+        in: query
+        name: isActive
+        type: boolean
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List promo codes (Admin)
+      tags:
+      - Admin routes
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Promo code data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.CreatePromoCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create promo code (Admin)
+      tags:
+      - Admin routes
+  /admin/promotions/promo-codes/{id}/deactivate:
+    post:
+      parameters:
+      - description: Promo code ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Deactivate promo code (Admin)
+      tags:
+      - Admin routes
   /admin/service-providers/{id}/approve:
     post:
       consumes:
@@ -6109,6 +7044,46 @@ paths:
       summary: Get user profile
       tags:
       - auth
+    put:
+      consumes:
+      - application/json
+      description: Update the authenticated user's profile information
+      parameters:
+      - description: Profile data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+              type: object
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - auth
   /auth/refresh:
     post:
       consumes:
@@ -6326,6 +7301,145 @@ paths:
       summary: Get driver wallet balance
       tags:
       - drivers
+  /fraud/patterns:
+    get:
+      parameters:
+      - description: Filter by pattern type
+        in: query
+        name: patternType
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Minimum risk score
+        in: query
+        name: minRiskScore
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternListResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List fraud patterns (Admin)
+      tags:
+      - fraud
+  /fraud/patterns/{id}:
+    get:
+      parameters:
+      - description: Pattern ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get fraud pattern details (Admin)
+      tags:
+      - fraud
+  /fraud/patterns/{id}/review:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Pattern ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Review data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_fraud_dto.ReviewFraudPatternRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Review fraud pattern (Admin)
+      tags:
+      - fraud
+  /fraud/stats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudStatsResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get fraud detection statistics (Admin)
+      tags:
+      - fraud
+  /fraud/users/{userId}/risk-score:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  type: integer
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Check user risk score (Admin)
+      tags:
+      - fraud
   /homeservices/addons:
     get:
       description: Get paginated list of available addons with filters
@@ -6984,6 +8098,85 @@ paths:
       summary: Get frequent services
       tags:
       - Home Services - Customer
+  /pricing/calculate-eta:
+    post:
+      consumes:
+      - application/json
+      description: Calculates estimated time of arrival for pickup and dropoff
+      parameters:
+      - description: ETA calculation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.ETAEstimateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.ETAEstimateResponse'
+              type: object
+      summary: Calculate ETA for a route
+      tags:
+      - pricing
+  /pricing/calculate-surge:
+    post:
+      consumes:
+      - application/json
+      description: Calculates combined time-based and demand-based surge multiplier
+      parameters:
+      - description: Surge calculation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeCalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeCalculationResponse'
+              type: object
+      summary: Calculate surge pricing for a location
+      tags:
+      - pricing
+  /pricing/demand:
+    get:
+      description: Returns current demand metrics (pending requests, available drivers)
+        for a zone
+      parameters:
+      - description: Geohash of the zone
+        in: query
+        name: geohash
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.DemandTrackingResponse'
+              type: object
+      summary: Get current demand for a zone
+      tags:
+      - pricing
   /pricing/estimate:
     post:
       consumes:
@@ -7008,6 +8201,53 @@ paths:
                   $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateResponse'
               type: object
       summary: Get fare estimate for a trip
+      tags:
+      - pricing
+  /pricing/fare-breakdown:
+    get:
+      parameters:
+      - description: Pickup latitude
+        format: float64
+        in: query
+        name: pickupLat
+        required: true
+        type: number
+      - description: Pickup longitude
+        format: float64
+        in: query
+        name: pickupLon
+        required: true
+        type: number
+      - description: Dropoff latitude
+        format: float64
+        in: query
+        name: dropoffLat
+        required: true
+        type: number
+      - description: Dropoff longitude
+        format: float64
+        in: query
+        name: dropoffLon
+        required: true
+        type: number
+      - description: Vehicle type ID
+        in: query
+        name: vehicleTypeId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.FareBreakdownResponse'
+              type: object
+      summary: Get fare breakdown and estimate
       tags:
       - pricing
   /pricing/surge:
@@ -7039,6 +8279,54 @@ paths:
       summary: Get surge multiplier for a location
       tags:
       - pricing
+  /pricing/surge-rules:
+    get:
+      description: Returns all active surge pricing rules for time-based and demand-based
+        surge
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgePricingRuleResponse'
+                  type: array
+              type: object
+      summary: Get all active surge pricing rules
+      tags:
+      - pricing
+    post:
+      consumes:
+      - application/json
+      description: Creates a new surge pricing rule for time-based or demand-based
+        surging
+      parameters:
+      - description: Surge pricing rule
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgePricingRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgePricingRuleResponse'
+              type: object
+      summary: Create a new surge pricing rule
+      tags:
+      - pricing
   /pricing/surge/zones:
     get:
       produces:
@@ -7058,6 +8346,370 @@ paths:
       summary: Get all active surge zones
       tags:
       - pricing
+  /pricing/wait-time:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Wait time data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.CalculateWaitTimeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.WaitTimeChargeResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Calculate wait time charges
+      tags:
+      - pricing
+  /profile/emergency-contact:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Emergency contact data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.UpdateEmergencyContactRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update emergency contact
+      tags:
+      - profile
+  /profile/kyc:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.KYCResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get KYC status
+      tags:
+      - profile
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: KYC data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.SubmitKYCRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.KYCResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Submit KYC documents
+      tags:
+      - profile
+  /profile/locations:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.SavedLocationResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get saved locations
+      tags:
+      - profile
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Location data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.SaveLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.SavedLocationResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Save a location
+      tags:
+      - profile
+  /profile/locations/{id}:
+    delete:
+      parameters:
+      - description: Location ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete saved location
+      tags:
+      - profile
+  /profile/locations/{id}/default:
+    post:
+      parameters:
+      - description: Location ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Set default location
+      tags:
+      - profile
+  /profile/locations/recent:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.RecentLocationResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get recent locations
+      tags:
+      - profile
+  /profile/referral:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.ReferralInfoResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get referral information
+      tags:
+      - profile
+  /profile/referral/apply:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Referral code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.ApplyReferralRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Apply referral code
+      tags:
+      - profile
+  /profile/referral/generate:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.ReferralInfoResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Generate referral code
+      tags:
+      - profile
+  /promotions/apply:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Apply data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.ApplyPromoCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.ApplyPromoCodeResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Apply promo code to ride
+      tags:
+      - promotions
+  /promotions/free-ride-credits:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  format: float64
+                  type: number
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get user's free ride credits
+      tags:
+      - promotions
+  /promotions/promo-codes/{code}:
+    get:
+      parameters:
+      - description: Promo code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get promo code details
+      tags:
+      - promotions
+  /promotions/validate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Validation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.ValidatePromoCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.ValidatePromoCodeResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Validate promo code
+      tags:
+      - promotions
   /provider/availability:
     patch:
       consumes:
@@ -7772,6 +9424,148 @@ paths:
       summary: Rate a service
       tags:
       - ratings
+  /ratings/driver:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rating data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RateDriverRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Rate driver (Rider)
+      tags:
+      - ratings
+  /ratings/driver/{driverId}/breakdown:
+    get:
+      parameters:
+      - description: Driver ID
+        in: path
+        name: driverId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingBreakdownResponse'
+              type: object
+      summary: Get driver rating breakdown
+      tags:
+      - ratings
+  /ratings/driver/{driverId}/stats:
+    get:
+      parameters:
+      - description: Driver ID
+        in: path
+        name: driverId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingStatsResponse'
+              type: object
+      summary: Get driver rating statistics
+      tags:
+      - ratings
+  /ratings/rider:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rating data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RateRiderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Rate rider (Driver)
+      tags:
+      - ratings
+  /ratings/rider/{riderId}/breakdown:
+    get:
+      parameters:
+      - description: Rider ID
+        in: path
+        name: riderId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingBreakdownResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get rider rating breakdown
+      tags:
+      - ratings
+  /ratings/rider/{riderId}/stats:
+    get:
+      parameters:
+      - description: Rider ID
+        in: path
+        name: riderId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingStatsResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get rider rating statistics
+      tags:
+      - ratings
   /riders/profile:
     get:
       produces:
@@ -8035,6 +9829,35 @@ paths:
       summary: Complete the ride (Driver)
       tags:
       - rides
+  /rides/{id}/emergency:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Ride ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Location data with latitude and longitude
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Trigger SOS alert during active ride (Rider)
+      tags:
+      - rides
   /rides/{id}/reject:
     post:
       consumes:
@@ -8071,6 +9894,12 @@ paths:
         name: id
         required: true
         type: string
+      - description: Rider PIN
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.StartRideRequest'
       responses:
         "200":
           description: OK
@@ -8800,6 +10629,158 @@ paths:
       summary: Register as service provider
       tags:
       - home-services-provider
+  /sos:
+    get:
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertListResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List SOS alerts
+      tags:
+      - sos
+  /sos/{id}:
+    get:
+      parameters:
+      - description: Alert ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get SOS alert details
+      tags:
+      - sos
+  /sos/{id}/cancel:
+    post:
+      parameters:
+      - description: Alert ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cancel SOS alert
+      tags:
+      - sos
+  /sos/{id}/resolve:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Alert ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resolution notes
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.ResolveSOSRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Resolve SOS alert
+      tags:
+      - sos
+  /sos/active:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get active SOS alert
+      tags:
+      - sos
+  /sos/trigger:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: SOS data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.TriggerSOSRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Trigger SOS emergency alert
+      tags:
+      - sos
   /tracking/driver/{driverId}:
     get:
       parameters:

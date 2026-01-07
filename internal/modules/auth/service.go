@@ -11,6 +11,7 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/riders"
 	"github.com/umar5678/go-backend/internal/modules/serviceproviders"
 	"github.com/umar5678/go-backend/internal/services/cache"
+	"github.com/umar5678/go-backend/internal/utils/codegen"
 	"github.com/umar5678/go-backend/internal/utils/jwt"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/password"
@@ -73,11 +74,25 @@ func (s *service) PhoneSignup(ctx context.Context, req authdto.PhoneSignupReques
 	}
 
 	// Create new user
+	referralCode, err := codegen.GenerateReferralCode()
+	if err != nil {
+		logger.Error("failed to generate referral code", "error", err, "phone", req.Phone)
+		return nil, response.InternalServerError("Failed to generate referral code", err)
+	}
+
+	ridePIN, err := codegen.GenerateRidePIN()
+	if err != nil {
+		logger.Error("failed to generate ride PIN", "error", err, "phone", req.Phone)
+		return nil, response.InternalServerError("Failed to generate ride PIN", err)
+	}
+
 	user := &models.User{
-		Name:   req.Name,
-		Phone:  &req.Phone,
-		Role:   req.Role,
-		Status: models.StatusActive,
+		Name:         req.Name,
+		Phone:        &req.Phone,
+		Role:         req.Role,
+		Status:       models.StatusActive,
+		ReferralCode: referralCode,
+		RidePIN:      ridePIN,
 	}
 
 	if err := s.repo.Create(ctx, user); err != nil {
@@ -189,13 +204,29 @@ func (s *service) EmailSignup(ctx context.Context, req authdto.EmailSignupReques
 		initialStatus = models.StatusPendingApproval
 	}
 
+	// Generate referral code
+	referralCode, err := codegen.GenerateReferralCode()
+	if err != nil {
+		logger.Error("failed to generate referral code", "error", err, "email", req.Email)
+		return nil, response.InternalServerError("Failed to generate referral code", err)
+	}
+
+	// Generate ride PIN
+	ridePIN, err := codegen.GenerateRidePIN()
+	if err != nil {
+		logger.Error("failed to generate ride PIN", "error", err, "email", req.Email)
+		return nil, response.InternalServerError("Failed to generate ride PIN", err)
+	}
+
 	// Create user
 	user := &models.User{
-		Name:     req.Name,
-		Email:    &req.Email,
-		Password: &hashedPassword,
-		Role:     req.Role,
-		Status:   initialStatus,
+		Name:         req.Name,
+		Email:        &req.Email,
+		Password:     &hashedPassword,
+		Role:         req.Role,
+		Status:       initialStatus,
+		ReferralCode: referralCode,
+		RidePIN:      ridePIN,
 	}
 
 	if err := s.repo.Create(ctx, user); err != nil {
@@ -413,21 +444,14 @@ func (s *service) Logout(ctx context.Context, userID, refreshToken string) error
 
 // GetProfile retrieves user profile
 func (s *service) GetProfile(ctx context.Context, userID string) (*authdto.UserResponse, error) {
-	// Try cache first
-	cacheKey := "user:profile:" + userID
-	var cachedUser models.User
-	err := cache.GetJSON(ctx, cacheKey, &cachedUser)
-	if err == nil {
-		return authdto.ToUserResponse(&cachedUser), nil
-	}
-
-	// Get from database
+	// Get from database directly (don't use cache to ensure fresh RidePIN and other sensitive data)
 	user, err := s.repo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, response.NotFoundError("User")
 	}
 
-	// Cache for 5 minutes
+	// Cache for 5 minutes (but next profile fetch will bypass cache)
+	cacheKey := "user:profile:" + userID
 	cache.SetJSON(ctx, cacheKey, user, 5*time.Minute)
 
 	return authdto.ToUserResponse(user), nil
@@ -454,6 +478,27 @@ func (s *service) UpdateProfile(ctx context.Context, userID string, req authdto.
 	}
 	if req.ProfilePhotoURL != nil {
 		user.ProfilePhotoURL = req.ProfilePhotoURL
+	}
+
+	if req.Phone != nil {
+		//check if Phone is already registered
+		existingUser, err := s.repo.FindByPhone(ctx, *req.Phone)
+		if err == nil && existingUser.ID != userID {
+			return nil, response.ConflictError("Phone number already in use")
+		}
+		user.Phone = req.Phone
+	}
+
+	if req.Gender != nil {
+		user.Gender = req.Gender
+	}
+
+	if req.DOB != nil {
+		dob, err := req.ParseDOB()
+		if err != nil {
+			return nil, response.BadRequest("Invalid date of birth")
+		}
+		user.DOB = dob
 	}
 
 	if err := s.repo.Update(ctx, user); err != nil {

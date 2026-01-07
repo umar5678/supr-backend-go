@@ -31,18 +31,24 @@ const (
 
 // User model
 type User struct {
-	ID              string         `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	Name            string         `gorm:"type:varchar(255);not null" json:"name"`
-	Email           *string        `gorm:"type:varchar(255);uniqueIndex" json:"email,omitempty"`
-	Phone           *string        `gorm:"type:varchar(20);uniqueIndex" json:"phone,omitempty"`
-	Password        *string        `gorm:"type:varchar(255)" json:"-"`
-	Role            UserRole       `gorm:"type:user_role;not null;default:'rider'" json:"role"`
-	Status          UserStatus     `gorm:"type:user_status;not null;default:'active'" json:"status"`
-	ProfilePhotoURL *string        `gorm:"type:varchar(500)" json:"profilePhotoUrl,omitempty"`
-	LastLoginAt     *time.Time     `json:"lastLoginAt,omitempty"`
-	CreatedAt       time.Time      `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt       time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
-	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+	ID                    string         `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	Name                  string         `gorm:"type:varchar(255);not null" json:"name"`
+	Email                 *string        `gorm:"type:varchar(255);uniqueIndex" json:"email,omitempty"`
+	Phone                 *string        `gorm:"type:varchar(20);uniqueIndex" json:"phone,omitempty"`
+	Gender                *string        `gorm:"type:varchar(10)" json:"gender,omitempty"`
+	DOB                   *time.Time     `json:"dob,omitempty"`
+	Password              *string        `gorm:"type:varchar(255)" json:"-"`
+	Role                  UserRole       `gorm:"type:user_role;not null;default:'rider'" json:"role"`
+	Status                UserStatus     `gorm:"type:user_status;not null;default:'active'" json:"status"`
+	RidePIN               string         `gorm:"type:varchar(4);not null" json:"-"`
+	ProfilePhotoURL       *string        `gorm:"type:varchar(500)" json:"profilePhotoUrl,omitempty"`
+	EmergencyContactName  string         `gorm:"type:varchar(255)" json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone string         `gorm:"type:varchar(20)" json:"emergencyContactPhone,omitempty"`
+	LastLoginAt           *time.Time     `json:"lastLoginAt,omitempty"`
+	ReferralCode          string         `gorm:"type:varchar(20);uniqueIndex" json:"referralCode,omitempty"`
+	CreatedAt             time.Time      `gorm:"autoCreateTime" json:"createdAt"`
+	UpdatedAt             time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
+	DeletedAt             gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 func (User) TableName() string {

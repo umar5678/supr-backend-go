@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
 // Response represents the standard API response structure
@@ -28,11 +29,13 @@ type Meta struct {
 
 // Success sends a successful response
 func Success(c *gin.Context, data interface{}, message string, code ...string) {
+	logger.Info("response.Success called", "message", message)
 	statusCode := 200
 	if c.Request.Method == "POST" {
 		statusCode = 201
 	}
 
+	logger.Info("building response struct", "statusCode", statusCode)
 	resp := Response{
 		Success: true,
 		Message: message,
@@ -44,7 +47,9 @@ func Success(c *gin.Context, data interface{}, message string, code ...string) {
 		resp.Code = code[0]
 	}
 
+	logger.Info("calling c.JSON", "statusCode", statusCode)
 	c.JSON(statusCode, resp)
+	logger.Info("c.JSON completed successfully", "statusCode", statusCode)
 }
 
 // SendError sends an error response

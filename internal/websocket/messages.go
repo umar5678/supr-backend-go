@@ -36,6 +36,12 @@ const (
 	TypeRideCompleted        MessageType = "ride_completed"         // Ride finished
 	TypeRideCancelled        MessageType = "ride_cancelled"         // Ride cancelled
 	TypeDriverLocationUpdate MessageType = "driver_location_update" // Driver location
+	TypeRatingPrompt         MessageType = "rating_prompt"          // Prompt for ride rating
+
+	// NEW: SOS types
+	TypeSOSAlert     = "sos_alert"
+	TypeSOSResolved  = "sos_resolved"
+	TypeSOSEscalated = "sos_escalated"
 
 	// System
 	TypeSystemMessage MessageType = "system"

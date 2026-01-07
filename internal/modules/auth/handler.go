@@ -183,15 +183,19 @@ func (h *Handler) GetProfile(c *gin.Context) {
 	response.Success(c, profile, "Profile retrieved successfully")
 }
 
-// // // UpdateProfile godoc
-// // // @Summary Update user profile
-// // // @Tags auth
-// // // @Security BearerAuth
-// // // @Accept json
-// // // @Produce json
-// // // @Param request body authdto.UpdateProfileRequest true "Profile data"
-// // // @Success 200 {object} response.Response{data=authdto.ToUserResponse}
-// // // @Router /auth/profile [put]
+// UpdateProfile godoc
+// @Summary Update user profile
+// @Description Update the authenticated user's profile information
+// @Tags auth
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body authdto.UpdateProfileRequest true "Profile data"
+// @Success 200 {object} response.Response{data=authdto.UserResponse}
+// @Failure 400 {object} response.Response "Invalid request body"
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 500 {object} response.Response "Internal server error"
+// @Router /auth/profile [put]
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	userID, _ := c.Get("userID")
 

@@ -3,6 +3,7 @@ package authdto
 import (
 	"errors"
 	"regexp"
+	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
 )
@@ -122,4 +123,19 @@ type UpdateProfileRequest struct {
 	Name            *string `json:"name" binding:"omitempty,min=2,max=255"`
 	Email           *string `json:"email" binding:"omitempty,email"`
 	ProfilePhotoURL *string `json:"profilePhotoUrl" binding:"omitempty,url"`
+	Phone           *string `json:"phone" binding:"omitempty"`
+	Gender          *string `json:"gender" binding:"omitempty,oneof=male female other"`
+	DOB             *string `json:"dob" binding:"omitempty,datetime=2006-01-02"`
+}
+
+// Parse DOB
+func (r *UpdateProfileRequest) ParseDOB() (*time.Time, error) {
+	if r.DOB == nil {
+		return nil, nil
+	}
+	dob, err := time.Parse("2006-01-02", *r.DOB)
+	if err != nil {
+		return nil, err
+	}
+	return &dob, nil
 }

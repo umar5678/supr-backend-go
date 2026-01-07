@@ -49,6 +49,7 @@ type Wallet struct {
 	IsActive    bool       `gorm:"not null;default:true" json:"isActive"`
 	CreatedAt   time.Time  `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt   time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`
+	FreeRideCredits float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"freeRideCredits"`
 
 	// Relations
 	User         User                `gorm:"foreignKey:UserID" json:"user,omitempty"`

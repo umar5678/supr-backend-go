@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
@@ -13,11 +15,12 @@ func Recovery() gin.HandlerFunc {
 			if err := recover(); err != nil {
 				requestID, _ := c.Get("requestID")
 
-				logger.Error("panic recovered",
+				logger.Error("panic recovered in Recovery middleware",
 					"requestID", requestID,
 					"error", err,
 					"path", c.Request.URL.Path,
 					"method", c.Request.Method,
+					"stack", fmt.Sprintf("%v", err),
 				)
 
 				// Check if it's an AppError
@@ -108,24 +111,30 @@ func Recovery() gin.HandlerFunc {
 // // ErrorHandler is a simpler error handling middleware
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		logger.Info("ErrorHandler: before c.Next()", "path", c.Request.URL.Path, "method", c.Request.Method)
 		c.Next()
+		logger.Info("ErrorHandler: after c.Next()", "path", c.Request.URL.Path, "method", c.Request.Method, "written", c.Writer.Written(), "statusCode", c.Writer.Status())
 
 		// Check if response already sent
 		if c.Writer.Written() {
+			logger.Info("ErrorHandler: response already written, skipping error handling", "statusCode", c.Writer.Status())
 			return
 		}
 
 		// Check for errors in context
 		if len(c.Errors) > 0 {
+			logger.Error("ErrorHandler: errors found in context", "errorCount", len(c.Errors), "lastError", c.Errors.Last().Err)
 			err := c.Errors.Last().Err
 
 			// Handle AppError
 			if appErr, ok := err.(*response.AppError); ok {
+				logger.Info("ErrorHandler: AppError detected, sending error response", "statusCode", appErr.StatusCode, "message", appErr.Message)
 				response.SendError(c, appErr.StatusCode, appErr.Message, appErr.Errors, appErr.Code)
 				return
 			}
 
 			// Generic error
+			logger.Info("ErrorHandler: generic error, sending internal error response")
 			response.InternalError(c, "An error occurred")
 		}
 	}

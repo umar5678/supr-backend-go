@@ -32,6 +32,8 @@ type RideResponse struct {
 	ActualDistance *float64 `json:"actualDistance,omitempty"`
 	ActualDuration *int     `json:"actualDuration,omitempty"`
 	ActualFare     *float64 `json:"actualFare,omitempty"`
+	PromoDiscount  *float64 `json:"promoDiscount,omitempty"`
+	WaitTimeCharge *float64 `json:"waitTimeCharge,omitempty"`
 
 	SurgeMultiplier    float64 `json:"surgeMultiplier"`
 	RiderNotes         string  `json:"riderNotes,omitempty"`
@@ -44,6 +46,9 @@ type RideResponse struct {
 	StartedAt   *time.Time `json:"startedAt,omitempty"`
 	CompletedAt *time.Time `json:"completedAt,omitempty"`
 	CancelledAt *time.Time `json:"cancelledAt,omitempty"`
+
+	HasActiveSOS bool    `json:"hasActiveSos"`
+	SOSAlertID   *string `json:"sosAlertId,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -61,6 +66,11 @@ type RideListResponse struct {
 }
 
 func ToRideResponse(ride *models.Ride) *RideResponse {
+	// ✅ CRITICAL: Handle nil ride to prevent panic
+	if ride == nil {
+		return nil
+	}
+
 	resp := &RideResponse{
 		ID:                 ride.ID,
 		RiderID:            ride.RiderID,
@@ -117,12 +127,12 @@ func ToRideListResponse(ride *models.Ride) *RideListResponse {
 	}
 }
 
-// type RideResponse struct {
-//     // ... existing fields ...
-//     DriverLocation *LocationDTO `json:"driverLocation,omitempty"`
-// }
-
 type LocationDTO struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 }
+
+// type RideResponse struct {
+//     // ... existing fields ...
+//     DriverLocation *LocationDTO `json:"driverLocation,omitempty"`
+// }

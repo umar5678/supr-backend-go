@@ -1883,6 +1883,181 @@
                 }
             }
         },
+        "/admin/promotions/free-ride-credits": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Add free ride credits (Admin)",
+                "parameters": [
+                    {
+                        "description": "Credit data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.AddFreeRideCreditRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/promotions/promo-codes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "List promo codes (Admin)",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "isActive",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Create promo code (Admin)",
+                "parameters": [
+                    {
+                        "description": "Promo code data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.CreatePromoCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/promotions/promo-codes/{id}/deactivate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Deactivate promo code (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Promo code ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/service-providers/{id}/approve": {
             "post": {
                 "security": [
@@ -3057,6 +3232,73 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the authenticated user's profile information",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Update user profile",
+                "parameters": [
+                    {
+                        "description": "Profile data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
             }
         },
         "/auth/refresh": {
@@ -3439,6 +3681,248 @@
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/fraud/patterns": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fraud"
+                ],
+                "summary": "List fraud patterns (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by pattern type",
+                        "name": "patternType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Minimum risk score",
+                        "name": "minRiskScore",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternListResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/fraud/patterns/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fraud"
+                ],
+                "summary": "Get fraud pattern details (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pattern ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/fraud/patterns/{id}/review": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fraud"
+                ],
+                "summary": "Review fraud pattern (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pattern ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Review data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_fraud_dto.ReviewFraudPatternRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/fraud/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fraud"
+                ],
+                "summary": "Get fraud detection statistics (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudStatsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/fraud/users/{userId}/risk-score": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fraud"
+                ],
+                "summary": "Check user risk score (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "integer"
                                         }
                                     }
                                 }
@@ -4514,6 +4998,139 @@
                 }
             }
         },
+        "/pricing/calculate-eta": {
+            "post": {
+                "description": "Calculates estimated time of arrival for pickup and dropoff",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "Calculate ETA for a route",
+                "parameters": [
+                    {
+                        "description": "ETA calculation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.ETAEstimateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.ETAEstimateResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/pricing/calculate-surge": {
+            "post": {
+                "description": "Calculates combined time-based and demand-based surge multiplier",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "Calculate surge pricing for a location",
+                "parameters": [
+                    {
+                        "description": "Surge calculation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeCalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeCalculationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/pricing/demand": {
+            "get": {
+                "description": "Returns current demand metrics (pending requests, available drivers) for a zone",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "Get current demand for a zone",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Geohash of the zone",
+                        "name": "geohash",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.DemandTrackingResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/pricing/estimate": {
             "post": {
                 "consumes": [
@@ -4550,6 +5167,78 @@
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/pricing/fare-breakdown": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "Get fare breakdown and estimate",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "format": "float64",
+                        "description": "Pickup latitude",
+                        "name": "pickupLat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "format": "float64",
+                        "description": "Pickup longitude",
+                        "name": "pickupLon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "format": "float64",
+                        "description": "Dropoff latitude",
+                        "name": "dropoffLat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "format": "float64",
+                        "description": "Dropoff longitude",
+                        "name": "dropoffLon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Vehicle type ID",
+                        "name": "vehicleTypeId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.FareBreakdownResponse"
                                         }
                                     }
                                 }
@@ -4607,6 +5296,85 @@
                 }
             }
         },
+        "/pricing/surge-rules": {
+            "get": {
+                "description": "Returns all active surge pricing rules for time-based and demand-based surge",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "Get all active surge pricing rules",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgePricingRuleResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a new surge pricing rule for time-based or demand-based surging",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "Create a new surge pricing rule",
+                "parameters": [
+                    {
+                        "description": "Surge pricing rule",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgePricingRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgePricingRuleResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/pricing/surge/zones": {
             "get": {
                 "produces": [
@@ -4632,6 +5400,656 @@
                                             "items": {
                                                 "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeZoneResponse"
                                             }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/pricing/wait-time": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "Calculate wait time charges",
+                "parameters": [
+                    {
+                        "description": "Wait time data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.CalculateWaitTimeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.WaitTimeChargeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/emergency-contact": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Update emergency contact",
+                "parameters": [
+                    {
+                        "description": "Emergency contact data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.UpdateEmergencyContactRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/kyc": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Get KYC status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.KYCResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Submit KYC documents",
+                "parameters": [
+                    {
+                        "description": "KYC data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.SubmitKYCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.KYCResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/locations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Get saved locations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.SavedLocationResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Save a location",
+                "parameters": [
+                    {
+                        "description": "Location data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.SaveLocationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.SavedLocationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/locations/recent": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Get recent locations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.RecentLocationResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/locations/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Delete saved location",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Location ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/locations/{id}/default": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Set default location",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Location ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/referral": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Get referral information",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.ReferralInfoResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/referral/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Apply referral code",
+                "parameters": [
+                    {
+                        "description": "Referral code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.ApplyReferralRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/referral/generate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Generate referral code",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_profile_dto.ReferralInfoResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/promotions/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "promotions"
+                ],
+                "summary": "Apply promo code to ride",
+                "parameters": [
+                    {
+                        "description": "Apply data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.ApplyPromoCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.ApplyPromoCodeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/promotions/free-ride-credits": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "promotions"
+                ],
+                "summary": "Get user's free ride credits",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "number",
+                                            "format": "float64"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/promotions/promo-codes/{code}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "promotions"
+                ],
+                "summary": "Get promo code details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Promo code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/promotions/validate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "promotions"
+                ],
+                "summary": "Validate promo code",
+                "parameters": [
+                    {
+                        "description": "Validation data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.ValidatePromoCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.ValidatePromoCodeResponse"
                                         }
                                     }
                                 }
@@ -5817,6 +7235,252 @@
                 }
             }
         },
+        "/ratings/driver": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ratings"
+                ],
+                "summary": "Rate driver (Rider)",
+                "parameters": [
+                    {
+                        "description": "Rating data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RateDriverRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/ratings/driver/{driverId}/breakdown": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ratings"
+                ],
+                "summary": "Get driver rating breakdown",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Driver ID",
+                        "name": "driverId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingBreakdownResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/ratings/driver/{driverId}/stats": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ratings"
+                ],
+                "summary": "Get driver rating statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Driver ID",
+                        "name": "driverId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingStatsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/ratings/rider": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ratings"
+                ],
+                "summary": "Rate rider (Driver)",
+                "parameters": [
+                    {
+                        "description": "Rating data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RateRiderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/ratings/rider/{riderId}/breakdown": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ratings"
+                ],
+                "summary": "Get rider rating breakdown",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rider ID",
+                        "name": "riderId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingBreakdownResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/ratings/rider/{riderId}/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ratings"
+                ],
+                "summary": "Get rider rating statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rider ID",
+                        "name": "riderId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingStatsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/riders/profile": {
             "get": {
                 "security": [
@@ -6282,6 +7946,52 @@
                 }
             }
         },
+        "/rides/{id}/emergency": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rides"
+                ],
+                "summary": "Trigger SOS alert during active ride (Rider)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ride ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Location data with latitude and longitude",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/rides/{id}/reject": {
             "post": {
                 "security": [
@@ -6345,6 +8055,15 @@
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Rider PIN",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.StartRideRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -7552,6 +9271,271 @@
                 }
             }
         },
+        "/sos": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sos"
+                ],
+                "summary": "List SOS alerts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertListResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/sos/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sos"
+                ],
+                "summary": "Get active SOS alert",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/sos/trigger": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sos"
+                ],
+                "summary": "Trigger SOS emergency alert",
+                "parameters": [
+                    {
+                        "description": "SOS data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.TriggerSOSRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/sos/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sos"
+                ],
+                "summary": "Get SOS alert details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Alert ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/sos/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "sos"
+                ],
+                "summary": "Cancel SOS alert",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Alert ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sos/{id}/resolve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sos"
+                ],
+                "summary": "Resolve SOS alert",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Alert ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Resolution notes",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.ResolveSOSRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/tracking/driver/{driverId}": {
             "get": {
                 "produces": [
@@ -8662,6 +10646,36 @@
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_auth_dto.UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "dob": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "other"
+                    ]
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profilePhotoUrl": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse": {
             "type": "object",
             "properties": {
@@ -8669,6 +10683,15 @@
                     "type": "string"
                 },
                 "email": {
+                    "type": "string"
+                },
+                "emergencyContactName": {
+                    "type": "string"
+                },
+                "emergencyContactPhone": {
+                    "type": "string"
+                },
+                "gender": {
                     "type": "string"
                 },
                 "id": {
@@ -8684,6 +10707,12 @@
                     "type": "string"
                 },
                 "profilePhotoUrl": {
+                    "type": "string"
+                },
+                "referralCode": {
+                    "type": "string"
+                },
+                "ridePin": {
                     "type": "string"
                 },
                 "role": {
@@ -9006,6 +11035,122 @@
                 },
                 "totalEarnings": {
                     "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternListResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "patternType": {
+                    "type": "string"
+                },
+                "riskScore": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "string"
+                },
+                "driverId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "patternType": {
+                    "type": "string"
+                },
+                "relatedUserId": {
+                    "type": "string"
+                },
+                "reviewNotes": {
+                    "type": "string"
+                },
+                "reviewedAt": {
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "type": "string"
+                },
+                "rideId": {
+                    "type": "string"
+                },
+                "riskScore": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudStatsResponse": {
+            "type": "object",
+            "properties": {
+                "byType": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "confirmedCount": {
+                    "type": "integer"
+                },
+                "dismissedCount": {
+                    "type": "integer"
+                },
+                "flaggedCount": {
+                    "type": "integer"
+                },
+                "highRiskCount": {
+                    "type": "integer"
+                },
+                "investigatingCount": {
+                    "type": "integer"
+                },
+                "totalPatterns": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_fraud_dto.ReviewFraudPatternRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "reviewNotes": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "investigating",
+                        "confirmed",
+                        "dismissed"
+                    ]
                 }
             }
         },
@@ -11993,6 +14138,9 @@
                 "name": {
                     "type": "string"
                 },
+                "phone": {
+                    "type": "string"
+                },
                 "photo": {
                     "type": "string"
                 },
@@ -13620,6 +15768,281 @@
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.CalculateWaitTimeRequest": {
+            "type": "object",
+            "required": [
+                "arrivedAt",
+                "rideId"
+            ],
+            "properties": {
+                "arrivedAt": {
+                    "description": "ISO 8601 timestamp",
+                    "type": "string"
+                },
+                "rideId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.ChangeDestinationRequest": {
+            "type": "object",
+            "required": [
+                "newAddress",
+                "newLatitude",
+                "newLongitude",
+                "rideId"
+            ],
+            "properties": {
+                "newAddress": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "newLatitude": {
+                    "type": "number",
+                    "maximum": 90,
+                    "minimum": -90
+                },
+                "newLongitude": {
+                    "type": "number",
+                    "maximum": 180,
+                    "minimum": -180
+                },
+                "rideId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgePricingRuleRequest": {
+            "type": "object",
+            "required": [
+                "baseMultiplier",
+                "endTime",
+                "name",
+                "startTime"
+            ],
+            "properties": {
+                "baseMultiplier": {
+                    "type": "number"
+                },
+                "dayOfWeek": {
+                    "description": "-1 = all days",
+                    "type": "integer"
+                },
+                "demandMultiplierPerRequest": {
+                    "type": "number"
+                },
+                "demandThreshold": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enableDemandBasedSurge": {
+                    "type": "boolean"
+                },
+                "endTime": {
+                    "description": "HH:MM",
+                    "type": "string"
+                },
+                "maxMultiplier": {
+                    "type": "number"
+                },
+                "minMultiplier": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "description": "HH:MM",
+                    "type": "string"
+                },
+                "vehicleTypeId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.DemandTrackingResponse": {
+            "type": "object",
+            "properties": {
+                "availableDrivers": {
+                    "type": "integer"
+                },
+                "averageWaitTime": {
+                    "type": "integer"
+                },
+                "completedRides": {
+                    "type": "integer"
+                },
+                "demandSupplyRatio": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "pendingRequests": {
+                    "type": "integer"
+                },
+                "recordedAt": {
+                    "type": "string"
+                },
+                "surgeMultiplier": {
+                    "type": "number"
+                },
+                "zoneGeohash": {
+                    "type": "string"
+                },
+                "zoneId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.DestinationChangeResponse": {
+            "type": "object",
+            "properties": {
+                "additionalCharge": {
+                    "type": "number"
+                },
+                "additionalDistance": {
+                    "type": "number"
+                },
+                "newTotalFare": {
+                    "type": "number"
+                },
+                "rideId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.ETAEstimateRequest": {
+            "type": "object",
+            "required": [
+                "dropoffLat",
+                "dropoffLon",
+                "pickupLat",
+                "pickupLon"
+            ],
+            "properties": {
+                "dropoffLat": {
+                    "type": "number"
+                },
+                "dropoffLon": {
+                    "type": "number"
+                },
+                "pickupLat": {
+                    "type": "number"
+                },
+                "pickupLon": {
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.ETAEstimateResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "distanceKm": {
+                    "type": "number"
+                },
+                "durationSeconds": {
+                    "type": "integer"
+                },
+                "estimatedDropoffETA": {
+                    "type": "integer"
+                },
+                "estimatedPickupETA": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rideId": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "trafficCondition": {
+                    "type": "string"
+                },
+                "trafficMultiplier": {
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.FareBreakdownResponse": {
+            "type": "object",
+            "properties": {
+                "baseFare": {
+                    "type": "number"
+                },
+                "bookingFee": {
+                    "type": "number"
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.FareComponent"
+                    }
+                },
+                "customerPrice": {
+                    "type": "number"
+                },
+                "distanceCharge": {
+                    "type": "number"
+                },
+                "driverEarning": {
+                    "type": "number"
+                },
+                "estimatedDistance": {
+                    "type": "number"
+                },
+                "estimatedDuration": {
+                    "type": "integer"
+                },
+                "platformAbsorbed": {
+                    "type": "number"
+                },
+                "platformFee": {
+                    "type": "number"
+                },
+                "priceCapped": {
+                    "type": "boolean"
+                },
+                "subTotal": {
+                    "type": "number"
+                },
+                "surgeCharge": {
+                    "type": "number"
+                },
+                "surgeMultiplier": {
+                    "type": "number"
+                },
+                "timeCharge": {
+                    "type": "number"
+                },
+                "totalFare": {
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.FareComponent": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "base, distance, duration, surge, booking_fee",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateRequest": {
             "type": "object",
             "required": [
@@ -13698,6 +16121,139 @@
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeCalculationRequest": {
+            "type": "object",
+            "required": [
+                "pickupLat",
+                "pickupLon",
+                "vehicleTypeId"
+            ],
+            "properties": {
+                "geohash": {
+                    "type": "string"
+                },
+                "pickupLat": {
+                    "type": "number"
+                },
+                "pickupLon": {
+                    "type": "number"
+                },
+                "vehicleTypeId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeCalculationResponse": {
+            "type": "object",
+            "properties": {
+                "appliedMultiplier": {
+                    "type": "number"
+                },
+                "baseFare": {
+                    "type": "number"
+                },
+                "demandBasedMultiplier": {
+                    "type": "number"
+                },
+                "details": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetails"
+                },
+                "reason": {
+                    "description": "'normal', 'time_based', 'demand_based', 'combined'",
+                    "type": "string"
+                },
+                "surgeAmount": {
+                    "type": "number"
+                },
+                "timeBasedMultiplier": {
+                    "type": "number"
+                },
+                "totalFare": {
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetails": {
+            "type": "object",
+            "properties": {
+                "activePricingRule": {
+                    "type": "string"
+                },
+                "availableDrivers": {
+                    "type": "integer"
+                },
+                "dayType": {
+                    "description": "\"weekday\" or \"weekend\"",
+                    "type": "string"
+                },
+                "demandSupplyRatio": {
+                    "type": "number"
+                },
+                "pendingRequests": {
+                    "type": "integer"
+                },
+                "timeOfDay": {
+                    "description": "\"peak\" or \"off-peak\"",
+                    "type": "string"
+                },
+                "trafficCondition": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgePricingRuleResponse": {
+            "type": "object",
+            "properties": {
+                "baseMultiplier": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "dayOfWeek": {
+                    "type": "integer"
+                },
+                "demandMultiplierPerRequest": {
+                    "type": "number"
+                },
+                "demandThreshold": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enableDemandBasedSurge": {
+                    "type": "boolean"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "maxMultiplier": {
+                    "type": "number"
+                },
+                "minMultiplier": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "vehicleTypeId": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeZoneResponse": {
             "type": "object",
             "properties": {
@@ -13715,6 +16271,413 @@
                 },
                 "radiusKm": {
                     "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.WaitTimeChargeResponse": {
+            "type": "object",
+            "properties": {
+                "chargeAmount": {
+                    "type": "number"
+                },
+                "freeWaitMinutes": {
+                    "type": "integer"
+                },
+                "rideId": {
+                    "type": "string"
+                },
+                "totalWaitMinutes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_profile_dto.ApplyReferralRequest": {
+            "type": "object",
+            "required": [
+                "referralCode"
+            ],
+            "properties": {
+                "referralCode": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 6
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_profile_dto.KYCResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "idDocumentUrl": {
+                    "type": "string"
+                },
+                "idNumber": {
+                    "type": "string"
+                },
+                "idType": {
+                    "type": "string"
+                },
+                "rejectionReason": {
+                    "type": "string"
+                },
+                "selfieUrl": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "verifiedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_profile_dto.RecentLocationResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "lastUsed": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_profile_dto.ReferralInfoResponse": {
+            "type": "object",
+            "properties": {
+                "referralBonus": {
+                    "type": "number"
+                },
+                "referralCode": {
+                    "type": "string"
+                },
+                "referralCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_profile_dto.SaveLocationRequest": {
+            "type": "object",
+            "required": [
+                "address",
+                "label",
+                "latitude",
+                "longitude"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "customName": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string",
+                    "enum": [
+                        "home",
+                        "work",
+                        "custom"
+                    ]
+                },
+                "latitude": {
+                    "type": "number",
+                    "maximum": 90,
+                    "minimum": -90
+                },
+                "longitude": {
+                    "type": "number",
+                    "maximum": 180,
+                    "minimum": -180
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_profile_dto.SavedLocationResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "customName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_profile_dto.SubmitKYCRequest": {
+            "type": "object",
+            "required": [
+                "idDocumentUrl",
+                "idNumber",
+                "idType",
+                "selfieUrl"
+            ],
+            "properties": {
+                "idDocumentUrl": {
+                    "type": "string"
+                },
+                "idNumber": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 5
+                },
+                "idType": {
+                    "type": "string",
+                    "enum": [
+                        "national_id",
+                        "passport",
+                        "driver_license"
+                    ]
+                },
+                "selfieUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_profile_dto.UpdateEmergencyContactRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "phone"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
+                },
+                "phone": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 10
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_promotions_dto.AddFreeRideCreditRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "reason",
+                "userId"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_promotions_dto.ApplyPromoCodeRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "rideAmount",
+                "rideId"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "rideAmount": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "rideId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_promotions_dto.ApplyPromoCodeResponse": {
+            "type": "object",
+            "properties": {
+                "discountAmount": {
+                    "type": "number"
+                },
+                "finalAmount": {
+                    "type": "number"
+                },
+                "rideId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_promotions_dto.CreatePromoCodeRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "discountType",
+                "discountValue",
+                "validFrom",
+                "validUntil"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "discountType": {
+                    "type": "string",
+                    "enum": [
+                        "percentage",
+                        "flat",
+                        "free_ride"
+                    ]
+                },
+                "discountValue": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "maxDiscount": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "minRideAmount": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "perUserLimit": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "usageLimit": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "validFrom": {
+                    "type": "string"
+                },
+                "validUntil": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discountType": {
+                    "type": "string"
+                },
+                "discountValue": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "maxDiscount": {
+                    "type": "number"
+                },
+                "minRideAmount": {
+                    "type": "number"
+                },
+                "perUserLimit": {
+                    "type": "integer"
+                },
+                "usageCount": {
+                    "type": "integer"
+                },
+                "usageLimit": {
+                    "type": "integer"
+                },
+                "validFrom": {
+                    "type": "string"
+                },
+                "validUntil": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_promotions_dto.ValidatePromoCodeRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "rideAmount"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "rideAmount": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_promotions_dto.ValidatePromoCodeResponse": {
+            "type": "object",
+            "properties": {
+                "discountAmount": {
+                    "type": "number"
+                },
+                "finalAmount": {
+                    "type": "number"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
                 }
             }
         },
@@ -13736,6 +16699,74 @@
                     "type": "integer",
                     "maximum": 5,
                     "minimum": 1
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_ratings_dto.RateDriverRequest": {
+            "type": "object",
+            "required": [
+                "rating",
+                "rideId"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
+                },
+                "rideId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_ratings_dto.RateRiderRequest": {
+            "type": "object",
+            "required": [
+                "rating",
+                "rideId"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
+                },
+                "rideId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingBreakdownResponse": {
+            "type": "object",
+            "properties": {
+                "averageRating": {
+                    "type": "number"
+                },
+                "fiveStars": {
+                    "type": "integer"
+                },
+                "fourStars": {
+                    "type": "integer"
+                },
+                "oneStar": {
+                    "type": "integer"
+                },
+                "threeStars": {
+                    "type": "integer"
+                },
+                "totalRatings": {
+                    "type": "integer"
+                },
+                "twoStars": {
+                    "type": "integer"
                 }
             }
         },
@@ -13761,6 +16792,36 @@
                     "type": "integer"
                 },
                 "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_ratings_dto.RatingStatsResponse": {
+            "type": "object",
+            "properties": {
+                "acceptanceRate": {
+                    "type": "number"
+                },
+                "cancellationRate": {
+                    "type": "number"
+                },
+                "rating": {
+                    "type": "number"
+                },
+                "totalEarnings": {
+                    "type": "number"
+                },
+                "totalRides": {
+                    "type": "integer"
+                },
+                "totalSpent": {
+                    "type": "number"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "userType": {
+                    "description": "'driver' or 'rider'",
                     "type": "string"
                 }
             }
@@ -13882,7 +16943,8 @@
             "type": "object",
             "required": [
                 "actualDistance",
-                "actualDuration"
+                "actualDuration",
+                "riderPin"
             ],
             "properties": {
                 "actualDistance": {
@@ -13892,6 +16954,9 @@
                 "actualDuration": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "riderPin": {
+                    "type": "string"
                 }
             }
         },
@@ -13935,9 +17000,24 @@
                     "maximum": 180,
                     "minimum": -180
                 },
+                "promoCode": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                },
                 "riderNotes": {
                     "type": "string",
                     "maxLength": 500
+                },
+                "savedLocationId": {
+                    "type": "string"
+                },
+                "useSavedAs": {
+                    "type": "string",
+                    "enum": [
+                        "pickup",
+                        "dropoff"
+                    ]
                 },
                 "vehicleTypeId": {
                     "type": "string"
@@ -14053,6 +17133,9 @@
                 "estimatedFare": {
                     "type": "number"
                 },
+                "hasActiveSos": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -14065,6 +17148,9 @@
                 "pickupLon": {
                     "type": "number"
                 },
+                "promoDiscount": {
+                    "type": "number"
+                },
                 "requestedAt": {
                     "type": "string"
                 },
@@ -14075,6 +17161,9 @@
                     "type": "string"
                 },
                 "riderNotes": {
+                    "type": "string"
+                },
+                "sosAlertId": {
                     "type": "string"
                 },
                 "startedAt": {
@@ -14093,6 +17182,122 @@
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse"
                 },
                 "vehicleTypeId": {
+                    "type": "string"
+                },
+                "waitTimeCharge": {
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_rides_dto.StartRideRequest": {
+            "type": "object",
+            "required": [
+                "riderPin"
+            ],
+            "properties": {
+                "riderPin": {
+                    "description": "NEW: 4-digit PIN",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_sos_dto.ResolveSOSRequest": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "string",
+                    "maxLength": 1000
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertListResponse": {
+            "type": "object",
+            "properties": {
+                "alertType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rideId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_sos_dto.SOSAlertResponse": {
+            "type": "object",
+            "properties": {
+                "alertType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "emergencyContactsNotified": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "resolvedAt": {
+                    "type": "string"
+                },
+                "resolvedBy": {
+                    "type": "string"
+                },
+                "rideId": {
+                    "type": "string"
+                },
+                "safetyTeamNotifiedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_sos_dto.TriggerSOSRequest": {
+            "type": "object",
+            "required": [
+                "latitude",
+                "longitude"
+            ],
+            "properties": {
+                "latitude": {
+                    "type": "number",
+                    "maximum": 90,
+                    "minimum": -90
+                },
+                "longitude": {
+                    "type": "number",
+                    "maximum": 180,
+                    "minimum": -180
+                },
+                "rideId": {
                     "type": "string"
                 }
             }

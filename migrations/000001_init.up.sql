@@ -573,6 +573,236 @@ CREATE INDEX idx_order_status_history_order_id ON order_status_history(order_id)
 CREATE INDEX idx_order_status_history_created_at ON order_status_history(created_at);
 
 -- =====================================================
+-- SUPR 2.0 Tables
+-- =====================================================
+
+-- Add referral fields to users
+ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE;
+ALTER TABLE users ADD COLUMN referred_by VARCHAR(20);
+ALTER TABLE users ADD COLUMN emergency_contact_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN emergency_contact_phone VARCHAR(20);
+ALTER TABLE users ADD COLUMN ride_pin VARCHAR(4);
+
+-- Add fields to rides table
+ALTER TABLE rides ADD COLUMN destination_changed BOOLEAN DEFAULT FALSE;
+ALTER TABLE rides ADD COLUMN destination_change_charge DECIMAL(10, 2) DEFAULT 0;
+ALTER TABLE rides ADD COLUMN wait_time_charge DECIMAL(10, 2) DEFAULT 0;
+ALTER TABLE rides ADD COLUMN promo_code VARCHAR(20);
+-- Add promo code field to rides
+ALTER TABLE rides ADD COLUMN promo_code_id UUID;
+ALTER TABLE rides ADD COLUMN promo_discount DECIMAL(10, 2) DEFAULT 0;
+ALTER TABLE rides ADD CONSTRAINT fk_rides_promo_code FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id) ON DELETE SET NULL;
+-- Add rating fields to rides
+ALTER TABLE rides ADD COLUMN rider_rating INTEGER CHECK (rider_rating >= 1 AND rider_rating <= 5);
+ALTER TABLE rides ADD COLUMN driver_rating INTEGER CHECK (driver_rating >= 1 AND driver_rating <= 5);
+ALTER TABLE rides ADD COLUMN rider_rating_comment TEXT;
+ALTER TABLE rides ADD COLUMN driver_rating_comment TEXT;
+ALTER TABLE rides ADD COLUMN rider_rated_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE rides ADD COLUMN driver_rated_at TIMESTAMP WITH TIME ZONE;
+
+
+UPDATE users SET ride_pin = LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0') WHERE ride_pin IS NULL;
+ALTER TABLE users ALTER COLUMN ride_pin SET NOT NULL;
+ALTER TABLE users ADD COLUMN gender VARCHAR(10);
+ALTER TABLE users ADD COLUMN dob DATE;
+
+-- KYC table
+CREATE TABLE user_kyc (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL UNIQUE,
+    id_type VARCHAR(50),
+    id_number VARCHAR(100),
+    id_document_url VARCHAR(500),
+    selfie_url VARCHAR(500),
+    status VARCHAR(50) DEFAULT 'pending',
+    rejection_reason TEXT,
+    verified_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    CONSTRAINT fk_user_kyc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_user_kyc_status ON user_kyc(status);
+CREATE INDEX idx_user_kyc_deleted_at ON user_kyc(deleted_at);
+CREATE INDEX idx_users_ride_pin ON users(ride_pin);
+
+-- Saved locations
+CREATE TABLE saved_locations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    label VARCHAR(50) NOT NULL,
+    custom_name VARCHAR(100),
+    address VARCHAR(500) NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    CONSTRAINT fk_saved_locations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_saved_locations_user ON saved_locations(user_id);
+CREATE INDEX idx_saved_locations_label ON saved_locations(label);
+CREATE INDEX idx_saved_locations_deleted_at ON saved_locations(deleted_at);
+
+-- migrations/000XXX_create_sos_alerts_table.up.sql
+CREATE TABLE sos_alerts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    ride_id UUID,
+    alert_type VARCHAR(50) NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    status VARCHAR(50) DEFAULT 'active',
+    emergency_contacts_notified BOOLEAN DEFAULT FALSE,
+    severity VARCHAR(50) DEFAULT 'low',
+    triggered_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    safety_team_notified_at TIMESTAMP WITH TIME ZONE,
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    resolved_by UUID,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    CONSTRAINT fk_sos_alerts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_sos_alerts_ride FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE SET NULL,
+    CONSTRAINT fk_sos_alerts_resolved_by FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_sos_alerts_user_id ON sos_alerts(user_id);
+CREATE INDEX idx_sos_alerts_ride_id ON sos_alerts(ride_id);
+CREATE INDEX idx_sos_alerts_status ON sos_alerts(status);
+CREATE INDEX idx_sos_alerts_created_at ON sos_alerts(created_at DESC);
+CREATE INDEX idx_sos_alerts_deleted_at ON sos_alerts(deleted_at);
+
+-- Price capping rules
+CREATE TABLE price_capping_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    vehicle_type_id UUID NOT NULL,
+    max_customer_price DECIMAL(10, 2) NOT NULL,
+    max_driver_earning DECIMAL(10, 2) NOT NULL,
+    platform_absorbs_diff BOOLEAN DEFAULT TRUE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    CONSTRAINT fk_price_capping_vehicle FOREIGN KEY (vehicle_type_id) REFERENCES vehicle_types(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_price_capping_vehicle_type ON price_capping_rules(vehicle_type_id);
+CREATE INDEX idx_price_capping_is_active ON price_capping_rules(is_active);
+CREATE INDEX idx_price_capping_deleted_at ON price_capping_rules(deleted_at);
+
+-- Wait time charges
+CREATE TABLE wait_time_charges (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ride_id UUID NOT NULL UNIQUE,
+    wait_started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    wait_ended_at TIMESTAMP WITH TIME ZONE,
+    total_wait_minutes INTEGER DEFAULT 0,
+    charge_amount DECIMAL(10, 2) DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    CONSTRAINT fk_wait_time_ride FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_wait_time_ride ON wait_time_charges(ride_id);
+CREATE INDEX idx_wait_time_deleted_at ON wait_time_charges(deleted_at);
+
+-- Promo codes
+CREATE TABLE promo_codes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(50) NOT NULL UNIQUE,
+    discount_type VARCHAR(20) NOT NULL,
+    discount_value DECIMAL(10, 2) NOT NULL,
+    max_discount DECIMAL(10, 2),
+    min_ride_amount DECIMAL(10, 2) DEFAULT 0,
+    usage_limit INTEGER DEFAULT 0,
+    usage_count INTEGER DEFAULT 0,
+    per_user_limit INTEGER DEFAULT 1,
+    valid_from TIMESTAMP WITH TIME ZONE NOT NULL,
+    valid_until TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_promo_codes_code ON promo_codes(code);
+CREATE INDEX idx_promo_codes_is_active ON promo_codes(is_active);
+CREATE INDEX idx_promo_codes_valid_dates ON promo_codes(valid_from, valid_until);
+CREATE INDEX idx_promo_codes_deleted_at ON promo_codes(deleted_at);
+
+-- Promo code usage
+CREATE TABLE promo_code_usage (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    promo_code_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    ride_id UUID NOT NULL,
+    discount_amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    CONSTRAINT fk_promo_usage_code FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id) ON DELETE CASCADE,
+    CONSTRAINT fk_promo_usage_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_promo_usage_ride FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_promo_usage_code ON promo_code_usage(promo_code_id);
+CREATE INDEX idx_promo_usage_user ON promo_code_usage(user_id);
+CREATE INDEX idx_promo_usage_ride ON promo_code_usage(ride_id);
+CREATE INDEX idx_promo_usage_deleted_at ON promo_code_usage(deleted_at);
+
+-- Add free ride credits to wallets
+ALTER TABLE wallets ADD COLUMN free_ride_credits DECIMAL(10, 2) DEFAULT 0;
+
+-- Add fields to rider_profiles
+ALTER TABLE rider_profiles ADD COLUMN total_rides INT NOT NULL DEFAULT 0;
+ALTER TABLE rider_profiles ADD COLUMN total_spent DECIMAL(10, 2) NOT NULL DEFAULT 0;
+ALTER TABLE rider_profiles ADD COLUMN cancellation_rate DECIMAL(5, 2) NOT NULL DEFAULT 0;
+ALTER TABLE rider_profiles ADD COLUMN deleted_at TIMESTAMP;
+
+CREATE INDEX idx_rider_profiles_deleted_at ON rider_profiles(deleted_at);
+CREATE INDEX idx_rider_profiles_total_rides ON rider_profiles(total_rides);
+CREATE INDEX idx_rider_profiles_total_spent ON rider_profiles(total_spent);
+CREATE INDEX idx_rider_profiles_cancellation_rate ON rider_profiles(cancellation_rate);
+
+-- migrations/000XXX_create_fraud_patterns_table.up.sql
+CREATE TABLE fraud_patterns (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    pattern_type VARCHAR(50) NOT NULL,
+    user_id UUID,
+    driver_id UUID,
+    related_user_id UUID,
+    ride_id UUID,
+    details JSONB,
+    risk_score INTEGER NOT NULL,
+    status VARCHAR(50) DEFAULT 'flagged',
+    reviewed_by UUID,
+    review_notes TEXT,
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    CONSTRAINT fk_fraud_patterns_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_fraud_patterns_driver FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_fraud_patterns_related_user FOREIGN KEY (related_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_fraud_patterns_ride FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE SET NULL,
+    CONSTRAINT fk_fraud_patterns_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_fraud_patterns_pattern_type ON fraud_patterns(pattern_type);
+CREATE INDEX idx_fraud_patterns_user_id ON fraud_patterns(user_id);
+CREATE INDEX idx_fraud_patterns_driver_id ON fraud_patterns(driver_id);
+CREATE INDEX idx_fraud_patterns_status ON fraud_patterns(status);
+CREATE INDEX idx_fraud_patterns_risk_score ON fraud_patterns(risk_score DESC);
+CREATE INDEX idx_fraud_patterns_created_at ON fraud_patterns(created_at DESC);
+CREATE INDEX idx_fraud_patterns_deleted_at ON fraud_patterns(deleted_at);
+
+
+-- =====================================================
 -- TRIGGERS FOR updated_at
 -- =====================================================
 

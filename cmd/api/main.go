@@ -21,6 +21,7 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/admin"
 	"github.com/umar5678/go-backend/internal/modules/auth"
 	"github.com/umar5678/go-backend/internal/modules/drivers"
+	"github.com/umar5678/go-backend/internal/modules/fraud"
 	"github.com/umar5678/go-backend/internal/modules/homeservices"
 	homeservicesAdmin "github.com/umar5678/go-backend/internal/modules/homeservices/admin"
 	homeservicesCustomer "github.com/umar5678/go-backend/internal/modules/homeservices/customer"
@@ -28,10 +29,14 @@ import (
 	homeservicesProvider "github.com/umar5678/go-backend/internal/modules/homeservices/provider"
 	"github.com/umar5678/go-backend/internal/modules/laundry"
 	"github.com/umar5678/go-backend/internal/modules/pricing"
-	_ "github.com/umar5678/go-backend/internal/modules/ratings/dto"
+	"github.com/umar5678/go-backend/internal/modules/profile"
+	"github.com/umar5678/go-backend/internal/modules/promotions"
+	"github.com/umar5678/go-backend/internal/modules/ratings"
+	"github.com/umar5678/go-backend/internal/modules/ridepin"
 	"github.com/umar5678/go-backend/internal/modules/riders"
 	"github.com/umar5678/go-backend/internal/modules/rides"
 	"github.com/umar5678/go-backend/internal/modules/serviceproviders"
+	"github.com/umar5678/go-backend/internal/modules/sos"
 
 	"github.com/umar5678/go-backend/internal/modules/tracking"
 	"github.com/umar5678/go-backend/internal/modules/vehicles"
@@ -216,11 +221,57 @@ func main() {
 		trackingHandler := tracking.NewHandler(trackingService)
 		tracking.RegisterRoutes(v1, trackingHandler, authMiddleware)
 
-		// Pricing module
+		// Pricing Module
 		pricingRepo := pricing.NewRepository(db)
-		pricingService := pricing.NewService(pricingRepo, vehiclesRepo)
+		pricingService := pricing.NewService(pricingRepo, db, vehiclesRepo)
 		pricingHandler := pricing.NewHandler(pricingService)
-		pricing.RegisterRoutes(v1, pricingHandler)
+		pricing.RegisterRoutes(v1, pricingHandler, authMiddleware)
+
+		// Admin module (initialize early for rides service)
+		adminRepo := admin.NewRepository(db)
+		adminService := admin.NewService(adminRepo, spRepo)
+		adminHandler := admin.NewHandler(adminService)
+		admin.RegisterRoutes(v1, adminHandler, authMiddleware)
+
+		// Profile Module (initialize before rides service)
+		profileRepo := profile.NewRepository(db)
+		profileService := profile.NewService(profileRepo)
+		profileHandler := profile.NewHandler(profileService)
+		profile.RegisterRoutes(v1, profileHandler, authMiddleware)
+
+		// Promotions Module (initialize before rides service)
+		promotionsRepo := promotions.NewRepository(db)
+		promotionsService := promotions.NewService(promotionsRepo)
+		promotionsHandler := promotions.NewHandler(promotionsService)
+		promotions.RegisterRoutes(v1, promotionsHandler, authMiddleware)
+
+		// Fraud Detection Module (initialize before rides service)
+		fraudRepo := fraud.NewRepository(db)
+		fraudService := fraud.NewService(fraudRepo)
+		fraudHandler := fraud.NewHandler(fraudService)
+		fraud.RegisterRoutes(v1, fraudHandler, authMiddleware)
+
+		// SOS Module (initialize before rides service)
+		sosRepo := sos.NewRepository(db)
+		sosService := sos.NewService(sosRepo, db)
+		sosHandler := sos.NewHandler(sosService)
+		sos.RegisterRoutes(v1, sosHandler, authMiddleware)
+
+		// RidePin Module (initialize before rides service)
+		ridePinRepo := ridepin.NewRepository(db)
+		ridePinService := ridepin.NewService(ridePinRepo)
+
+		// Home Services module (initialize before ratings)
+		homeServicesRepo := homeservices.NewRepository(db)
+		homeServicesService := homeservices.NewService(homeServicesRepo, walletService, cfg)
+		homeServicesHandler := homeservices.NewHandler(homeServicesService)
+		homeservices.RegisterRoutes(v1, homeServicesHandler, authMiddleware)
+
+		// Ratings Module (initialize before rides service)
+		ratingsRepo := ratings.NewRepository(db)
+		ratingsService := ratings.NewService(ratingsRepo, db, homeServicesRepo)
+		ratingsHandler := ratings.NewHandler(ratingsService)
+		ratings.RegisterRoutes(v1, ratingsHandler, authMiddleware)
 
 		// rides service
 		ridesRepo := rides.NewRepository(db)
@@ -231,24 +282,19 @@ func main() {
 			pricingService,
 			trackingService,
 			walletService,
+			ridePinService,    // ✅ RidePin service
+			profileService,    // ✅ NOW DEFINED
+			sosService,        // ✅ ADDED: SOS service for emergency features
+			promotionsService, // ✅ NOW DEFINED
+			ratingsService,    // ✅ Ratings service
+			fraudService,      // ✅ NOW DEFINED
+			adminRepo,
 		)
 		ridesHandler := rides.NewHandler(ridesService)
 		rides.RegisterRoutes(v1, ridesHandler, authMiddleware)
 
 		// WebSocket routes
 		websocket.RegisterRoutes(router, cfg, wsServer)
-
-		// Admin module
-		adminRepo := admin.NewRepository(db)
-		adminService := admin.NewService(adminRepo, spRepo)
-		adminHandler := admin.NewHandler(adminService)
-		admin.RegisterRoutes(v1, adminHandler, authMiddleware)
-
-		// Home Services module
-		homeServicesRepo := homeservices.NewRepository(db)
-		homeServicesService := homeservices.NewService(homeServicesRepo, walletService, cfg)
-		homeServicesHandler := homeservices.NewHandler(homeServicesService)
-		homeservices.RegisterRoutes(v1, homeServicesHandler, authMiddleware)
 
 		// Admin Home Services
 		homeservicesAdminRepo := homeservicesAdmin.NewRepository(db)

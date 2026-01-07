@@ -4,12 +4,15 @@ package pricing
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/pricing/dto"
 	vehiclesrepo "github.com/umar5678/go-backend/internal/modules/vehicles"
 	"github.com/umar5678/go-backend/internal/services/cache"
+	"gorm.io/gorm"
 
 	"github.com/umar5678/go-backend/internal/utils/location"
 	"github.com/umar5678/go-backend/internal/utils/logger"
@@ -21,20 +24,33 @@ type Service interface {
 	CalculateActualFare(ctx context.Context, req dto.CalculateActualFareRequest) (*dto.FareEstimateResponse, error)
 	GetSurgeMultiplier(ctx context.Context, lat, lon float64) (float64, error)
 	GetActiveSurgeZones(ctx context.Context) ([]*dto.SurgeZoneResponse, error)
-	GetFareBreakdown(ctx context.Context, estimate *models.FareEstimate) *dto.FareBreakdownResponse
+	GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdownRequest) (*dto.FareBreakdownResponse, error)
+	CalculateWaitTimeCharge(ctx context.Context, rideID string, arrivedAt time.Time) (*dto.WaitTimeChargeResponse, error)
+	ChangeDestination(ctx context.Context, driverID string, req dto.ChangeDestinationRequest) (*dto.DestinationChangeResponse, error)
+ 	ApplyPriceCapping(ctx context.Context, vehicleTypeID string, calculatedFare float64) (*dto.FareBreakdownResponse, error)
+
+	// Enhanced surge pricing methods
+	CalculateCombinedSurge(ctx context.Context, vehicleTypeID, geohash string, lat, lon float64) (*dto.SurgeCalculationResponse, error)
+	CreateSurgePricingRule(ctx context.Context, req dto.CreateSurgePricingRuleRequest) (*dto.SurgePricingRuleResponse, error)
+	GetActiveSurgePricingRules(ctx context.Context) ([]*dto.SurgePricingRuleResponse, error)
+	RecordDemandTracking(ctx context.Context, zoneID, geohash string, pendingRequests, availableDrivers int) error
+	GetCurrentDemand(ctx context.Context, geohash string) (*dto.DemandTrackingResponse, error)
+	CalculateETAEstimate(ctx context.Context, req dto.ETAEstimateRequest) (*dto.ETAEstimateResponse, error)
 }
 
 type service struct {
 	repo         Repository
+	db           *gorm.DB
 	vehiclesRepo vehiclesrepo.Repository
 	calculator   *FareCalculator
 	surgeManager *SurgeManager
 }
 
-func NewService(repo Repository, vehiclesRepo vehiclesrepo.Repository) Service {
+func NewService(repo Repository, db *gorm.DB, vehiclesRepo vehiclesrepo.Repository) Service {
 	return &service{
 		repo:         repo,
 		vehiclesRepo: vehiclesRepo,
+		db:           db,
 		calculator:   NewFareCalculator(),
 		surgeManager: NewSurgeManager(repo),
 	}
@@ -233,41 +249,472 @@ func (s *service) GetActiveSurgeZones(ctx context.Context) ([]*dto.SurgeZoneResp
 	return result, nil
 }
 
-func (s *service) GetFareBreakdown(ctx context.Context, estimate *models.FareEstimate) *dto.FareBreakdownResponse {
+func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdownRequest) (*dto.FareBreakdownResponse, error) {
+	// Get vehicle type
+	vehicleType, err := s.vehiclesRepo.FindByID(ctx, req.VehicleTypeID)
+	if err != nil {
+		return nil, response.NotFoundError("Vehicle type")
+	}
+
+	// Calculate distance (Haversine formula)
+	distance := calculateDistance(req.PickupLat, req.PickupLon, req.DropoffLat, req.DropoffLon)
+
+	// Estimate duration (assuming 30 km/h average speed)
+	duration := int((distance / 30.0) * 60) // minutes
+
+	// Get surge multiplier
+	surgeMultiplier, _ := s.repo.GetSurgeMultiplier(ctx, req.PickupLat, req.PickupLon, req.VehicleTypeID)
+
+	// Calculate fare components
+	baseFare := vehicleType.BaseFare
+	distanceCharge := distance * vehicleType.PerKmRate
+	timeCharge := float64(duration) * vehicleType.PerMinuteRate
+	bookingFee := vehicleType.BookingFee
+
+	subTotal := baseFare + distanceCharge + timeCharge + bookingFee
+	surgeCharge := subTotal * (surgeMultiplier - 1.0)
+	totalFare := subTotal + surgeCharge
+
+	// Build fare components
 	components := []dto.FareComponent{
 		{
 			Name:   "Base Fare",
-			Amount: estimate.BaseFare,
+			Amount: baseFare,
 			Type:   "base",
 		},
 		{
-			Name:   fmt.Sprintf("Distance (%.2f km)", estimate.EstimatedDistance),
-			Amount: estimate.DistanceFare,
+			Name:   fmt.Sprintf("Distance (%.2f km)", distance),
+			Amount: distanceCharge,
 			Type:   "distance",
 		},
 		{
-			Name:   fmt.Sprintf("Duration (%d min)", estimate.EstimatedDuration/60),
-			Amount: estimate.DurationFare,
+			Name:   fmt.Sprintf("Duration (%d min)", duration),
+			Amount: timeCharge,
 			Type:   "duration",
 		},
 		{
 			Name:   "Booking Fee",
-			Amount: estimate.BookingFee,
+			Amount: bookingFee,
 			Type:   "booking_fee",
 		},
 	}
 
 	// Add surge if applicable
-	if estimate.SurgeMultiplier > 1.0 {
+	if surgeMultiplier > 1.0 {
 		components = append(components, dto.FareComponent{
-			Name:   fmt.Sprintf("Surge (%.1fx)", estimate.SurgeMultiplier),
-			Amount: estimate.SurgeAmount,
+			Name:   fmt.Sprintf("Surge (%.1fx)", surgeMultiplier),
+			Amount: surgeCharge,
 			Type:   "surge",
 		})
 	}
 
-	return &dto.FareBreakdownResponse{
-		Components: components,
-		Total:      estimate.TotalFare,
+	breakdown := &dto.FareBreakdownResponse{
+		Components:        components,
+		BaseFare:          baseFare,
+		DistanceCharge:    distanceCharge,
+		TimeCharge:        timeCharge,
+		BookingFee:        bookingFee,
+		SurgeCharge:       surgeCharge,
+		SurgeMultiplier:   surgeMultiplier,
+		SubTotal:          subTotal,
+		TotalFare:         totalFare,
+		EstimatedDistance: distance,
+		EstimatedDuration: duration,
 	}
+
+	// Apply price capping if exists
+	rule, err := s.repo.FindPriceCappingRule(ctx, req.VehicleTypeID)
+	if err == nil && rule != nil {
+		if totalFare > rule.MaxCustomerPrice {
+			breakdown.CustomerPrice = rule.MaxCustomerPrice
+			breakdown.DriverEarning = rule.MaxDriverEarning
+			breakdown.PlatformFee = breakdown.CustomerPrice - breakdown.DriverEarning
+			breakdown.PlatformAbsorbed = totalFare - breakdown.CustomerPrice
+			breakdown.PriceCapped = true
+		} else {
+			breakdown.CustomerPrice = totalFare
+			breakdown.DriverEarning = totalFare * 0.80
+			breakdown.PlatformFee = totalFare * 0.20
+			breakdown.PriceCapped = false
+		}
+	} else {
+		// No capping rule, use standard 80/20 split
+		breakdown.CustomerPrice = totalFare
+		breakdown.DriverEarning = totalFare * 0.80
+		breakdown.PlatformFee = totalFare * 0.20
+		breakdown.PriceCapped = false
+	}
+
+	return breakdown, nil
+}
+
+func (s *service) ApplyPriceCapping(ctx context.Context, vehicleTypeID string, calculatedFare float64) (*dto.FareBreakdownResponse, error) {
+	rule, err := s.repo.FindPriceCappingRule(ctx, vehicleTypeID)
+	if err != nil {
+		// No capping rule
+		return &dto.FareBreakdownResponse{
+			TotalFare:     calculatedFare,
+			CustomerPrice: calculatedFare,
+			DriverEarning: calculatedFare * 0.80,
+			PlatformFee:   calculatedFare * 0.20,
+			PriceCapped:   false,
+		}, nil
+	}
+
+	breakdown := &dto.FareBreakdownResponse{
+		TotalFare: calculatedFare,
+	}
+
+	if calculatedFare > rule.MaxCustomerPrice {
+		breakdown.CustomerPrice = rule.MaxCustomerPrice
+		breakdown.DriverEarning = rule.MaxDriverEarning
+		breakdown.PlatformFee = breakdown.CustomerPrice - breakdown.DriverEarning
+		breakdown.PlatformAbsorbed = calculatedFare - breakdown.CustomerPrice
+		breakdown.PriceCapped = true
+	} else {
+		breakdown.CustomerPrice = calculatedFare
+		breakdown.DriverEarning = calculatedFare * 0.80
+		breakdown.PlatformFee = calculatedFare * 0.20
+		breakdown.PriceCapped = false
+	}
+
+	return breakdown, nil
+}
+
+func (s *service) CalculateWaitTimeCharge(ctx context.Context, rideID string, arrivedAt time.Time) (*dto.WaitTimeChargeResponse, error) {
+	// Check if ride exists
+	var ride models.Ride
+	if err := s.db.WithContext(ctx).Where("id = ?", rideID).First(&ride).Error; err != nil {
+		return nil, response.NotFoundError("Ride")
+	}
+
+	waitMinutes := int(time.Since(arrivedAt).Minutes())
+	freeWaitMinutes := 3
+	chargeAmount := 0.0
+
+	// Free for first 3 minutes
+	if waitMinutes > freeWaitMinutes {
+		chargeableMinutes := waitMinutes - freeWaitMinutes
+		chargeAmount = float64(chargeableMinutes) * 0.50 // $0.50 per minute after 3 mins
+	}
+
+	// Create or update wait time charge
+	waitCharge, err := s.repo.FindWaitTimeChargeByRideID(ctx, rideID)
+	if err != nil {
+		// Create new
+		waitCharge = &models.WaitTimeCharge{
+			RideID:           rideID,
+			WaitStartedAt:    arrivedAt,
+			TotalWaitMinutes: waitMinutes,
+			ChargeAmount:     chargeAmount,
+		}
+		if err := s.repo.CreateWaitTimeCharge(ctx, waitCharge); err != nil {
+			return nil, response.InternalServerError("Failed to create wait time charge", err)
+		}
+	} else {
+		// Update existing
+		now := time.Now()
+		waitCharge.WaitEndedAt = &now
+		waitCharge.TotalWaitMinutes = waitMinutes
+		waitCharge.ChargeAmount = chargeAmount
+		s.repo.UpdateWaitTimeCharge(ctx, waitCharge)
+	}
+
+	// Update ride with wait time charge
+	s.repo.UpdateRideWaitTimeCharge(ctx, rideID, chargeAmount)
+
+	logger.Info("wait time charge calculated",
+		"rideID", rideID,
+		"waitMinutes", waitMinutes,
+		"chargeAmount", chargeAmount,
+	)
+
+	return &dto.WaitTimeChargeResponse{
+		RideID:           rideID,
+		TotalWaitMinutes: waitMinutes,
+		ChargeAmount:     chargeAmount,
+		FreeWaitMinutes:  freeWaitMinutes,
+	}, nil
+}
+
+func (s *service) ChangeDestination(ctx context.Context, driverID string, req dto.ChangeDestinationRequest) (*dto.DestinationChangeResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, response.BadRequest(err.Error())
+	}
+
+	// Get ride and verify driver
+	var ride models.Ride
+	if err := s.db.WithContext(ctx).
+		Preload("VehicleType").
+		Where("id = ?", req.RideID).
+		First(&ride).Error; err != nil {
+		return nil, response.NotFoundError("Ride")
+	}
+
+	if ride.DriverID == nil || *ride.DriverID != driverID {
+		return nil, response.ForbiddenError("Unauthorized")
+	}
+
+	if ride.Status != "started" {
+		return nil, response.BadRequest("Can only change destination during active ride")
+	}
+
+	// Calculate additional distance
+	additionalDistance := calculateDistance(
+		ride.DropoffLat, ride.DropoffLon,
+		req.NewLatitude, req.NewLongitude,
+	)
+
+	// Calculate additional charge
+	additionalCharge := additionalDistance * ride.VehicleType.PerKmRate
+
+	// Update ride destination
+	if err := s.repo.UpdateRideDestination(ctx, req.RideID,
+		req.NewLatitude, req.NewLongitude, req.NewAddress, additionalCharge); err != nil {
+		return nil, response.InternalServerError("Failed to update destination", err)
+	}
+
+	newTotalFare := ride.EstimatedFare + additionalCharge
+
+	logger.Info("destination changed",
+		"rideID", req.RideID,
+		"additionalDistance", additionalDistance,
+		"additionalCharge", additionalCharge,
+	)
+
+	return &dto.DestinationChangeResponse{
+		RideID:             req.RideID,
+		AdditionalDistance: additionalDistance,
+		AdditionalCharge:   additionalCharge,
+		NewTotalFare:       newTotalFare,
+	}, nil
+}
+
+// Haversine formula to calculate distance between two coordinates
+func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
+	const earthRadius = 6371.0 // Earth's radius in kilometers
+
+	// Convert degrees to radians
+	lat1Rad := lat1 * math.Pi / 180
+	lon1Rad := lon1 * math.Pi / 180
+	lat2Rad := lat2 * math.Pi / 180
+	lon2Rad := lon2 * math.Pi / 180
+
+	// Haversine formula
+	dLat := lat2Rad - lat1Rad
+	dLon := lon2Rad - lon1Rad
+
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
+			math.Sin(dLon/2)*math.Sin(dLon/2)
+
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	distance := earthRadius * c
+
+	return distance
+}
+
+// CalculateCombinedSurge calculates both time-based and demand-based surge
+func (s *service) CalculateCombinedSurge(ctx context.Context, vehicleTypeID, geohash string, lat, lon float64) (*dto.SurgeCalculationResponse, error) {
+	combined, timeSurge, demandSurge, reason, err := s.surgeManager.CalculateCombinedSurge(ctx, vehicleTypeID, geohash, lat, lon)
+	if err != nil {
+		logger.Error("failed to calculate combined surge", "error", err)
+		combined = 1.0
+	}
+
+	// Apply max multiplier cap
+	combined = s.surgeManager.ApplyMaxMultiplierCap(combined, vehicleTypeID, ctx)
+
+	return &dto.SurgeCalculationResponse{
+		AppliedMultiplier:     combined,
+		TimeBasedMultiplier:   timeSurge,
+		DemandBasedMultiplier: demandSurge,
+		Reason:                reason,
+	}, nil
+}
+
+// CreateSurgePricingRule creates a new surge pricing rule
+func (s *service) CreateSurgePricingRule(ctx context.Context, req dto.CreateSurgePricingRuleRequest) (*dto.SurgePricingRuleResponse, error) {
+	rule := &models.SurgePricingRule{
+		ID:                         uuid.New().String(),
+		Name:                       req.Name,
+		Description:                req.Description,
+		VehicleTypeID:              req.VehicleTypeID,
+		DayOfWeek:                  req.DayOfWeek,
+		StartTime:                  req.StartTime,
+		EndTime:                    req.EndTime,
+		BaseMultiplier:             req.BaseMultiplier,
+		MinMultiplier:              req.MinMultiplier,
+		MaxMultiplier:              req.MaxMultiplier,
+		EnableDemandBasedSurge:     req.EnableDemandBasedSurge,
+		DemandThreshold:            req.DemandThreshold,
+		DemandMultiplierPerRequest: req.DemandMultiplierPerRequest,
+		IsActive:                   true,
+	}
+
+	if err := s.repo.CreateSurgePricingRule(ctx, rule); err != nil {
+		logger.Error("failed to create surge pricing rule", "error", err)
+		return nil, response.InternalServerError("Failed to create rule", err)
+	}
+
+	return &dto.SurgePricingRuleResponse{
+		ID:                         rule.ID,
+		Name:                       rule.Name,
+		Description:                rule.Description,
+		VehicleTypeID:              rule.VehicleTypeID,
+		DayOfWeek:                  rule.DayOfWeek,
+		StartTime:                  rule.StartTime,
+		EndTime:                    rule.EndTime,
+		BaseMultiplier:             rule.BaseMultiplier,
+		MinMultiplier:              rule.MinMultiplier,
+		MaxMultiplier:              rule.MaxMultiplier,
+		EnableDemandBasedSurge:     rule.EnableDemandBasedSurge,
+		DemandThreshold:            rule.DemandThreshold,
+		DemandMultiplierPerRequest: rule.DemandMultiplierPerRequest,
+		IsActive:                   rule.IsActive,
+		CreatedAt:                  rule.CreatedAt,
+		UpdatedAt:                  rule.UpdatedAt,
+	}, nil
+}
+
+// GetActiveSurgePricingRules returns all active surge pricing rules
+func (s *service) GetActiveSurgePricingRules(ctx context.Context) ([]*dto.SurgePricingRuleResponse, error) {
+	rules, err := s.repo.GetActiveSurgePricingRules(ctx)
+	if err != nil {
+		logger.Error("failed to get surge pricing rules", "error", err)
+		return nil, response.InternalServerError("Failed to get rules", err)
+	}
+
+	var responses []*dto.SurgePricingRuleResponse
+	for _, rule := range rules {
+		responses = append(responses, &dto.SurgePricingRuleResponse{
+			ID:                         rule.ID,
+			Name:                       rule.Name,
+			Description:                rule.Description,
+			VehicleTypeID:              rule.VehicleTypeID,
+			DayOfWeek:                  rule.DayOfWeek,
+			StartTime:                  rule.StartTime,
+			EndTime:                    rule.EndTime,
+			BaseMultiplier:             rule.BaseMultiplier,
+			MinMultiplier:              rule.MinMultiplier,
+			MaxMultiplier:              rule.MaxMultiplier,
+			EnableDemandBasedSurge:     rule.EnableDemandBasedSurge,
+			DemandThreshold:            rule.DemandThreshold,
+			DemandMultiplierPerRequest: rule.DemandMultiplierPerRequest,
+			IsActive:                   rule.IsActive,
+			CreatedAt:                  rule.CreatedAt,
+			UpdatedAt:                  rule.UpdatedAt,
+		})
+	}
+
+	return responses, nil
+}
+
+// RecordDemandTracking records demand metrics for a zone
+func (s *service) RecordDemandTracking(ctx context.Context, zoneID, geohash string, pendingRequests, availableDrivers int) error {
+	var surgeMultiplier float64
+	var demandSupplyRatio float64
+
+	if availableDrivers > 0 {
+		demandSupplyRatio = float64(pendingRequests) / float64(availableDrivers)
+		// Calculate surge from ratio
+		surgeMultiplier = 1.0 + (demandSupplyRatio * 0.25)
+		if surgeMultiplier > 2.0 {
+			surgeMultiplier = 2.0
+		}
+	}
+
+	demand := &models.DemandTracking{
+		ID:                uuid.New().String(),
+		ZoneID:            zoneID,
+		ZoneGeohash:       geohash,
+		PendingRequests:   pendingRequests,
+		AvailableDrivers:  availableDrivers,
+		DemandSupplyRatio: demandSupplyRatio,
+		SurgeMultiplier:   surgeMultiplier,
+		RecordedAt:        time.Now(),
+		ExpiresAt:         time.Now().Add(5 * time.Minute),
+	}
+
+	if err := s.repo.CreateDemandTracking(ctx, demand); err != nil {
+		logger.Error("failed to record demand tracking", "error", err)
+		return response.InternalServerError("Failed to record demand", err)
+	}
+
+	return nil
+}
+
+// GetCurrentDemand returns current demand metrics for a zone
+func (s *service) GetCurrentDemand(ctx context.Context, geohash string) (*dto.DemandTrackingResponse, error) {
+	demand, err := s.repo.GetLatestDemandByGeohash(ctx, geohash)
+	if err != nil {
+		logger.Error("failed to get demand tracking", "error", err)
+		return nil, response.NotFoundError("Demand data")
+	}
+
+	return &dto.DemandTrackingResponse{
+		ID:                string(demand.ID),
+		ZoneID:            demand.ZoneID,
+		ZoneGeohash:       demand.ZoneGeohash,
+		PendingRequests:   demand.PendingRequests,
+		AvailableDrivers:  demand.AvailableDrivers,
+		CompletedRides:    demand.CompletedRides,
+		AverageWaitTime:   demand.AverageWaitTime,
+		DemandSupplyRatio: demand.DemandSupplyRatio,
+		SurgeMultiplier:   demand.SurgeMultiplier,
+		RecordedAt:        demand.RecordedAt,
+	}, nil
+}
+
+// CalculateETAEstimate calculates ETA for a route
+func (s *service) CalculateETAEstimate(ctx context.Context, req dto.ETAEstimateRequest) (*dto.ETAEstimateResponse, error) {
+	// Calculate distance using Haversine formula
+	distance := location.HaversineDistance(req.PickupLat, req.PickupLon, req.DropoffLat, req.DropoffLon)
+
+	if distance < 0.5 {
+		return nil, response.BadRequest("Minimum trip distance is 0.5 km")
+	}
+
+	// Estimate duration based on average speed (assume 40 km/h city average)
+	estimatedSpeedKmh := 40.0
+	estimatedDurationHours := distance / estimatedSpeedKmh
+	estimatedDurationSeconds := int(estimatedDurationHours * 3600)
+
+	// Assume driver is 5 minutes away on average
+	estimatedPickupETA := 5 * 60
+
+	// Total ETA includes pickup time + ride time
+	estimatedDropoffETA := estimatedPickupETA + estimatedDurationSeconds
+
+	eta := &models.ETAEstimate{
+		ID:                  uuid.New().String(),
+		PickupLat:           req.PickupLat,
+		PickupLon:           req.PickupLon,
+		DropoffLat:          req.DropoffLat,
+		DropoffLon:          req.DropoffLon,
+		DistanceKm:          distance,
+		DurationSeconds:     estimatedDurationSeconds,
+		EstimatedPickupETA:  estimatedPickupETA,
+		EstimatedDropoffETA: estimatedDropoffETA,
+		TrafficCondition:    "normal",
+		TrafficMultiplier:   1.0,
+		Source:              "calculated",
+	}
+
+	if err := s.repo.CreateETAEstimate(ctx, eta); err != nil {
+		logger.Error("failed to create eta estimate", "error", err)
+		return nil, response.InternalServerError("Failed to calculate ETA", err)
+	}
+
+	return &dto.ETAEstimateResponse{
+		ID:                  eta.ID,
+		DistanceKm:          eta.DistanceKm,
+		DurationSeconds:     eta.DurationSeconds,
+		EstimatedPickupETA:  eta.EstimatedPickupETA,
+		EstimatedDropoffETA: eta.EstimatedDropoffETA,
+		TrafficCondition:    eta.TrafficCondition,
+		TrafficMultiplier:   eta.TrafficMultiplier,
+		Source:              eta.Source,
+		CreatedAt:           eta.CreatedAt,
+	}, nil
 }

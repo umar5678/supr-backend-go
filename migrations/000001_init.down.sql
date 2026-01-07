@@ -52,6 +52,10 @@ DROP TABLE IF EXISTS driver_locations CASCADE;
 DROP TABLE IF EXISTS vehicles CASCADE;
 DROP TABLE IF EXISTS driver_profiles CASCADE;
 DROP TABLE IF EXISTS vehicle_types CASCADE;
+DROP TABLE IF EXISTS fraud_patterns CASCADE;
+
+-- create_sos_alerts
+DROP TABLE IF EXISTS sos_alerts;
 
 -- Wallet
 DROP TABLE IF EXISTS wallet_holds CASCADE;
@@ -60,6 +64,12 @@ DROP TABLE IF EXISTS wallets CASCADE;
 
 -- Core
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS saved_locations;
+DROP TABLE IF EXISTS user_kyc;
+DROP TABLE IF EXISTS wait_time_charges;
+DROP TABLE IF EXISTS price_capping_rules;
+DROP TABLE IF EXISTS promo_code_usage;
+DROP TABLE IF EXISTS promo_codes;
 
 -- =====================================================
 -- DROP ENUM TYPES
@@ -71,3 +81,33 @@ DROP TYPE IF EXISTS wallet_type;
 DROP TYPE IF EXISTS user_status;
 DROP TYPE IF EXISTS user_role;
 -- DROP EXTENSION IF EXISTS "uuid-ossp";
+
+-- =====================================================
+-- Alterations
+-- =====================================================
+
+ALTER TABLE users DROP COLUMN IF EXISTS referral_code;
+ALTER TABLE users DROP COLUMN IF EXISTS referred_by;
+ALTER TABLE users DROP COLUMN IF EXISTS emergency_contact_name;
+ALTER TABLE users DROP COLUMN IF EXISTS emergency_contact_phone;
+ALTER TABLE users DROP COLUMN IF EXISTS ride_pin;
+ALTER TABLE rides DROP COLUMN IF EXISTS destination_changed;
+ALTER TABLE rides DROP COLUMN IF EXISTS destination_change_charge;
+ALTER TABLE rides DROP COLUMN IF EXISTS wait_time_charge;
+ALTER TABLE rides DROP COLUMN IF EXISTS promo_code_id;
+ALTER TABLE rides DROP COLUMN IF EXISTS promo_discount;
+ALTER TABLE wallets DROP COLUMN IF EXISTS free_ride_credits;
+ALTER TABLE rides DROP COLUMN IF EXISTS rider_rating;
+ALTER TABLE rides DROP COLUMN IF EXISTS driver_rating;
+ALTER TABLE rides DROP COLUMN IF EXISTS rider_rating_comment;
+ALTER TABLE rides DROP COLUMN IF EXISTS driver_rating_comment;
+ALTER TABLE rides DROP COLUMN IF EXISTS rider_rated_at;
+ALTER TABLE rides DROP COLUMN IF EXISTS driver_rated_at;
+
+
+ALTER TABLE rides DROP CONSTRAINT IF EXISTS fk_rides_promo_code;
+-- =====================================================
+-- DropIndexes
+-- =====================================================
+
+DROP INDEX IF EXISTS idx_users_ride_pin;

@@ -3,14 +3,17 @@ package dto
 import "errors"
 
 type CreateRideRequest struct {
-	PickupLat      float64 `json:"pickupLat" binding:"required,min=-90,max=90"`
-	PickupLon      float64 `json:"pickupLon" binding:"required,min=-180,max=180"`
-	PickupAddress  string  `json:"pickupAddress" binding:"required,max=500"`
-	DropoffLat     float64 `json:"dropoffLat" binding:"required,min=-90,max=90"`
-	DropoffLon     float64 `json:"dropoffLon" binding:"required,min=-180,max=180"`
-	DropoffAddress string  `json:"dropoffAddress" binding:"required,max=500"`
-	VehicleTypeID  string  `json:"vehicleTypeId" binding:"required,uuid"`
-	RiderNotes     string  `json:"riderNotes" binding:"omitempty,max=500"`
+	PickupLat       float64 `json:"pickupLat" binding:"required,min=-90,max=90"`
+	PickupLon       float64 `json:"pickupLon" binding:"required,min=-180,max=180"`
+	PickupAddress   string  `json:"pickupAddress" binding:"required,max=500"`
+	DropoffLat      float64 `json:"dropoffLat" binding:"required,min=-90,max=90"`
+	DropoffLon      float64 `json:"dropoffLon" binding:"required,min=-180,max=180"`
+	DropoffAddress  string  `json:"dropoffAddress" binding:"required,max=500"`
+	SavedLocationID *string `json:"savedLocationId" binding:"omitempty,uuid"`
+	UseSavedAs      string  `json:"useSavedAs" binding:"omitempty,oneof=pickup dropoff"`
+	VehicleTypeID   string  `json:"vehicleTypeId" binding:"required,uuid"`
+	RiderNotes      string  `json:"riderNotes" binding:"omitempty,max=500"`
+	PromoCode       string  `json:"promoCode" binding:"omitempty,min=3,max=50"`
 }
 
 func (r *CreateRideRequest) Validate() error {
@@ -39,7 +42,12 @@ type CancelRideRequest struct {
 	Reason string `json:"reason" binding:"omitempty,max=500"`
 }
 
+type StartRideRequest struct {
+	RiderPIN string `json:"riderPin" binding:"required,len=4"` // NEW: 4-digit PIN
+}
+
 type CompleteRideRequest struct {
+	RiderPIN       string  `json:"riderPin" binding:"required,len=4"`
 	ActualDistance float64 `json:"actualDistance" binding:"required,min=0"`
 	ActualDuration int     `json:"actualDuration" binding:"required,min=0"`
 }
