@@ -581,7 +581,6 @@ ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE;
 ALTER TABLE users ADD COLUMN referred_by VARCHAR(20);
 ALTER TABLE users ADD COLUMN emergency_contact_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN emergency_contact_phone VARCHAR(20);
-ALTER TABLE users ADD COLUMN ride_pin VARCHAR(4);
 
 -- Add fields to rides table
 ALTER TABLE rides ADD COLUMN destination_changed BOOLEAN DEFAULT FALSE;
@@ -601,6 +600,7 @@ ALTER TABLE rides ADD COLUMN rider_rated_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE rides ADD COLUMN driver_rated_at TIMESTAMP WITH TIME ZONE;
 
 
+ALTER TABLE users ADD COLUMN ride_pin VARCHAR(4);
 ALTER TABLE users ALTER COLUMN ride_pin SET NOT NULL;
 UPDATE users SET ride_pin = LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0') WHERE ride_pin IS NULL;
 ALTER TABLE users ADD COLUMN gender VARCHAR(10);
