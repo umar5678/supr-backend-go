@@ -6199,108 +6199,6 @@ paths:
       summary: Update service status
       tags:
       - Admin - Home Services
-  /admin/promotions/free-ride-credits:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Credit data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.AddFreeRideCreditRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-      security:
-      - BearerAuth: []
-      summary: Add free ride credits (Admin)
-      tags:
-      - Admin routes
-  /admin/promotions/promo-codes:
-    get:
-      parameters:
-      - description: Filter by active status
-        in: query
-        name: isActive
-        type: boolean
-      - description: Page number
-        in: query
-        name: page
-        type: integer
-      - description: Items per page
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse'
-                  type: array
-              type: object
-      security:
-      - BearerAuth: []
-      summary: List promo codes (Admin)
-      tags:
-      - Admin routes
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Promo code data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.CreatePromoCodeRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse'
-              type: object
-      security:
-      - BearerAuth: []
-      summary: Create promo code (Admin)
-      tags:
-      - Admin routes
-  /admin/promotions/promo-codes/{id}/deactivate:
-    post:
-      parameters:
-      - description: Promo code ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-      security:
-      - BearerAuth: []
-      summary: Deactivate promo code (Admin)
-      tags:
-      - Admin routes
   /admin/service-providers/{id}/approve:
     post:
       consumes:
@@ -8657,6 +8555,89 @@ paths:
       summary: Get user's free ride credits
       tags:
       - promotions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Credit data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.AddFreeRideCreditRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Add free ride credits (Admin)
+      tags:
+      - Admin routes
+  /promotions/promo-codes:
+    get:
+      parameters:
+      - description: Filter by active status
+        in: query
+        name: isActive
+        type: boolean
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List promo codes (Admin)
+      tags:
+      - Admin routes
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Promo code data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.CreatePromoCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create promo code (Admin)
+      tags:
+      - Admin routes
   /promotions/promo-codes/{code}:
     get:
       parameters:
@@ -8682,6 +8663,24 @@ paths:
       summary: Get promo code details
       tags:
       - promotions
+  /promotions/promo-codes/{id}/deactivate:
+    post:
+      parameters:
+      - description: Promo code ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Deactivate promo code (Admin)
+      tags:
+      - Admin routes
   /promotions/validate:
     post:
       consumes:

@@ -1891,181 +1891,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/promotions/free-ride-credits": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin routes"
-                ],
-                "summary": "Add free ride credits (Admin)",
-                "parameters": [
-                    {
-                        "description": "Credit data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.AddFreeRideCreditRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/promotions/promo-codes": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin routes"
-                ],
-                "summary": "List promo codes (Admin)",
-                "parameters": [
-                    {
-                        "type": "boolean",
-                        "description": "Filter by active status",
-                        "name": "isActive",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Items per page",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin routes"
-                ],
-                "summary": "Create promo code (Admin)",
-                "parameters": [
-                    {
-                        "description": "Promo code data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.CreatePromoCodeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/promotions/promo-codes/{id}/deactivate": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Admin routes"
-                ],
-                "summary": "Deactivate promo code (Admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Promo code ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/admin/service-providers/{id}/approve": {
             "post": {
                 "security": [
@@ -5970,6 +5795,149 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Add free ride credits (Admin)",
+                "parameters": [
+                    {
+                        "description": "Credit data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.AddFreeRideCreditRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/promotions/promo-codes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "List promo codes (Admin)",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "isActive",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Create promo code (Admin)",
+                "parameters": [
+                    {
+                        "description": "Promo code data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.CreatePromoCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_promotions_dto.PromoCodeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
             }
         },
         "/promotions/promo-codes/{code}": {
@@ -6012,6 +5980,36 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/promotions/promo-codes/{id}/deactivate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Admin routes"
+                ],
+                "summary": "Deactivate promo code (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Promo code ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
                         }
                     }
                 }
