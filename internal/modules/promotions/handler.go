@@ -23,7 +23,7 @@ func NewHandler(service Service) *Handler {
 // @Produce json
 // @Param request body dto.CreatePromoCodeRequest true "Promo code data"
 // @Success 201 {object} response.Response{data=dto.PromoCodeResponse}
-// @Router /admin/promotions/promo-codes [post]
+// @Router /promotions/promo-codes [post]
 func (h *Handler) CreatePromoCode(c *gin.Context) {
 	var req dto.CreatePromoCodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -69,7 +69,7 @@ func (h *Handler) GetPromoCode(c *gin.Context) {
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} response.Response{data=[]dto.PromoCodeResponse}
-// @Router /admin/promotions/promo-codes [get]
+// @Router /promotions/promo-codes [get]
 func (h *Handler) ListPromoCodes(c *gin.Context) {
 	isActive := c.Query("isActive") == "true"
 	page := 1
@@ -151,7 +151,7 @@ func (h *Handler) ApplyPromoCode(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Promo code ID"
 // @Success 200 {object} response.Response
-// @Router /admin/promotions/promo-codes/{id}/deactivate [post]
+// @Router /promotions/promo-codes/{id}/deactivate [post]
 func (h *Handler) DeactivatePromoCode(c *gin.Context) {
 	promoID := c.Param("id")
 
@@ -190,7 +190,7 @@ func (h *Handler) GetFreeRideCredits(c *gin.Context) {
 // @Produce json
 // @Param request body dto.AddFreeRideCreditRequest true "Credit data"
 // @Success 200 {object} response.Response
-// @Router /admin/promotions/free-ride-credits [post]
+// @Router /promotions/free-ride-credits [post]
 func (h *Handler) AddFreeRideCredit(c *gin.Context) {
 	var req dto.AddFreeRideCreditRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
