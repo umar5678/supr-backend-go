@@ -14,6 +14,7 @@ type WalletResponse struct {
 	Balance          float64               `json:"balance"`
 	HeldBalance      float64               `json:"heldBalance"`
 	AvailableBalance float64               `json:"availableBalance"`
+	FreeRideCredits  float64               `json:"freeRideCredits"`
 	Currency         string                `json:"currency"`
 	IsActive         bool                  `json:"isActive"`
 	CreatedAt        time.Time             `json:"createdAt"`
@@ -49,6 +50,15 @@ type HoldResponse struct {
 	CreatedAt     time.Time                `json:"createdAt"`
 }
 
+type WalletBalanceResponse struct {
+	WalletID         string    `json:"walletId"`
+	Balance          float64   `json:"balance"`
+	HeldBalance      float64   `json:"heldBalance"`
+	AvailableBalance float64   `json:"availableBalance"`
+	Currency         string    `json:"currency"`
+	UpdatedAt        time.Time `json:"updatedAt"`
+}
+
 func ToWalletResponse(wallet *models.Wallet) *WalletResponse {
 	resp := &WalletResponse{
 		ID:               wallet.ID,
@@ -57,6 +67,7 @@ func ToWalletResponse(wallet *models.Wallet) *WalletResponse {
 		Balance:          wallet.Balance,
 		HeldBalance:      wallet.HeldBalance,
 		AvailableBalance: wallet.GetAvailableBalance(),
+		FreeRideCredits:  wallet.FreeRideCredits,
 		Currency:         wallet.Currency,
 		IsActive:         wallet.IsActive,
 		CreatedAt:        wallet.CreatedAt,
@@ -101,3 +112,4 @@ func ToHoldResponse(hold *models.WalletHold) *HoldResponse {
 		CreatedAt:     hold.CreatedAt,
 	}
 }
+

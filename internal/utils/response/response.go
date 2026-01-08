@@ -49,6 +49,12 @@ func Success(c *gin.Context, data interface{}, message string, code ...string) {
 
 	logger.Info("calling c.JSON", "statusCode", statusCode)
 	c.JSON(statusCode, resp)
+	// Mark in the Gin context that a response has been sent so error middleware
+	// doesn't attempt to write another response later (avoids double-write 200->500).
+	// Note: use a simple key that middleware can check safely.
+	if c != nil {
+		c.Set("responseSent", true)
+	}
 	logger.Info("c.JSON completed successfully", "statusCode", statusCode)
 }
 

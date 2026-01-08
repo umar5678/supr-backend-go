@@ -40,15 +40,15 @@ const (
 
 // Wallet model
 type Wallet struct {
-	ID          string     `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	UserID      string     `gorm:"type:uuid;not null;index" json:"userId"`
-	WalletType  WalletType `gorm:"type:wallet_type;not null" json:"walletType"`
-	Balance     float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"balance"`
-	HeldBalance float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"heldBalance"`
-	Currency    string     `gorm:"type:varchar(3);not null;default:'USD'" json:"currency"`
-	IsActive    bool       `gorm:"not null;default:true" json:"isActive"`
-	CreatedAt   time.Time  `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt   time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`
+	ID              string     `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	UserID          string     `gorm:"type:uuid;not null;index" json:"userId"`
+	WalletType      WalletType `gorm:"type:wallet_type;not null" json:"walletType"`
+	Balance         float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"balance"`
+	HeldBalance     float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"heldBalance"`
+	Currency        string     `gorm:"type:varchar(3);not null;default:'USD'" json:"currency"`
+	IsActive        bool       `gorm:"not null;default:true" json:"isActive"`
+	CreatedAt       time.Time  `gorm:"autoCreateTime" json:"createdAt"`
+	UpdatedAt       time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`
 	FreeRideCredits float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"freeRideCredits"`
 
 	// Relations
@@ -78,6 +78,7 @@ type WalletTransaction struct {
 	ReferenceType *string                `gorm:"type:varchar(50)" json:"referenceType,omitempty"`
 	ReferenceID   *string                `gorm:"type:varchar(50);not null" json:"referenceId"`
 	Description   *string                `gorm:"type:text" json:"description,omitempty"`
+	PaymentMethod string                 `gorm:"type:varchar(50);not null;default:'credit_card'" json:"paymentMethod"`
 	Metadata      map[string]interface{} `gorm:"type:jsonb" json:"metadata,omitempty"`
 	ProcessedAt   *time.Time             `json:"processedAt,omitempty"`
 	CreatedAt     time.Time              `gorm:"autoCreateTime" json:"createdAt"`

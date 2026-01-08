@@ -115,10 +115,16 @@ func ErrorHandler() gin.HandlerFunc {
 		c.Next()
 		logger.Info("ErrorHandler: after c.Next()", "path", c.Request.URL.Path, "method", c.Request.Method, "written", c.Writer.Written(), "statusCode", c.Writer.Status())
 
-		// Check if response already sent
+		// Check if response already sent via Gin Writer or explicit flag set by response.Success
 		if c.Writer.Written() {
-			logger.Info("ErrorHandler: response already written, skipping error handling", "statusCode", c.Writer.Status())
+			logger.Info("ErrorHandler: response already written (writer), skipping error handling", "statusCode", c.Writer.Status())
 			return
+		}
+		if sent, exists := c.Get("responseSent"); exists {
+			if b, ok := sent.(bool); ok && b {
+				logger.Info("ErrorHandler: responseSent flag detected, skipping error handling", "statusCode", c.Writer.Status())
+				return
+			}
 		}
 
 		// Check for errors in context

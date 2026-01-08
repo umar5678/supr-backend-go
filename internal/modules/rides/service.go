@@ -28,6 +28,7 @@ import (
 	walletservice "github.com/umar5678/go-backend/internal/modules/wallet"
 	walletdto "github.com/umar5678/go-backend/internal/modules/wallet/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
+	"github.com/umar5678/go-backend/internal/utils/location"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 	"github.com/umar5678/go-backend/internal/websocket"
@@ -218,19 +219,45 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 		}
 	}
 
-	rideID := uuid.New().String()
-
-	// 2. Hold funds with ReferenceID
-	holdReq := walletdto.HoldFundsRequest{
-		Amount:        finalAmount,
-		ReferenceType: "ride",
-		ReferenceID:   rideID,
-		HoldDuration:  1800, // 30 minutes
+	// ✅ Calculate amount to hold (after applying free credits)
+	walletInfo, err := s.walletService.GetWallet(ctx, riderID)
+	if err != nil {
+		logger.Warn("failed to get wallet info", "error", err, "riderID", riderID)
 	}
 
-	holdResp, err := s.walletService.HoldFunds(ctx, riderID, holdReq)
-	if err != nil {
-		return nil, response.BadRequest("Insufficient wallet balance. Please add funds.")
+	amountToHold := finalAmount
+	if walletInfo != nil && walletInfo.FreeRideCredits > 0 {
+		// Free ride credits can cover part or all of the fare
+		if walletInfo.FreeRideCredits >= finalAmount {
+			amountToHold = 0 // Free credits cover everything
+			logger.Info("ride fully covered by free credits", "riderID", riderID, "fareAmount", finalAmount, "freeCredits", walletInfo.FreeRideCredits)
+		} else {
+			// Free credits cover partial amount, hold the remaining
+			amountToHold = finalAmount - walletInfo.FreeRideCredits
+			logger.Info("ride partially covered by free credits", "riderID", riderID, "fareAmount", finalAmount, "freeCredits", walletInfo.FreeRideCredits, "amountToHold", amountToHold)
+		}
+	}
+
+	rideID := uuid.New().String()
+
+	// 2. Hold funds with ReferenceID (only if amount > 0)
+	var holdID *string
+	if amountToHold > 0 {
+		holdReq := walletdto.HoldFundsRequest{
+			Amount:        amountToHold,
+			ReferenceType: "ride",
+			ReferenceID:   rideID,
+			HoldDuration:  1800, // 30 minutes
+		}
+
+		holdResp, err := s.walletService.HoldFunds(ctx, riderID, holdReq)
+		if err != nil {
+			return nil, response.BadRequest("Insufficient wallet balance. Please add funds.")
+		}
+		holdID = &holdResp.ID
+		logger.Info("funds held for ride", "rideID", rideID, "holdID", holdResp.ID, "amount", amountToHold)
+	} else {
+		logger.Info("no funds to hold - free credits cover entire fare", "rideID", rideID)
 	}
 
 	// 3. Create ride
@@ -249,7 +276,7 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 		EstimatedDuration: fareEstimate.EstimatedDuration,
 		EstimatedFare:     finalAmount,
 		SurgeMultiplier:   fareEstimate.SurgeMultiplier,
-		WalletHoldID:      &holdResp.ID,
+		WalletHoldID:      holdID,
 		RiderNotes:        req.RiderNotes,
 		PromoCodeID:       promoCodeID,
 		PromoDiscount:     &promoDiscount,
@@ -257,7 +284,9 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 	}
 
 	if err := s.repo.CreateRide(ctx, ride); err != nil {
-		s.walletService.ReleaseHold(ctx, riderID, walletdto.ReleaseHoldRequest{HoldID: holdResp.ID})
+		if holdID != nil {
+			s.walletService.ReleaseHold(ctx, riderID, walletdto.ReleaseHoldRequest{HoldID: *holdID})
+		}
 		logger.Error("failed to create ride", "error", err, "riderID", riderID)
 		return nil, response.InternalServerError("Failed to create ride", err)
 	}
@@ -291,8 +320,10 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 				logger.Error("failed to update ride status", "error", err, "rideID", rideID)
 			}
 
-			if err := s.walletService.ReleaseHold(bgCtx, riderID, walletdto.ReleaseHoldRequest{HoldID: holdResp.ID}); err != nil {
-				logger.Error("failed to release hold", "error", err, "rideID", rideID)
+			if holdID != nil {
+				if err := s.walletService.ReleaseHold(bgCtx, riderID, walletdto.ReleaseHoldRequest{HoldID: *holdID}); err != nil {
+					logger.Error("failed to release hold", "error", err, "rideID", rideID)
+				}
 			}
 
 			s.wsHelper.SendRideStatusToBoth(bgCtx, riderID, "", rideID, "cancelled", "No drivers available. Your payment has been refunded.")
@@ -928,6 +959,18 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	logger.Info("ride PIN verified at completion", "rideID", rideID)
 
+	// ✅ VERIFY: Driver is within 100m of dropoff location
+	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
+	distanceKm := distanceToDropoff
+	const maxCompletionRadiusKm = 0.1 // 100 meters
+
+	if distanceKm > maxCompletionRadiusKm {
+		logger.Warn("driver outside completion radius", "rideID", rideID, "distanceKm", distanceKm, "maxRadiusKm", maxCompletionRadiusKm)
+		return nil, response.BadRequest(fmt.Sprintf("You must be within 100 meters of the destination. Current distance: %.0f meters", distanceKm*1000))
+	}
+
+	logger.Info("driver verified within 100m radius", "rideID", rideID, "distanceKm", distanceKm)
+
 	// Calculate actual fare
 	actualFareReq := pricingdto.CalculateActualFareRequest{
 		ActualDistanceKm:  req.ActualDistance,
@@ -958,17 +1001,17 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		actualFare -= *ride.PromoDiscount
 	}
 
-	// TODO: Check for active SOS and resolve when sosService is available
-	// if s.sosService != nil {
-	// 	activeSOS, _ := s.sosService.GetActiveSOS(ctx, ride.RiderID)
-	// 	if activeSOS != nil {
-	// 		resolveReq := sosdto.ResolveSOSRequest{
-	// 			Notes: "Ride completed successfully",
-	// 		}
-	// 		s.sosService.ResolveSOS(ctx, ride.RiderID, activeSOS.ID, resolveReq)
-	// 		logger.Info("Auto-resolved SOS alert on ride completion", "sosID", activeSOS.ID)
-	// 	}
-	// }
+	// Check for active SOS and resolve when sosService is available
+	if s.sosService != nil {
+		activeSOS, _ := s.sosService.GetActiveSOS(ctx, ride.RiderID)
+		if activeSOS != nil {
+			resolveReq := sosdto.ResolveSOSRequest{
+				Notes: "Ride completed successfully",
+			}
+			s.sosService.ResolveSOS(ctx, ride.RiderID, activeSOS.ID, resolveReq)
+			logger.Info("Auto-resolved SOS alert on ride completion", "sosID", activeSOS.ID)
+		}
+	}
 
 	// Update ride
 	ride.ActualDistance = &req.ActualDistance
@@ -982,16 +1025,18 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		return nil, response.InternalServerError("Failed to complete ride", err)
 	}
 
-	// Capture hold
+	// ✅ Capture hold (marks cash payment as received)
 	if ride.WalletHoldID != nil {
 		captureReq := walletdto.CaptureHoldRequest{
 			HoldID:      *ride.WalletHoldID,
-			Amount:      &actualFare,
-			Description: fmt.Sprintf("Payment for ride %s", rideID),
+			Amount:      ride.ActualFare,
+			Description: fmt.Sprintf("Cash payment for ride %s", rideID),
 		}
 
-		if _, err := s.walletService.CaptureHold(ctx, ride.RiderID, captureReq); err != nil {
+		_, err := s.walletService.CaptureHold(ctx, ride.RiderID, captureReq)
+		if err != nil {
 			logger.Error("failed to capture hold", "error", err, "rideID", rideID)
+			return nil, response.InternalServerError("Failed to process payment", err)
 		}
 	}
 
@@ -1009,22 +1054,19 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		}
 	}
 
-	// Credit driver (80% commission)
-	driverEarnings := actualFare * 0.80
-
-	if _, err := s.walletService.CreditWallet(
+	// ✅ Credit driver earnings
+	driverEarnings := actualFare * 0.95 // 95% to driver
+	_, err = s.walletService.CreditWallet(
 		ctx,
-		driverUserID,
+		driver.UserID,
 		driverEarnings,
-		"ride",
+		"ride_earnings",
 		rideID,
 		fmt.Sprintf("Earnings from ride %s", rideID),
-		map[string]interface{}{
-			"totalFare":  actualFare,
-			"commission": 0.20,
-		},
-	); err != nil {
-		logger.Error("failed to credit driver wallet", "error", err, "driverUserID", driverUserID, "amount", driverEarnings)
+		nil,
+	)
+	if err != nil {
+		logger.Error("failed to credit driver wallet", "error", err, "rideID", rideID)
 	}
 
 	// Update stats

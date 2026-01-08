@@ -9892,9 +9892,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "produces": [
-                    "application/json"
-                ],
+                "description": "Get current wallet balance (cash in hand for drivers)",
                 "tags": [
                     "wallet"
                 ],
@@ -9911,8 +9909,109 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "number",
-                                            "format": "float64"
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletBalanceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/wallet/cash/collect": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Driver records cash received from rider after ride completion",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Record cash collection from rider (Driver only)",
+                "parameters": [
+                    {
+                        "description": "Cash collection data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.CashCollectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/wallet/cash/settle": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Driver pays collected cash to company",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Record cash payment to company (Driver settlement)",
+                "parameters": [
+                    {
+                        "description": "Cash payment data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.CashPaymentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse"
                                         }
                                     }
                                 }
@@ -10131,9 +10230,6 @@ const docTemplate = `{
                     {
                         "BearerAuth": []
                     }
-                ],
-                "produces": [
-                    "application/json"
                 ],
                 "tags": [
                     "wallet"
@@ -16950,6 +17046,8 @@ const docTemplate = `{
             "required": [
                 "actualDistance",
                 "actualDuration",
+                "driverLat",
+                "driverLon",
                 "riderPin"
             ],
             "properties": {
@@ -16960,6 +17058,12 @@ const docTemplate = `{
                 "actualDuration": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "driverLat": {
+                    "type": "number"
+                },
+                "driverLon": {
+                    "type": "number"
                 },
                 "riderPin": {
                     "type": "string"
@@ -17468,13 +17572,46 @@ const docTemplate = `{
             ],
             "properties": {
                 "amount": {
-                    "description": "Optional: capture partial amount",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0.5
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 500
                 },
                 "holdId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_wallet_dto.CashCollectionRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "rideId"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "minimum": 0.5
+                },
+                "rideId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_wallet_dto.CashPaymentRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "settlementId"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "minimum": 1
+                },
+                "settlementId": {
                     "type": "string"
                 }
             }
@@ -17488,12 +17625,14 @@ const docTemplate = `{
             ],
             "properties": {
                 "amount": {
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0.5
                 },
                 "holdDuration": {
-                    "description": "minutes, default 30",
+                    "description": "seconds",
                     "type": "integer",
-                    "minimum": 1
+                    "maximum": 3600,
+                    "minimum": 60
                 },
                 "referenceId": {
                     "type": "string"
@@ -17610,6 +17749,29 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletBalanceResponse": {
+            "type": "object",
+            "properties": {
+                "availableBalance": {
+                    "type": "number"
+                },
+                "balance": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "heldBalance": {
+                    "type": "number"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "walletId": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletResponse": {
             "type": "object",
             "properties": {
@@ -17624,6 +17786,9 @@ const docTemplate = `{
                 },
                 "currency": {
                     "type": "string"
+                },
+                "freeRideCredits": {
+                    "type": "number"
                 },
                 "heldBalance": {
                     "type": "number"

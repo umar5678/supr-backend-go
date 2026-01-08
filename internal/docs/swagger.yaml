@@ -4530,11 +4530,17 @@ definitions:
       actualDuration:
         minimum: 0
         type: integer
+      driverLat:
+        type: number
+      driverLon:
+        type: number
       riderPin:
         type: string
     required:
     - actualDistance
     - actualDuration
+    - driverLat
+    - driverLon
     - riderPin
     type: object
   github_com_umar5678_go-backend_internal_modules_rides_dto.CreateRideRequest:
@@ -4878,22 +4884,47 @@ definitions:
   github_com_umar5678_go-backend_internal_modules_wallet_dto.CaptureHoldRequest:
     properties:
       amount:
-        description: 'Optional: capture partial amount'
+        minimum: 0.5
         type: number
       description:
+        maxLength: 500
         type: string
       holdId:
         type: string
     required:
     - holdId
     type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.CashCollectionRequest:
+    properties:
+      amount:
+        minimum: 0.5
+        type: number
+      rideId:
+        type: string
+    required:
+    - amount
+    - rideId
+    type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.CashPaymentRequest:
+    properties:
+      amount:
+        minimum: 1
+        type: number
+      settlementId:
+        type: string
+    required:
+    - amount
+    - settlementId
+    type: object
   github_com_umar5678_go-backend_internal_modules_wallet_dto.HoldFundsRequest:
     properties:
       amount:
+        minimum: 0.5
         type: number
       holdDuration:
-        description: minutes, default 30
-        minimum: 1
+        description: seconds
+        maximum: 3600
+        minimum: 60
         type: integer
       referenceId:
         type: string
@@ -4975,6 +5006,21 @@ definitions:
     - amount
     - recipientId
     type: object
+  github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletBalanceResponse:
+    properties:
+      availableBalance:
+        type: number
+      balance:
+        type: number
+      currency:
+        type: string
+      heldBalance:
+        type: number
+      updatedAt:
+        type: string
+      walletId:
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletResponse:
     properties:
       availableBalance:
@@ -4985,6 +5031,8 @@ definitions:
         type: string
       currency:
         type: string
+      freeRideCredits:
+        type: number
       heldBalance:
         type: number
       id:
@@ -10980,6 +11028,34 @@ paths:
       - wallet
   /wallet/balance:
     get:
+      description: Get current wallet balance (cash in hand for drivers)
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.WalletBalanceResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get wallet balance
+      tags:
+      - wallet
+  /wallet/cash/collect:
+    post:
+      consumes:
+      - application/json
+      description: Driver records cash received from rider after ride completion
+      parameters:
+      - description: Cash collection data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.CashCollectionRequest'
       produces:
       - application/json
       responses:
@@ -10990,12 +11066,40 @@ paths:
             - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
             - properties:
                 data:
-                  format: float64
-                  type: number
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse'
               type: object
       security:
       - BearerAuth: []
-      summary: Get wallet balance
+      summary: Record cash collection from rider (Driver only)
+      tags:
+      - wallet
+  /wallet/cash/settle:
+    post:
+      consumes:
+      - application/json
+      description: Driver pays collected cash to company
+      parameters:
+      - description: Cash payment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.CashPaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_wallet_dto.TransactionResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Record cash payment to company (Driver settlement)
       tags:
       - wallet
   /wallet/hold:
@@ -11123,8 +11227,6 @@ paths:
         name: id
         required: true
         type: string
-      produces:
-      - application/json
       responses:
         "200":
           description: OK

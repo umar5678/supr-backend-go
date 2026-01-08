@@ -599,6 +599,19 @@ ALTER TABLE rides ADD COLUMN driver_rating_comment TEXT;
 ALTER TABLE rides ADD COLUMN rider_rated_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE rides ADD COLUMN driver_rated_at TIMESTAMP WITH TIME ZONE;
 
+-- wallet transactions
+ALTER TABLE wallet_transactions 
+ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'cash';
+
+-- Create index for payment method filtering
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_payment_method 
+ON wallet_transactions(payment_method);
+
+-- Update existing transactions to mark as cash
+UPDATE wallet_transactions 
+SET payment_method = 'cash' 
+WHERE payment_method IS NULL;
+
 
 ALTER TABLE users ADD COLUMN ride_pin VARCHAR(4);
 ALTER TABLE users ALTER COLUMN ride_pin SET NOT NULL;

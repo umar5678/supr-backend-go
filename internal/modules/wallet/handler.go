@@ -35,23 +35,21 @@ func (h *Handler) GetWallet(c *gin.Context) {
 
 // GetBalance godoc
 // @Summary Get wallet balance
+// @Description Get current wallet balance (cash in hand for drivers)
 // @Tags wallet
 // @Security BearerAuth
-// @Produce json
-// @Success 200 {object} response.Response{data=float64}
+// @Success 200 {object} response.Response{data=dto.WalletBalanceResponse}
 // @Router /wallet/balance [get]
 func (h *Handler) GetBalance(c *gin.Context) {
-	userID, _ := c.Get("userID")
+    userID, _ := c.Get("userID")
 
-	balance, err := h.service.GetBalance(c.Request.Context(), userID.(string))
-	if err != nil {
-		c.Error(err)
-		return
-	}
+    balance, err := h.service.GetBalance(c.Request.Context(), userID.(string))
+    if err != nil {
+        c.Error(err)
+        return
+    }
 
-	response.Success(c, map[string]interface{}{
-		"balance": balance,
-	}, "Balance retrieved successfully")
+    response.Success(c, balance, "Balance retrieved")
 }
 
 // AddFunds godoc
@@ -79,6 +77,111 @@ func (h *Handler) AddFunds(c *gin.Context) {
 	}
 
 	response.Success(c, transaction, "Funds added successfully")
+}
+
+// GetTransactionHistory godoc
+// @Summary Get transaction history
+// @Description Get wallet transaction history with pagination
+// @Tags wallet
+// @Security BearerAuth
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Param type query string false "Transaction type (credit/debit)"
+// @Success 200 {object} response.Response{data=[]dto.TransactionResponse}
+// @Router /wallet/transactions [get]
+func (h *Handler) GetTransactionHistory(c *gin.Context) {
+    userID, _ := c.Get("userID")
+
+    var req dto.TransactionHistoryRequest
+    if err := c.ShouldBindQuery(&req); err != nil {
+        c.Error(response.BadRequest("Invalid query parameters"))
+        return
+    }
+
+    transactions, total, err := h.service.GetTransactionHistory(c.Request.Context(), userID.(string), req)
+    if err != nil {
+        c.Error(err)
+        return
+    }
+
+    pagination := response.NewPaginationMeta(total, req.Page, req.Limit)
+    response.Paginated(c, transactions, pagination, "Transactions retrieved")
+}
+
+// GetTransaction godoc
+// @Summary Get transaction details
+// @Tags wallet
+// @Security BearerAuth
+// @Param id path string true "Transaction ID"
+// @Success 200 {object} response.Response{data=dto.TransactionResponse}
+// @Router /wallet/transactions/{id} [get]
+func (h *Handler) GetTransaction(c *gin.Context) {
+    userID, _ := c.Get("userID")
+    transactionID := c.Param("id")
+
+    transaction, err := h.service.GetTransaction(c.Request.Context(), userID.(string), transactionID)
+    if err != nil {
+        c.Error(err)
+        return
+    }
+
+    response.Success(c, transaction, "Transaction retrieved")
+}
+
+// RecordCashCollection godoc
+// @Summary Record cash collection from rider (Driver only)
+// @Description Driver records cash received from rider after ride completion
+// @Tags wallet
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body dto.CashCollectionRequest true "Cash collection data"
+// @Success 200 {object} response.Response{data=dto.TransactionResponse}
+// @Router /wallet/cash/collect [post]
+func (h *Handler) RecordCashCollection(c *gin.Context) {
+    userID, _ := c.Get("userID")
+
+    var req dto.CashCollectionRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.Error(response.BadRequest("Invalid request body"))
+        return
+    }
+
+    transaction, err := h.service.RecordCashCollection(c.Request.Context(), userID.(string), req)
+    if err != nil {
+        c.Error(err)
+        return
+    }
+
+    response.Success(c, transaction, "Cash collection recorded")
+}
+
+// RecordCashPayment godoc
+// @Summary Record cash payment to company (Driver settlement)
+// @Description Driver pays collected cash to company
+// @Tags wallet
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body dto.CashPaymentRequest true "Cash payment data"
+// @Success 200 {object} response.Response{data=dto.TransactionResponse}
+// @Router /wallet/cash/settle [post]
+func (h *Handler) RecordCashPayment(c *gin.Context) {
+    userID, _ := c.Get("userID")
+
+    var req dto.CashPaymentRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.Error(response.BadRequest("Invalid request body"))
+        return
+    }
+
+    transaction, err := h.service.RecordCashPayment(c.Request.Context(), userID.(string), req)
+    if err != nil {
+        c.Error(err)
+        return
+    }
+
+    response.Success(c, transaction, "Cash settlement recorded")
 }
 
 // WithdrawFunds godoc
@@ -163,27 +266,6 @@ func (h *Handler) ListTransactions(c *gin.Context) {
 
 	pagination := response.NewPaginationMeta(total, req.Page, req.Limit)
 	response.Paginated(c, transactions, pagination, "Transactions retrieved successfully")
-}
-
-// GetTransaction godoc
-// @Summary Get transaction details
-// @Tags wallet
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Transaction ID"
-// @Success 200 {object} response.Response{data=dto.TransactionResponse}
-// @Router /wallet/transactions/{id} [get]
-func (h *Handler) GetTransaction(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	txID := c.Param("id")
-
-	transaction, err := h.service.GetTransaction(c.Request.Context(), userID.(string), txID)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	response.Success(c, transaction, "Transaction retrieved successfully")
 }
 
 // HoldFunds godoc
