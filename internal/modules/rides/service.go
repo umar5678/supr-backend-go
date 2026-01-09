@@ -1277,10 +1277,10 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	logger.Info("ride PIN verified at completion", "rideID", rideID)
 
-	// ✅ VERIFY: Driver is within 100m of dropoff location
+	// ✅ VERIFY: Driver is within 150m of dropoff location
 	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
 	distanceKm := distanceToDropoff
-	const maxCompletionRadiusKm = 5 // 150 meters
+	const maxCompletionRadiusKm = 0.15 // 150 meters
 
 	if distanceKm > maxCompletionRadiusKm {
 		logger.Warn("driver outside completion radius", "rideID", rideID, "distanceKm", distanceKm, "maxRadiusKm", maxCompletionRadiusKm)
