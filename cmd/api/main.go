@@ -20,6 +20,7 @@ import (
 	"github.com/umar5678/go-backend/internal/middleware"
 	"github.com/umar5678/go-backend/internal/modules/admin"
 	"github.com/umar5678/go-backend/internal/modules/auth"
+	"github.com/umar5678/go-backend/internal/modules/batching"
 	"github.com/umar5678/go-backend/internal/modules/drivers"
 	"github.com/umar5678/go-backend/internal/modules/fraud"
 	"github.com/umar5678/go-backend/internal/modules/homeservices"
@@ -273,6 +274,16 @@ func main() {
 		ratingsHandler := ratings.NewHandler(ratingsService)
 		ratings.RegisterRoutes(v1, ratingsHandler, authMiddleware)
 
+		// Batching Module (initialize before rides service)
+		// 10-second collection window, max 20 requests per batch
+		batchingService := batching.NewService(
+			driversRepo,
+			ratingsService,
+			trackingService,
+			10*time.Second, // Batch window
+			20,             // Max batch size
+		)
+
 		// rides service
 		ridesRepo := rides.NewRepository(db)
 		ridesService := rides.NewService(
@@ -288,6 +299,7 @@ func main() {
 			promotionsService, // ✅ NOW DEFINED
 			ratingsService,    // ✅ Ratings service
 			fraudService,      // ✅ NOW DEFINED
+			batchingService,   // ✅ ADDED: Request batching service
 			adminRepo,
 		)
 		ridesHandler := rides.NewHandler(ridesService)

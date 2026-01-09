@@ -291,3 +291,55 @@ func (r *repository) GetSurgeHistory(ctx context.Context, rideID string) (*model
 		First(&history).Error
 	return &history, err
 }
+
+// FindZoneByLocation finds surge zone containing the given coordinates
+func (r *repository) FindZoneByLocation(ctx context.Context, lat, lon float64) (*models.SurgeZone, error) {
+	var zone models.SurgeZone
+
+	// Find zone where point is within radius
+	// Using Haversine formula in SQL for accuracy
+	query := `
+        SELECT * FROM surge_zones
+        WHERE is_active = true
+        AND deleted_at IS NULL
+        AND (
+            6371 * acos(
+                cos(radians(?)) * cos(radians(center_lat)) *
+                cos(radians(center_lon) - radians(?)) +
+                sin(radians(?)) * sin(radians(center_lat))
+            )
+        ) <= radius_km
+        ORDER BY radius_km ASC
+        LIMIT 1
+    `
+
+	err := r.db.WithContext(ctx).Raw(query, lat, lon, lat).Scan(&zone).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &zone, nil
+}
+
+// GetSurgeRule gets the surge pricing rule for zone and vehicle type
+func (r *repository) GetSurgeRule(ctx context.Context, zoneID, vehicleTypeID string) (*models.SurgePricingRule, error) {
+	var rule models.SurgePricingRule
+
+	err := r.db.WithContext(ctx).
+		Where("zone_id = ? AND vehicle_type_id = ? AND is_active = true AND deleted_at IS NULL", zoneID, vehicleTypeID).
+		First(&rule).Error
+
+	return &rule, err
+}
+
+// GetLatestDemand gets the most recent demand tracking for zone
+func (r *repository) GetLatestDemand(ctx context.Context, zoneID, vehicleTypeID string) (*models.DemandTracking, error) {
+	var demand models.DemandTracking
+
+	err := r.db.WithContext(ctx).
+		Where("zone_id = ? AND vehicle_type_id = ?", zoneID, vehicleTypeID).
+		Order("recorded_at DESC").
+		First(&demand).Error
+
+	return &demand, err
+}

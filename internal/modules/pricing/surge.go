@@ -203,3 +203,41 @@ func (m *SurgeManager) ApplyMaxMultiplierCap(multiplier float64, vehicleTypeID s
 
 	return multiplier
 }
+
+// CalculateZoneBasedSurge calculates surge multiplier for a geographic zone
+// This checks active surge zones and returns the highest multiplier if location is in a zone
+func (m *SurgeManager) CalculateZoneBasedSurge(ctx context.Context, lat, lon float64) (float64, error) {
+	zones, err := m.repo.GetActiveSurgeZones(ctx, lat, lon)
+	if err != nil {
+		return 1.0, err
+	}
+
+	if len(zones) == 0 {
+		return 1.0, nil // No surge zones found
+	}
+
+	// Return the highest multiplier from all zones containing this location
+	maxMultiplier := 1.0
+	for _, zone := range zones {
+		if zone.Multiplier > maxMultiplier {
+			maxMultiplier = zone.Multiplier
+		}
+	}
+
+	return maxMultiplier, nil
+}
+
+// GetZoneInfo returns information about the zone at a location
+func (m *SurgeManager) GetZoneInfo(ctx context.Context, lat, lon float64) (*models.SurgePricingZone, error) {
+	zones, err := m.repo.GetActiveSurgeZones(ctx, lat, lon)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(zones) == 0 {
+		return nil, nil
+	}
+
+	// Return the first (highest priority) zone
+	return zones[0], nil
+}

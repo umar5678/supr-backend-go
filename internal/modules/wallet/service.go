@@ -35,6 +35,7 @@ type Service interface {
 	// Direct debit/credit (internal - for admin operations, ride completion, refunds)
 	DebitWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 	CreditWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
+	CreditDriverWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 
 	// Cash collection tracking
 	RecordCashCollection(ctx context.Context, userID string, req dto.CashCollectionRequest) (*dto.TransactionResponse, error)
@@ -619,45 +620,90 @@ func (s *service) DebitWallet(ctx context.Context, userID string, amount float64
 
 // CreditWallet credits amount to wallet (for driver earnings, refunds, bonuses)
 func (s *service) CreditWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error) {
-    wallet, err := s.repo.FindWalletByUserID(ctx, userID, models.WalletTypeRider)
-    if err != nil {
-        if errors.Is(err, gorm.ErrRecordNotFound) {
-            wallet = &models.Wallet{
-                UserID:   userID,
-                Balance:  0,
-                Currency: "USD",
-            }
-            if err := s.repo.CreateWallet(ctx, wallet); err != nil {
-                return nil, response.InternalServerError("Failed to create wallet", err)
-            }
-        } else {
-            return nil, response.InternalServerError("Failed to fetch wallet", err)
-        }
-    }
+	wallet, err := s.repo.FindWalletByUserID(ctx, userID, models.WalletTypeRider)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			wallet = &models.Wallet{
+				UserID:     userID,
+				Balance:    0,
+				Currency:   "USD",
+				WalletType: models.WalletTypeRider, // Set wallet type to rider
+			}
+			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
+				return nil, response.InternalServerError("Failed to create wallet", err)
+			}
+		} else {
+			return nil, response.InternalServerError("Failed to fetch wallet", err)
+		}
+	}
 
-    txn := &models.WalletTransaction{
-        WalletID:      wallet.ID,
-        Amount:        amount,
-        Type:          "credit",
-        Status:        "completed",
-        ReferenceType: &transactionType,
-        ReferenceID:   &referenceID,
-        Description:   &description,
-        BalanceAfter:  wallet.Balance + amount,
-    }
+	txn := &models.WalletTransaction{
+		WalletID:      wallet.ID,
+		Amount:        amount,
+		Type:          "credit",
+		Status:        "completed",
+		ReferenceType: &transactionType,
+		ReferenceID:   &referenceID,
+		Description:   &description,
+		BalanceAfter:  wallet.Balance + amount,
+	}
 
-    if err := s.repo.CreateTransaction(ctx, txn); err != nil {
-        return nil, response.InternalServerError("Failed to create transaction", err)
-    }
+	if err := s.repo.CreateTransaction(ctx, txn); err != nil {
+		return nil, response.InternalServerError("Failed to create transaction", err)
+	}
 
-    wallet.Balance += amount
-    if err := s.repo.UpdateWallet(ctx, wallet); err != nil {
-        return nil, response.InternalServerError("Failed to update wallet", err)
-    }
+	wallet.Balance += amount
+	if err := s.repo.UpdateWallet(ctx, wallet); err != nil {
+		return nil, response.InternalServerError("Failed to update wallet", err)
+	}
 
-    logger.Info("wallet credited", "userID", userID, "amount", amount, "transactionID", txn.ID, "type", transactionType)
+	logger.Info("wallet credited", "userID", userID, "amount", amount, "transactionID", txn.ID, "type", transactionType)
 
-    return txn, nil
+	return txn, nil
+}
+
+// CreditDriverWallet credits amount to driver wallet (for driver earnings)
+func (s *service) CreditDriverWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error) {
+	wallet, err := s.repo.FindWalletByUserID(ctx, userID, models.WalletTypeDriver)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			wallet = &models.Wallet{
+				UserID:     userID,
+				Balance:    0,
+				Currency:   "USD",
+				WalletType: models.WalletTypeDriver, // Set wallet type to driver
+			}
+			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
+				return nil, response.InternalServerError("Failed to create driver wallet", err)
+			}
+		} else {
+			return nil, response.InternalServerError("Failed to fetch driver wallet", err)
+		}
+	}
+
+	txn := &models.WalletTransaction{
+		WalletID:      wallet.ID,
+		Amount:        amount,
+		Type:          "credit",
+		Status:        "completed",
+		ReferenceType: &transactionType,
+		ReferenceID:   &referenceID,
+		Description:   &description,
+		BalanceAfter:  wallet.Balance + amount,
+	}
+
+	if err := s.repo.CreateTransaction(ctx, txn); err != nil {
+		return nil, response.InternalServerError("Failed to create transaction", err)
+	}
+
+	wallet.Balance += amount
+	if err := s.repo.UpdateWallet(ctx, wallet); err != nil {
+		return nil, response.InternalServerError("Failed to update wallet", err)
+	}
+
+	logger.Info("driver wallet credited", "userID", userID, "amount", amount, "transactionID", txn.ID, "type", transactionType)
+
+	return txn, nil
 }
 
 // GetTransactionHistory retrieves transaction history
@@ -690,56 +736,56 @@ func (s *service) GetTransactionHistory(ctx context.Context, userID string, req 
 
 // RecordCashCollection records when driver collects cash from rider
 func (s *service) RecordCashCollection(ctx context.Context, userID string, req dto.CashCollectionRequest) (*dto.TransactionResponse, error) {
-    if err := req.Validate(); err != nil {
-        return nil, response.BadRequest(err.Error())
-    }
+	if err := req.Validate(); err != nil {
+		return nil, response.BadRequest(err.Error())
+	}
 
-    wallet, err := s.repo.FindWalletByUserID(ctx, userID, models.WalletTypeDriver)
-    if err != nil {
-        if errors.Is(err, gorm.ErrRecordNotFound) {
-            wallet = &models.Wallet{
-                UserID:   userID,
-                Balance:  0,
-                Currency: "USD",
-            }
-            if err := s.repo.CreateWallet(ctx, wallet); err != nil {
-                return nil, response.InternalServerError("Failed to create wallet", err)
-            }
-        } else {
-            return nil, response.InternalServerError("Failed to fetch wallet", err)
-        }
-    }
+	wallet, err := s.repo.FindWalletByUserID(ctx, userID, models.WalletTypeDriver)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			wallet = &models.Wallet{
+				UserID:   userID,
+				Balance:  0,
+				Currency: "USD",
+			}
+			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
+				return nil, response.InternalServerError("Failed to create wallet", err)
+			}
+		} else {
+			return nil, response.InternalServerError("Failed to fetch wallet", err)
+		}
+	}
 
-    // Record cash collection as a transaction
-    txn := &models.WalletTransaction{
-        WalletID:      wallet.ID,
-        Amount:        req.Amount,
-        Type:          "credit",
-        Status:        "completed",
-        ReferenceType: stringPtr("cash_collection"),
-        ReferenceID:   &req.RideID,
-        Description:   stringPtr(fmt.Sprintf("Cash collected from ride %s", req.RideID)),
-        PaymentMethod: "cash",
-        BalanceAfter:  wallet.Balance + req.Amount,
-    }
+	// Record cash collection as a transaction
+	txn := &models.WalletTransaction{
+		WalletID:      wallet.ID,
+		Amount:        req.Amount,
+		Type:          "credit",
+		Status:        "completed",
+		ReferenceType: stringPtr("cash_collection"),
+		ReferenceID:   &req.RideID,
+		Description:   stringPtr(fmt.Sprintf("Cash collected from ride %s", req.RideID)),
+		PaymentMethod: "cash",
+		BalanceAfter:  wallet.Balance + req.Amount,
+	}
 
-    if err := s.repo.CreateTransaction(ctx, txn); err != nil {
-        return nil, response.InternalServerError("Failed to record cash collection", err)
-    }
+	if err := s.repo.CreateTransaction(ctx, txn); err != nil {
+		return nil, response.InternalServerError("Failed to record cash collection", err)
+	}
 
-    // Update wallet balance (driver's cash in hand)
-    wallet.Balance += req.Amount
-    if err := s.repo.UpdateWallet(ctx, wallet); err != nil {
-        logger.Error("failed to update wallet balance", "error", err, "walletID", wallet.ID)
-    }
+	// Update wallet balance (driver's cash in hand)
+	wallet.Balance += req.Amount
+	if err := s.repo.UpdateWallet(ctx, wallet); err != nil {
+		logger.Error("failed to update wallet balance", "error", err, "walletID", wallet.ID)
+	}
 
-    logger.Info("cash collection recorded", 
-        "driverID", userID, 
-        "amount", req.Amount, 
-        "rideID", req.RideID,
-        "transactionID", txn.ID)
+	logger.Info("cash collection recorded",
+		"driverID", userID,
+		"amount", req.Amount,
+		"rideID", req.RideID,
+		"transactionID", txn.ID)
 
-    return dto.ToTransactionResponse(txn), nil
+	return dto.ToTransactionResponse(txn), nil
 }
 
 // RecordCashPayment records when driver pays cash to company (settlement)

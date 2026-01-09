@@ -2,18 +2,22 @@
 package dto
 
 type FareEstimateResponse struct {
-	BaseFare          float64 `json:"baseFare"`
-	DistanceFare      float64 `json:"distanceFare"`
-	DurationFare      float64 `json:"durationFare"`
-	BookingFee        float64 `json:"bookingFee"`
-	SurgeMultiplier   float64 `json:"surgeMultiplier"`
-	SubTotal          float64 `json:"subTotal"`
-	SurgeAmount       float64 `json:"surgeAmount"`
-	TotalFare         float64 `json:"totalFare"`
-	EstimatedDistance float64 `json:"estimatedDistance"` // km
-	EstimatedDuration int     `json:"estimatedDuration"` // seconds
-	VehicleTypeName   string  `json:"vehicleTypeName"`
-	Currency          string  `json:"currency"`
+	BaseFare           float64               `json:"baseFare"`
+	DistanceFare       float64               `json:"distanceFare"`
+	DurationFare       float64               `json:"durationFare"`
+	BookingFee         float64               `json:"bookingFee"`
+	SurgeMultiplier    float64               `json:"surgeMultiplier"`
+	SubTotal           float64               `json:"subTotal"`
+	SurgeAmount        float64               `json:"surgeAmount"`
+	TotalFare          float64               `json:"totalFare"`
+	DriverPayout       float64               `json:"driverPayout"`       // What driver receives (after commission)
+	PlatformCommission float64               `json:"platformCommission"` // Platform fee
+	CommissionRate     float64               `json:"commissionRate"`     // Percentage (e.g., 5.0 for 5%)
+	EstimatedDistance  float64               `json:"estimatedDistance"`  // km
+	EstimatedDuration  int                   `json:"estimatedDuration"`  // seconds
+	VehicleTypeName    string                `json:"vehicleTypeName"`
+	Currency           string                `json:"currency"`
+	SurgeDetails       *SurgeDetailsResponse `json:"surgeDetails,omitempty"`
 }
 
 type SurgeZoneResponse struct {
@@ -62,3 +66,51 @@ type FareComponent struct {
 	Amount float64 `json:"amount"`
 	Type   string  `json:"type"` // base, distance, duration, surge, booking_fee
 }
+
+// SurgeResponse contains basic surge information
+type SurgeResponse struct {
+	Multiplier float64 `json:"multiplier"`
+	ZoneID     string  `json:"zoneId,omitempty"`
+	ZoneName   string  `json:"zoneName,omitempty"`
+	Reason     string  `json:"reason"`
+}
+
+// CombinedSurgeResponse contains detailed surge breakdown
+type CombinedSurgeResponse struct {
+	AppliedMultiplier     float64 `json:"appliedMultiplier"`
+	ZoneBasedMultiplier   float64 `json:"zoneBasedMultiplier"`
+	TimeBasedMultiplier   float64 `json:"timeBasedMultiplier"`
+	DemandBasedMultiplier float64 `json:"demandBasedMultiplier"`
+	Reason                string  `json:"reason"`
+	ZoneID                string  `json:"zoneId,omitempty"`
+	ZoneName              string  `json:"zoneName,omitempty"`
+}
+
+// SurgeDetailsResponse is included in fare estimate
+type SurgeDetailsResponse struct {
+	IsActive              bool    `json:"isActive"`
+	AppliedMultiplier     float64 `json:"appliedMultiplier"`
+	ZoneBasedMultiplier   float64 `json:"zoneBasedMultiplier"`
+	TimeBasedMultiplier   float64 `json:"timeBasedMultiplier"`
+	DemandBasedMultiplier float64 `json:"demandBasedMultiplier"`
+	Reason                string  `json:"reason"`
+	ZoneID                string  `json:"zoneId,omitempty"`
+	ZoneName              string  `json:"zoneName,omitempty"`
+}
+
+// // Update FareEstimateResponse to include surge details
+// type FareEstimateResponse struct {
+//     BaseFare          float64              `json:"baseFare"`
+//     DistanceFare      float64              `json:"distanceFare"`
+//     DurationFare      float64              `json:"durationFare"`
+//     BookingFee        float64              `json:"bookingFee"`
+//     SurgeMultiplier   float64              `json:"surgeMultiplier"`
+//     SubTotal          float64              `json:"subTotal"`
+//     SurgeAmount       float64              `json:"surgeAmount"`
+//     TotalFare         float64              `json:"totalFare"`
+//     EstimatedDistance float64              `json:"estimatedDistance"`
+//     EstimatedDuration int                  `json:"estimatedDuration"`
+//     VehicleTypeName   string               `json:"vehicleTypeName"`
+//     Currency          string               `json:"currency"`
+//     SurgeDetails      *SurgeDetailsResponse `json:"surgeDetails,omitempty"`
+// }

@@ -112,4 +112,3 @@ func ToHoldResponse(hold *models.WalletHold) *HoldResponse {
 		CreatedAt:     hold.CreatedAt,
 	}
 }
-

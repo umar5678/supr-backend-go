@@ -10,11 +10,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/umar5678/go-backend/internal/models"
 	adminrepo "github.com/umar5678/go-backend/internal/modules/admin"
+	batchingservice "github.com/umar5678/go-backend/internal/modules/batching"
+	batchingdto "github.com/umar5678/go-backend/internal/modules/batching/dto"
 	driversrepo "github.com/umar5678/go-backend/internal/modules/drivers"
 	fraudservice "github.com/umar5678/go-backend/internal/modules/fraud"
 	pricingservice "github.com/umar5678/go-backend/internal/modules/pricing"
 	pricingdto "github.com/umar5678/go-backend/internal/modules/pricing/dto"
 	"github.com/umar5678/go-backend/internal/modules/profile"
+	profiledto "github.com/umar5678/go-backend/internal/modules/profile/dto"
 	promotionsservice "github.com/umar5678/go-backend/internal/modules/promotions"
 	promotionsdto "github.com/umar5678/go-backend/internal/modules/promotions/dto"
 	ratingsservice "github.com/umar5678/go-backend/internal/modules/ratings"
@@ -72,6 +75,7 @@ type service struct {
 	promotionsService promotionsservice.Service // NEW
 	ratingsService    ratingsservice.Service    // NEW
 	fraudService      fraudservice.Service      // NEW
+	batchingService   batchingservice.Service   // NEW: For request batching
 	wsHelper          *RideWebSocketHelper
 }
 
@@ -88,9 +92,10 @@ func NewService(
 	promotionsService promotionsservice.Service,
 	ratingsService ratingsservice.Service,
 	fraudService fraudservice.Service,
+	batchingService batchingservice.Service,
 	adminRepo adminrepo.Repository,
 ) Service {
-	return &service{
+	svc := &service{
 		repo:              repo,
 		adminRepo:         adminRepo,
 		driversRepo:       driversRepo,
@@ -104,8 +109,35 @@ func NewService(
 		promotionsService: promotionsService,
 		ratingsService:    ratingsService,
 		fraudService:      fraudService,
+		batchingService:   batchingService,
 		wsHelper:          NewRideWebSocketHelper(),
 	}
+
+	// Set up batch expiration callback to process batches when they expire
+	if batchingService != nil {
+		batchingService.SetBatchExpireCallback(func(batchID string) {
+			ctx := context.Background()
+			logger.Info("🔄 Processing expired batch",
+				"batchID", batchID,
+			)
+			if result, err := batchingService.ProcessBatch(ctx, batchID); err != nil {
+				logger.Error("Failed to process batch",
+					"batchID", batchID,
+					"error", err,
+				)
+			} else {
+				logger.Info("✅ Batch processing complete",
+					"batchID", batchID,
+					"assignments", len(result.Assignments),
+					"unmatched", len(result.UnmatchedIDs),
+				)
+				// Process the matching result
+				svc.processMatchingResult(ctx, result)
+			}
+		})
+	}
+
+	return svc
 }
 
 // ========================================
@@ -123,23 +155,36 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 	}
 
 	// Handle saved locations if provided
-	// TODO: Integrate with profile service when methods are available
-	// if req.SavedLocationID != nil && s.profileService != nil {
-	// 	savedLoc, err := s.profileService.GetSavedLocation(ctx, riderID, *req.SavedLocationID)
-	// 	if err != nil {
-	// 		return nil, response.BadRequest("Invalid saved location")
-	// 	}
+	// Integrate with profile service when methods are available
+	if req.SavedLocationID != nil && s.profileService != nil {
+		savedLocs, err := s.profileService.GetSavedLocations(ctx, riderID)
+		if err != nil {
+			return nil, response.BadRequest("Failed to fetch saved locations")
+		}
 
-	// 	if req.UseSavedAs == "pickup" {
-	// 		req.PickupLat = savedLoc.Latitude
-	// 		req.PickupLon = savedLoc.Longitude
-	// 		req.PickupAddress = savedLoc.Address
-	// 	} else if req.UseSavedAs == "dropoff" {
-	// 		req.DropoffLat = savedLoc.Latitude
-	// 		req.DropoffLon = savedLoc.Longitude
-	// 		req.DropoffAddress = savedLoc.Address
-	// 	}
-	// }
+		// Find the matching saved location
+		var savedLoc *profiledto.SavedLocationResponse
+		for _, loc := range savedLocs {
+			if loc.ID == *req.SavedLocationID {
+				savedLoc = loc
+				break
+			}
+		}
+
+		if savedLoc == nil {
+			return nil, response.BadRequest("Invalid saved location")
+		}
+
+		if req.UseSavedAs == "pickup" {
+			req.PickupLat = savedLoc.Latitude
+			req.PickupLon = savedLoc.Longitude
+			req.PickupAddress = savedLoc.Address
+		} else if req.UseSavedAs == "dropoff" {
+			req.DropoffLat = savedLoc.Latitude
+			req.DropoffLon = savedLoc.Longitude
+			req.DropoffAddress = savedLoc.Address
+		}
+	}
 
 	// 1. Get fare estimate
 	fareReq := pricingdto.FareEstimateRequest{
@@ -295,9 +340,57 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
 	cache.SetJSON(ctx, cacheKey, ride, 30*time.Minute)
 
-	// 5. Start finding driver asynchronously
+	// 5. Start finding driver asynchronously using batching service
 	go func() {
 		bgCtx := context.Background()
+
+		// ✅ OPTION A: Use intelligent request batching with 4-factor driver ranking
+		if s.batchingService != nil {
+			// Add request to batch for intelligent matching
+			// Requests in the same vehicle type get batched for 10 seconds
+			// and matched using 4-factor driver ranking algorithm
+			batchID, err := s.batchingService.AddRequestToBatch(bgCtx, struct {
+				RideID        string
+				RiderID       string
+				PickupLat     float64
+				PickupLon     float64
+				DropoffLat    float64
+				DropoffLon    float64
+				PickupGeohash string
+				VehicleTypeID string
+				RequestedAt   time.Time
+			}{
+				RideID:        ride.ID,
+				RiderID:       ride.RiderID,
+				PickupLat:     ride.PickupLat,
+				PickupLon:     ride.PickupLon,
+				DropoffLat:    ride.DropoffLat,
+				DropoffLon:    ride.DropoffLon,
+				VehicleTypeID: ride.VehicleTypeID,
+				RequestedAt:   time.Now(),
+			})
+
+			if err == nil {
+				logger.Info("Request added to batch for intelligent matching",
+					"batchID", batchID,
+					"rideID", ride.ID,
+					"riderID", ride.RiderID,
+					"vehicleType", ride.VehicleTypeID,
+				)
+				// Batch will be processed when:
+				// - 10-second window expires, or
+				// - Maximum batch size (20 requests) is reached
+				// Matches are then delivered to drivers via processMatchingResult()
+				return
+			}
+
+			logger.Warn("Failed to add request to batch, falling back to sequential matching",
+				"error", err,
+				"rideID", ride.ID,
+			)
+		}
+
+		// ✅ FALLBACK: Sequential driver matching (if batching unavailable)
 		if err := s.FindDriverForRide(bgCtx, rideID); err != nil {
 			logger.Error("failed to find driver", "error", err, "rideID", rideID)
 
@@ -351,6 +444,121 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 	return dto.ToRideResponse(freshRide), nil
 }
 
+// processMatchingResult processes the results from batch matching
+// and processes assignments for each matched ride-driver pair
+func (s *service) processMatchingResult(ctx context.Context, result *batchingdto.BatchMatchingResult) {
+	if result == nil {
+		logger.Warn("Null batch matching result received")
+		return
+	}
+
+	logger.Info("Processing batch matching results",
+		"batchID", result.BatchID,
+		"assignments", len(result.Assignments),
+		"unmatched", len(result.UnmatchedIDs),
+	)
+
+	// Process successful assignments
+	for _, assignment := range result.Assignments {
+		logger.Info("✅ Batch assignment match found",
+			"rideID", assignment.RideID,
+			"driverID", assignment.DriverID,
+			"score", assignment.Score,
+			"distance", assignment.Distance,
+			"eta", assignment.ETA,
+		)
+
+		// Use the existing driver assignment logic
+		// which handles all the database updates, notifications, etc.
+		go func(assign batchingdto.OptimalAssignment) {
+			bgCtx := context.Background()
+
+			// Fetch the ride
+			ride, err := s.repo.FindRideByID(bgCtx, assign.RideID)
+			if err != nil {
+				logger.Error("failed to fetch ride for batch assignment",
+					"rideID", assign.RideID,
+					"error", err,
+				)
+				return
+			}
+
+			// Update ride with assigned driver
+			driverIDPtr := assign.DriverID // Convert to pointer
+			ride.DriverID = &driverIDPtr
+			ride.Status = "accepted"
+			ride.AcceptedAt = ptr(time.Now())
+
+			// Persist to database
+			if err := s.repo.UpdateRide(bgCtx, ride); err != nil {
+				logger.Error("failed to update ride with driver assignment",
+					"rideID", assign.RideID,
+					"driverID", assign.DriverID,
+					"error", err,
+				)
+				return
+			}
+
+			logger.Info("📤 Driver assigned to ride from batch",
+				"rideID", assign.RideID,
+				"driverID", assign.DriverID,
+				"riderID", ride.RiderID,
+			)
+
+			// Send rider notification using existing helper
+			s.wsHelper.SendRideAccepted(ride.RiderID, map[string]interface{}{
+				"rideId":    assign.RideID,
+				"driverId":  assign.DriverID,
+				"eta":       assign.ETA,
+				"distance":  assign.Distance,
+				"timestamp": time.Now().Format(time.RFC3339),
+			})
+
+			// Send driver notification using existing helper
+			s.wsHelper.SendRideRequest(assign.DriverID, map[string]interface{}{
+				"rideId":     assign.RideID,
+				"riderId":    ride.RiderID,
+				"pickupLat":  ride.PickupLat,
+				"pickupLon":  ride.PickupLon,
+				"pickupAddr": ride.PickupAddress,
+				"distance":   assign.Distance,
+				"timestamp":  time.Now().Format(time.RFC3339),
+			})
+
+		}(assignment)
+	}
+
+	// Log unmatched requests for fallback matching
+	if len(result.UnmatchedIDs) > 0 {
+		logger.Info("Processing unmatched rides from batch",
+			"batchID", result.BatchID,
+			"unmatchedCount", len(result.UnmatchedIDs),
+		)
+
+		// Fallback to sequential matching for unmatched rides
+		for _, rideID := range result.UnmatchedIDs {
+			logger.Warn("🔄 Unmatched ride, attempting sequential matching",
+				"rideID", rideID,
+			)
+
+			go func(rid string) {
+				bgCtx := context.Background()
+				if err := s.FindDriverForRide(bgCtx, rid); err != nil {
+					logger.Error("Sequential matching also failed",
+						"rideID", rid,
+						"error", err,
+					)
+				}
+			}(rideID)
+		}
+	}
+}
+
+// Helper function to get pointer to time.Time
+func ptr(t time.Time) *time.Time {
+	return &t
+}
+
 // start from here
 func (s *service) FindDriverForRide(ctx context.Context, rideID string) error {
 	ride, err := s.repo.FindRideByID(ctx, rideID)
@@ -362,7 +570,75 @@ func (s *service) FindDriverForRide(ctx context.Context, rideID string) error {
 		return nil
 	}
 
-	radii := []float64{3.0, 5.0, 8.0}
+	// ========================================
+	// RIDER RATING FILTER
+	// ========================================
+	// Get rider profile to check rating
+	// Lower rated riders (< 4.0) get longer wait times by narrowing search radius
+	riderProfile, err := s.ridersRepo.FindByUserID(ctx, ride.RiderID)
+	var riderRating float64 = 5.0 // Default to high rating
+	if err == nil && riderProfile != nil {
+		riderRating = riderProfile.Rating
+		logger.Info("rider rating check",
+			"rideID", rideID,
+			"riderID", ride.RiderID,
+			"riderRating", riderRating,
+		)
+	}
+
+	// Adjust radius search based on rider rating
+	// High rated riders (4.5+): Start from 3km
+	// Medium rated (3.5-4.5): Start from 5km
+	// Low rated (< 3.5): Start from 8km only
+	radii := []float64{3.0, 5.0, 8.0} // Default for good riders
+	if riderRating < 3.5 {
+		radii = []float64{8.0} // Low-rated riders only search at 8km
+		logger.Warn("low-rated rider search reduced",
+			"rideID", rideID,
+			"riderRating", riderRating,
+			"searchRadius", "8km only",
+		)
+	} else if riderRating < 4.0 {
+		radii = []float64{5.0, 8.0} // Medium-rated riders skip 3km
+		logger.Info("medium-rated rider search radius adjusted",
+			"rideID", rideID,
+			"riderRating", riderRating,
+			"searchRadius", "5-8km",
+		)
+	}
+
+	// ========================================
+	// BATCHING INTEGRATION - OPTION A (Recommended)
+	// ========================================
+	// Uncomment to enable request batching with intelligent driver matching
+	// This collects the request in a 10-second batch window and performs
+	// optimal matching across all requests in the batch using the 4-factor
+	// driver ranking algorithm (Rating 40%, Acceptance 30%, Cancellation 20%, Completion 10%)
+	//
+	// if s.batchingService != nil {
+	//     // Add request to batch for this vehicle type
+	//     batchID, err := s.batchingService.AddRequestToBatch(ctx, RideRequestInfo{
+	//         RideID:        ride.ID,
+	//         RiderID:       ride.RiderID,
+	//         PickupLat:     ride.PickupLat,
+	//         PickupLon:     ride.PickupLon,
+	//         DropoffLat:    ride.DropoffLat,
+	//         DropoffLon:    ride.DropoffLon,
+	//         VehicleTypeID: ride.VehicleTypeID,
+	//         RequestedAt:   time.Now(),
+	//     })
+	//     if err == nil {
+	//         logger.Info("Request added to batch", "batchID", batchID, "rideID", ride.ID)
+	//         // Batch will be processed when window expires or max size reached
+	//         // Assignments will be delivered to drivers via processMatchingResult()
+	//     }
+	//     return nil
+	// }
+	//
+	// ========================================
+	// Current flow: Sequential driver assignment (OPTION B - Fallback)
+	// ========================================
+
 	var nearbyDrivers *trackingdto.NearbyDriversResponse
 
 	for _, radius := range radii {
@@ -376,23 +652,51 @@ func (s *service) FindDriverForRide(ctx context.Context, rideID string) error {
 		}
 
 		nearbyDrivers, err = s.trackingService.FindNearbyDrivers(ctx, nearbyReq)
-		if err == nil && nearbyDrivers.Count > 0 {
+		if err != nil {
+			logger.Warn("driver search failed at radius",
+				"radius", radius,
+				"error", err,
+				"rideID", rideID,
+				"lat", ride.PickupLat,
+				"lon", ride.PickupLon,
+			)
+			continue
+		}
+
+		if nearbyDrivers != nil && nearbyDrivers.Count > 0 {
 			logger.Info("found nearby drivers at radius",
 				"radius", radius,
 				"count", nearbyDrivers.Count,
-				"rideID", rideID)
+				"rideID", rideID,
+				"riderRating", riderRating,
+			)
 			break
+		} else {
+			logger.Info("no drivers found at radius",
+				"radius", radius,
+				"rideID", rideID,
+				"vehicleTypeID", ride.VehicleTypeID,
+				"pickupLat", ride.PickupLat,
+				"pickupLon", ride.PickupLon,
+			)
 		}
 		time.Sleep(1 * time.Second)
 	}
 
 	if err != nil || nearbyDrivers == nil || nearbyDrivers.Count == 0 {
+		logger.Error("no drivers available after checking all radii",
+			"rideID", rideID,
+			"radii", radii,
+			"riderRating", riderRating,
+			"vehicleTypeID", ride.VehicleTypeID,
+		)
 		return errors.New("no drivers available in the area")
 	}
 
 	logger.Info("found nearby drivers",
 		"rideID", rideID,
 		"driverCount", nearbyDrivers.Count,
+		"riderRating", riderRating,
 	)
 
 	maxConcurrentRequests := 3
@@ -422,12 +726,26 @@ func (s *service) FindDriverForRide(ctx context.Context, rideID string) error {
 			)
 			return err
 		}
+		logger.Info("driver accepted ride",
+			"rideID", rideID,
+			"driverID", acceptedDriverID,
+			"driverName", driver.User.Name,
+		)
 		return s.assignDriverToRide(ctx, rideID, driver.UserID, acceptedDriverID)
 
 	case <-ctxWithTimeout.Done():
+		logger.Error("no driver accepted ride request (timeout)",
+			"rideID", rideID,
+			"timeoutSeconds", timeout.Seconds(),
+			"driversContacted", driversToContact,
+		)
 		return errors.New("no driver accepted the ride request")
 
 	case err := <-errorChan:
+		logger.Error("error during driver search",
+			"rideID", rideID,
+			"error", err,
+		)
 		return err
 	}
 }
@@ -962,14 +1280,14 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 	// ✅ VERIFY: Driver is within 100m of dropoff location
 	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
 	distanceKm := distanceToDropoff
-	const maxCompletionRadiusKm = 0.1 // 100 meters
+	const maxCompletionRadiusKm = 5 // 150 meters
 
 	if distanceKm > maxCompletionRadiusKm {
 		logger.Warn("driver outside completion radius", "rideID", rideID, "distanceKm", distanceKm, "maxRadiusKm", maxCompletionRadiusKm)
-		return nil, response.BadRequest(fmt.Sprintf("You must be within 100 meters of the destination. Current distance: %.0f meters", distanceKm*1000))
+		return nil, response.BadRequest(fmt.Sprintf("You must be within 150 meters of the destination. Current distance: %.0f meters", distanceKm*1000))
 	}
 
-	logger.Info("driver verified within 100m radius", "rideID", rideID, "distanceKm", distanceKm)
+	logger.Info("driver verified within 150 meter radius", "rideID", rideID, "distanceKm", distanceKm)
 
 	// Calculate actual fare
 	actualFareReq := pricingdto.CalculateActualFareRequest{
@@ -1054,15 +1372,26 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		}
 	}
 
-	// ✅ Credit driver earnings
-	driverEarnings := actualFare * 0.95 // 95% to driver
-	_, err = s.walletService.CreditWallet(
+	// ✅ Credit driver earnings with commission-based split
+	// Using actual fare response which already has driver payout calculated
+	driverEarnings := actualFareResp.DriverPayout           // Driver gets reduced amount after commission
+	platformCommission := actualFareResp.PlatformCommission // Platform keeps commission
+
+	logger.Info("ride payout breakdown",
+		"rideID", rideID,
+		"totalFare", actualFare,
+		"driverEarnings", driverEarnings,
+		"platformCommission", platformCommission,
+		"commissionRate", actualFareResp.CommissionRate,
+	)
+
+	_, err = s.walletService.CreditDriverWallet(
 		ctx,
 		driver.UserID,
 		driverEarnings,
 		"ride_earnings",
 		rideID,
-		fmt.Sprintf("Earnings from ride %s", rideID),
+		fmt.Sprintf("Earnings from ride %s (after %.1f%% commission)", rideID, actualFareResp.CommissionRate),
 		nil,
 	)
 	if err != nil {

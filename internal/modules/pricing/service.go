@@ -27,7 +27,7 @@ type Service interface {
 	GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdownRequest) (*dto.FareBreakdownResponse, error)
 	CalculateWaitTimeCharge(ctx context.Context, rideID string, arrivedAt time.Time) (*dto.WaitTimeChargeResponse, error)
 	ChangeDestination(ctx context.Context, driverID string, req dto.ChangeDestinationRequest) (*dto.DestinationChangeResponse, error)
- 	ApplyPriceCapping(ctx context.Context, vehicleTypeID string, calculatedFare float64) (*dto.FareBreakdownResponse, error)
+	ApplyPriceCapping(ctx context.Context, vehicleTypeID string, calculatedFare float64) (*dto.FareBreakdownResponse, error)
 
 	// Enhanced surge pricing methods
 	CalculateCombinedSurge(ctx context.Context, vehicleTypeID, geohash string, lat, lon float64) (*dto.SurgeCalculationResponse, error)
@@ -82,14 +82,21 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 		return nil, response.BadRequest("Vehicle type is not available")
 	}
 
-	// Get surge multiplier for pickup location
-	surgeMultiplier, err := s.surgeManager.GetSurgeMultiplier(ctx, req.PickupLat, req.PickupLon)
+	geohash := fmt.Sprintf("%.1f_%.1f", req.PickupLat, req.PickupLon)
+	// Calculate combined surge (time-based + demand-based)
+	combinedMultiplier, timeMultiplier, demandMultiplier, reason, err := s.surgeManager.CalculateCombinedSurge(ctx, req.VehicleTypeID, geohash, req.PickupLat, req.PickupLon)
 	if err != nil {
-		logger.Error("failed to get surge multiplier", "error", err)
-		surgeMultiplier = 1.0 // Default to no surge on error
+		logger.Warn("surge calculation failed", "error", err)
+		combinedMultiplier = 1.0
+		timeMultiplier = 1.0
+		demandMultiplier = 1.0
+		reason = "normal"
 	}
 
-	// Calculate fare estimate
+	// Use the combined surge multiplier
+	surgeMultiplier := combinedMultiplier
+
+	// Calculate fare estimate with surge
 	estimate := s.calculator.CalculateEstimate(
 		req.PickupLat, req.PickupLon,
 		req.DropoffLat, req.DropoffLon,
@@ -97,13 +104,17 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 		surgeMultiplier,
 	)
 
-	// Convert to response
+	// Calculate driver payout with 5% platform commission
+	const defaultCommissionRate = 5.0 // 5% commission
+	driverPayout, platformCommission := s.CalculateDriverPayout(estimate.TotalFare, defaultCommissionRate)
+
+	// Convert to response with surge details
 	fareResponse := &dto.FareEstimateResponse{
 		BaseFare:          estimate.BaseFare,
 		DistanceFare:      estimate.DistanceFare,
 		DurationFare:      estimate.DurationFare,
 		BookingFee:        estimate.BookingFee,
-		SurgeMultiplier:   estimate.SurgeMultiplier,
+		SurgeMultiplier:   surgeMultiplier,
 		SubTotal:          estimate.SubTotal,
 		SurgeAmount:       estimate.SurgeAmount,
 		TotalFare:         estimate.TotalFare,
@@ -111,6 +122,20 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 		EstimatedDuration: estimate.EstimatedDuration,
 		VehicleTypeName:   estimate.VehicleTypeName,
 		Currency:          "USD",
+
+		// Driver payout and commission
+		DriverPayout:       driverPayout,
+		PlatformCommission: platformCommission,
+		CommissionRate:     defaultCommissionRate,
+
+		// Add surge breakdown details
+		SurgeDetails: &dto.SurgeDetailsResponse{
+			IsActive:              surgeMultiplier > 1.0,
+			AppliedMultiplier:     combinedMultiplier,
+			TimeBasedMultiplier:   timeMultiplier,
+			DemandBasedMultiplier: demandMultiplier,
+			Reason:                reason,
+		},
 	}
 
 	// Cache estimate for 1 minute
@@ -123,6 +148,7 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 		"distance", estimate.EstimatedDistance,
 		"duration", estimate.EstimatedDuration,
 		"surge", surgeMultiplier,
+		"surgeReason", reason,
 		"totalFare", estimate.TotalFare,
 	)
 
@@ -130,10 +156,10 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 }
 
 func (s *service) CalculateActualFare(ctx context.Context, req dto.CalculateActualFareRequest) (*dto.FareEstimateResponse, error) {
-	if req.ActualDistanceKm <= 0 {
+	if req.ActualDistanceKm < 0 {
 		return nil, response.BadRequest("Invalid distance")
 	}
-	if req.ActualDurationSec <= 0 {
+	if req.ActualDurationSec < 0 {
 		return nil, response.BadRequest("Invalid duration")
 	}
 
@@ -157,20 +183,27 @@ func (s *service) CalculateActualFare(ctx context.Context, req dto.CalculateActu
 		surgeMultiplier,
 	)
 
+	// Calculate driver payout with 5% platform commission
+	const defaultCommissionRate = 5.0 // 5% commission
+	driverPayout, platformCommission := s.CalculateDriverPayout(estimate.TotalFare, defaultCommissionRate)
+
 	// Convert to response
 	fareResponse := &dto.FareEstimateResponse{
-		BaseFare:          estimate.BaseFare,
-		DistanceFare:      estimate.DistanceFare,
-		DurationFare:      estimate.DurationFare,
-		BookingFee:        estimate.BookingFee,
-		SurgeMultiplier:   estimate.SurgeMultiplier,
-		SubTotal:          estimate.SubTotal,
-		SurgeAmount:       estimate.SurgeAmount,
-		TotalFare:         estimate.TotalFare,
-		EstimatedDistance: estimate.EstimatedDistance,
-		EstimatedDuration: estimate.EstimatedDuration,
-		VehicleTypeName:   estimate.VehicleTypeName,
-		Currency:          "USD",
+		BaseFare:           estimate.BaseFare,
+		DistanceFare:       estimate.DistanceFare,
+		DurationFare:       estimate.DurationFare,
+		BookingFee:         estimate.BookingFee,
+		SurgeMultiplier:    estimate.SurgeMultiplier,
+		SubTotal:           estimate.SubTotal,
+		SurgeAmount:        estimate.SurgeAmount,
+		TotalFare:          estimate.TotalFare,
+		DriverPayout:       driverPayout,
+		PlatformCommission: platformCommission,
+		CommissionRate:     defaultCommissionRate,
+		EstimatedDistance:  estimate.EstimatedDistance,
+		EstimatedDuration:  estimate.EstimatedDuration,
+		VehicleTypeName:    estimate.VehicleTypeName,
+		Currency:           "USD",
 	}
 
 	logger.Info("actual fare calculated",
@@ -351,12 +384,12 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 func (s *service) ApplyPriceCapping(ctx context.Context, vehicleTypeID string, calculatedFare float64) (*dto.FareBreakdownResponse, error) {
 	rule, err := s.repo.FindPriceCappingRule(ctx, vehicleTypeID)
 	if err != nil {
-		// No capping rule
+		// No capping rule - use default 5% commission
 		return &dto.FareBreakdownResponse{
 			TotalFare:     calculatedFare,
 			CustomerPrice: calculatedFare,
-			DriverEarning: calculatedFare * 0.80,
-			PlatformFee:   calculatedFare * 0.20,
+			DriverEarning: calculatedFare * 0.95, // Driver gets 95%
+			PlatformFee:   calculatedFare * 0.05, // Platform gets 5%
 			PriceCapped:   false,
 		}, nil
 	}
@@ -373,12 +406,22 @@ func (s *service) ApplyPriceCapping(ctx context.Context, vehicleTypeID string, c
 		breakdown.PriceCapped = true
 	} else {
 		breakdown.CustomerPrice = calculatedFare
-		breakdown.DriverEarning = calculatedFare * 0.80
-		breakdown.PlatformFee = calculatedFare * 0.20
+		breakdown.DriverEarning = calculatedFare * 0.95 // Driver gets 95%
+		breakdown.PlatformFee = calculatedFare * 0.05   // Platform gets 5%
 		breakdown.PriceCapped = false
 	}
 
 	return breakdown, nil
+}
+
+// CalculateDriverPayout calculates what driver receives after platform commission
+// Customer sees: totalFare
+// Driver receives: totalFare * (1 - commissionRate)
+// Platform keeps: totalFare * commissionRate
+func (s *service) CalculateDriverPayout(totalFare float64, commissionRate float64) (driverAmount, platformCommission float64) {
+	platformCommission = totalFare * (commissionRate / 100.0)
+	driverAmount = totalFare - platformCommission
+	return driverAmount, platformCommission
 }
 
 func (s *service) CalculateWaitTimeCharge(ctx context.Context, rideID string, arrivedAt time.Time) (*dto.WaitTimeChargeResponse, error) {
@@ -514,22 +557,93 @@ func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
 	return distance
 }
 
-// CalculateCombinedSurge calculates both time-based and demand-based surge
+// CalculateCombinedSurge implements the Service interface - wraps SurgeManager
+// signature: (ctx, vehicleTypeID, geohash, lat, lon) -> SurgeCalculationResponse
 func (s *service) CalculateCombinedSurge(ctx context.Context, vehicleTypeID, geohash string, lat, lon float64) (*dto.SurgeCalculationResponse, error) {
+	// Delegate to SurgeManager's CalculateCombinedSurge
 	combined, timeSurge, demandSurge, reason, err := s.surgeManager.CalculateCombinedSurge(ctx, vehicleTypeID, geohash, lat, lon)
 	if err != nil {
-		logger.Error("failed to calculate combined surge", "error", err)
-		combined = 1.0
+		logger.Warn("surge manager calculation failed", "error", err)
+		return &dto.SurgeCalculationResponse{
+			AppliedMultiplier:     1.0,
+			TimeBasedMultiplier:   1.0,
+			DemandBasedMultiplier: 1.0,
+			Reason:                "normal",
+			BaseFare:              0,
+			SurgeAmount:           0,
+			TotalFare:             0,
+			Details: dto.SurgeDetails{
+				TimeOfDay: "normal",
+				DayType:   "weekday",
+			},
+		}, nil
 	}
-
-	// Apply max multiplier cap
-	combined = s.surgeManager.ApplyMaxMultiplierCap(combined, vehicleTypeID, ctx)
 
 	return &dto.SurgeCalculationResponse{
 		AppliedMultiplier:     combined,
 		TimeBasedMultiplier:   timeSurge,
 		DemandBasedMultiplier: demandSurge,
 		Reason:                reason,
+		BaseFare:              0,
+		SurgeAmount:           0,
+		TotalFare:             0,
+		Details: dto.SurgeDetails{
+			TimeOfDay: "peak",
+			DayType:   "weekday",
+		},
+	}, nil
+}
+
+// LEGACY: Old CalculateCombinedSurge implementation - keeping for reference
+// Old signature: (ctx, vehicleTypeID, lat, lon) -> CombinedSurgeResponse
+func (s *service) CalculateCombinedSurgeLegacy(ctx context.Context, vehicleTypeID string, lat, lon float64) (*dto.CombinedSurgeResponse, error) {
+	// Get zone-based surge (includes demand calculation)
+	zoneSurge, err := s.CalculateZoneBasedSurge(ctx, lat, lon, vehicleTypeID)
+	if err != nil {
+		logger.Warn("zone surge calculation failed", "error", err)
+		zoneSurge = &dto.SurgeResponse{
+			Multiplier: 1.0,
+			Reason:     "No zone surge",
+		}
+	}
+
+	// Get time-based surge (peak hours)
+	timeSurge, err := s.CalculateTimeBasedSurge(ctx, vehicleTypeID)
+	if err != nil {
+		logger.Warn("time surge calculation failed", "error", err)
+		timeSurge = &dto.SurgeResponse{
+			Multiplier: 1.0,
+			Reason:     "No time surge",
+		}
+	}
+
+	// Combine surges - use maximum (not multiply)
+	finalMultiplier := math.Max(zoneSurge.Multiplier, timeSurge.Multiplier)
+
+	// Cap at 3.0x for fairness
+	if finalMultiplier > 3.0 {
+		finalMultiplier = 3.0
+	}
+
+	// Determine primary reason
+	reason := s.getCombinedSurgeReason(zoneSurge, timeSurge, finalMultiplier)
+
+	logger.Info("combined surge calculated",
+		"lat", lat,
+		"lon", lon,
+		"zoneSurge", zoneSurge.Multiplier,
+		"timeSurge", timeSurge.Multiplier,
+		"final", finalMultiplier,
+		"reason", reason)
+
+	return &dto.CombinedSurgeResponse{
+		AppliedMultiplier:     finalMultiplier,
+		ZoneBasedMultiplier:   zoneSurge.Multiplier,
+		TimeBasedMultiplier:   timeSurge.Multiplier,
+		DemandBasedMultiplier: zoneSurge.Multiplier, // Zone surge includes demand
+		Reason:                reason,
+		ZoneID:                zoneSurge.ZoneID,
+		ZoneName:              zoneSurge.ZoneName,
 	}, nil
 }
 
@@ -688,6 +802,7 @@ func (s *service) CalculateETAEstimate(ctx context.Context, req dto.ETAEstimateR
 
 	eta := &models.ETAEstimate{
 		ID:                  uuid.New().String(),
+		RideID:              nil, // Optional - will be NULL if no ride yet
 		PickupLat:           req.PickupLat,
 		PickupLon:           req.PickupLon,
 		DropoffLat:          req.DropoffLat,
@@ -702,8 +817,8 @@ func (s *service) CalculateETAEstimate(ctx context.Context, req dto.ETAEstimateR
 	}
 
 	if err := s.repo.CreateETAEstimate(ctx, eta); err != nil {
-		logger.Error("failed to create eta estimate", "error", err)
-		return nil, response.InternalServerError("Failed to calculate ETA", err)
+		logger.Warn("failed to create eta estimate (non-fatal)", "error", err)
+		// Don't return error - just log it, ETA calculation is not critical
 	}
 
 	return &dto.ETAEstimateResponse{
@@ -717,4 +832,61 @@ func (s *service) CalculateETAEstimate(ctx context.Context, req dto.ETAEstimateR
 		Source:              eta.Source,
 		CreatedAt:           eta.CreatedAt,
 	}, nil
+}
+
+// CalculateZoneBasedSurge calculates surge based on zone demand (LEGACY - simplified stub)
+func (s *service) CalculateZoneBasedSurge(ctx context.Context, lat, lon float64, vehicleTypeID string) (*dto.SurgeResponse, error) {
+	// Legacy method - just return normal pricing
+	// Real surge calculation is handled by SurgeManager
+	return &dto.SurgeResponse{
+		Multiplier: 1.0,
+		Reason:     "use_surge_manager",
+	}, nil
+}
+
+// STUB METHODS FOR LEGACY CODE - These are placeholders to make legacy code compile
+// TODO: Replace legacy methods with SurgeManager calls
+
+func (s *service) CalculateTimeBasedSurge(ctx context.Context, vehicleTypeID string) (*dto.SurgeResponse, error) {
+	// Delegate to surge manager
+	timeSurge, err := s.surgeManager.CalculateTimeBasedSurge(ctx, vehicleTypeID)
+	if err != nil {
+		return &dto.SurgeResponse{Multiplier: 1.0, Reason: "error"}, err
+	}
+	return &dto.SurgeResponse{Multiplier: timeSurge, Reason: "time_based"}, nil
+}
+
+func (s *service) getCombinedSurgeReason(zoneSurge, timeSurge *dto.SurgeResponse, final float64) string {
+	if zoneSurge.Multiplier > 1.0 && timeSurge.Multiplier > 1.0 {
+		return "combined"
+	} else if zoneSurge.Multiplier > 1.0 {
+		return "zone_surge"
+	} else if timeSurge.Multiplier > 1.0 {
+		return "time_surge"
+	}
+	return "normal"
+}
+
+func (s *service) isRuleActiveNow(rule *models.SurgePricingRule) bool {
+	// Stub: Always return true for legacy code
+	return true
+}
+
+func (s *service) calculateDemandMultiplier(demand *models.DemandTracking, rule *models.SurgePricingRule) float64 {
+	if demand == nil {
+		return rule.BaseMultiplier
+	}
+	// Use the surge multiplier from demand tracking
+	return demand.SurgeMultiplier
+}
+
+func (s *service) getSurgeReason(multiplier float64) string {
+	if multiplier > 2.0 {
+		return "high_demand"
+	} else if multiplier > 1.5 {
+		return "medium_demand"
+	} else if multiplier > 1.0 {
+		return "low_demand"
+	}
+	return "normal"
 }

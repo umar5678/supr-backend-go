@@ -69,8 +69,8 @@ func (DemandTracking) TableName() string {
 
 // ETAEstimate stores ETA calculations for route optimization
 type ETAEstimate struct {
-	ID     string `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	RideID string `gorm:"type:uuid;index" json:"rideId"`
+	ID     string  `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	RideID *string `gorm:"type:uuid;index" json:"rideId,omitempty"` // Optional: NULL allowed for estimates before ride creation
 
 	// Route information
 	PickupLat  float64 `gorm:"type:decimal(10,8)" json:"pickupLat"`
