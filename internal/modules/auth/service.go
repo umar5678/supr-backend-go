@@ -69,7 +69,6 @@ func (s *service) PhoneSignup(ctx context.Context, req authdto.PhoneSignupReques
 		// Phone exists - this is a login
 		return s.PhoneLogin(ctx, authdto.PhoneLoginRequest{
 			Phone: req.Phone,
-			// Role:  req.Role,
 		})
 	}
 
@@ -154,11 +153,6 @@ func (s *service) PhoneLogin(ctx context.Context, req authdto.PhoneLoginRequest)
 		}
 		return nil, response.InternalServerError("Failed to find user", err)
 	}
-
-	// Verify role matches
-	// if user.Role != req.Role {
-	// 	return nil, response.BadRequest("Invalid role for this phone number")
-	// }
 
 	// Check account status
 	if user.Status != models.StatusActive {

@@ -40,7 +40,6 @@ func (r *PhoneSignupRequest) Validate() error {
 // PhoneLoginRequest for rider/driver login
 type PhoneLoginRequest struct {
 	Phone string          `json:"phone" binding:"required"`
-	Role  models.UserRole `json:"role" binding:"required,oneof=rider driver service_provider"`
 }
 
 func (r *PhoneLoginRequest) Validate() error {
@@ -49,9 +48,6 @@ func (r *PhoneLoginRequest) Validate() error {
 	}
 	if !phoneRegex.MatchString(r.Phone) {
 		return errors.New("invalid phone number format")
-	}
-	if r.Role != models.RoleRider && r.Role != models.RoleDriver && r.Role != models.RoleServiceProvider {
-		return errors.New("role must be either 'rider', 'driver' or 'service_provider'")
 	}
 	return nil
 }

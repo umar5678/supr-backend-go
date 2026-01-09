@@ -10686,24 +10686,11 @@ const docTemplate = `{
         "github_com_umar5678_go-backend_internal_modules_auth_dto.PhoneLoginRequest": {
             "type": "object",
             "required": [
-                "phone",
-                "role"
+                "phone"
             ],
             "properties": {
                 "phone": {
                     "type": "string"
-                },
-                "role": {
-                    "enum": [
-                        "rider",
-                        "driver",
-                        "service_provider"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserRole"
-                        }
-                    ]
                 }
             }
         },
@@ -16189,10 +16176,18 @@ const docTemplate = `{
                 "bookingFee": {
                     "type": "number"
                 },
+                "commissionRate": {
+                    "description": "Percentage (e.g., 5.0 for 5%)",
+                    "type": "number"
+                },
                 "currency": {
                     "type": "string"
                 },
                 "distanceFare": {
+                    "type": "number"
+                },
+                "driverPayout": {
+                    "description": "What driver receives (after commission)",
                     "type": "number"
                 },
                 "durationFare": {
@@ -16206,11 +16201,18 @@ const docTemplate = `{
                     "description": "seconds",
                     "type": "integer"
                 },
+                "platformCommission": {
+                    "description": "Platform fee",
+                    "type": "number"
+                },
                 "subTotal": {
                     "type": "number"
                 },
                 "surgeAmount": {
                     "type": "number"
+                },
+                "surgeDetails": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetailsResponse"
                 },
                 "surgeMultiplier": {
                     "type": "number"
@@ -16299,6 +16301,35 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "trafficCondition": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "appliedMultiplier": {
+                    "type": "number"
+                },
+                "demandBasedMultiplier": {
+                    "type": "number"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "timeBasedMultiplier": {
+                    "type": "number"
+                },
+                "zoneBasedMultiplier": {
+                    "type": "number"
+                },
+                "zoneId": {
+                    "type": "string"
+                },
+                "zoneName": {
                     "type": "string"
                 }
             }

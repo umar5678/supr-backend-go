@@ -231,16 +231,8 @@ definitions:
     properties:
       phone:
         type: string
-      role:
-        allOf:
-        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
-        enum:
-        - rider
-        - driver
-        - service_provider
     required:
     - phone
-    - role
     type: object
   github_com_umar5678_go-backend_internal_modules_auth_dto.PhoneSignupRequest:
     properties:
@@ -3941,9 +3933,15 @@ definitions:
         type: number
       bookingFee:
         type: number
+      commissionRate:
+        description: Percentage (e.g., 5.0 for 5%)
+        type: number
       currency:
         type: string
       distanceFare:
+        type: number
+      driverPayout:
+        description: What driver receives (after commission)
         type: number
       durationFare:
         type: number
@@ -3953,10 +3951,15 @@ definitions:
       estimatedDuration:
         description: seconds
         type: integer
+      platformCommission:
+        description: Platform fee
+        type: number
       subTotal:
         type: number
       surgeAmount:
         type: number
+      surgeDetails:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetailsResponse'
       surgeMultiplier:
         type: number
       totalFare:
@@ -4016,6 +4019,25 @@ definitions:
         description: '"peak" or "off-peak"'
         type: string
       trafficCondition:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetailsResponse:
+    properties:
+      appliedMultiplier:
+        type: number
+      demandBasedMultiplier:
+        type: number
+      isActive:
+        type: boolean
+      reason:
+        type: string
+      timeBasedMultiplier:
+        type: number
+      zoneBasedMultiplier:
+        type: number
+      zoneId:
+        type: string
+      zoneName:
         type: string
     type: object
   github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgePricingRuleResponse:
