@@ -30,7 +30,7 @@ type Service interface {
 	// UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error
 	GetWallet(ctx context.Context, userID string) (*driverdto.WalletResponse, error)
 	GetDashboard(ctx context.Context, userID string) (*driverdto.DriverDashboardResponse, error)
-	
+
 	// ✅ Wallet management methods
 	TopUpWallet(ctx context.Context, userID string, req driverdto.WalletTopUpRequest) (*driverdto.WalletTopUpResponse, error)
 	GetWalletStatus(ctx context.Context, userID string) (*driverdto.WalletStatusResponse, error)
@@ -637,14 +637,14 @@ func (s *service) TopUpWallet(ctx context.Context, userID string, req driverdto.
 	}
 
 	response := &driverdto.WalletTopUpResponse{
-		TransactionID:    txn.ID,
-		Amount:           req.Amount,
-		PaymentMethod:    req.PaymentMethod,
-		PreviousBalance:  walletInfo.Balance - req.Amount,
-		NewBalance:       walletInfo.Balance,
+		TransactionID:     txn.ID,
+		Amount:            req.Amount,
+		PaymentMethod:     req.PaymentMethod,
+		PreviousBalance:   walletInfo.Balance - req.Amount,
+		NewBalance:        walletInfo.Balance,
 		AccountRestricted: accountRestricted,
-		Message:          "Wallet topped up successfully",
-		Timestamp:        time.Now(),
+		Message:           "Wallet topped up successfully",
+		Timestamp:         time.Now(),
 	}
 
 	if accountRestricted {
@@ -698,37 +698,37 @@ func (s *service) ProcessPayment(ctx context.Context, payReq *PaymentRequest) (*
 	// ========================================================
 	// Uncomment to use Razorpay (replace with your implementation)
 	/*
-	import "github.com/razorpay/razorpay-go"
-	
-	client := razorpay.NewClient(os.Getenv("RAZORPAY_KEY_ID"), os.Getenv("RAZORPAY_KEY_SECRET"))
-	
-	orderData := map[string]interface{}{
-		"amount":   int(payReq.Amount * 100), // Amount in paise
-		"currency": "INR",
-		"receipt":  fmt.Sprintf("topup_%s_%d", payReq.DriverID, time.Now().Unix()),
-		"notes": map[string]interface{}{
-			"driver_id": payReq.DriverID,
-			"user_id":   payReq.UserID,
-		},
-	}
-	
-	order, err := client.Order.Create(orderData, nil)
-	if err != nil {
-		logger.Error("razorpay order creation failed", "error", err)
+		import "github.com/razorpay/razorpay-go"
+
+		client := razorpay.NewClient(os.Getenv("RAZORPAY_KEY_ID"), os.Getenv("RAZORPAY_KEY_SECRET"))
+
+		orderData := map[string]interface{}{
+			"amount":   int(payReq.Amount * 100), // Amount in paise
+			"currency": "INR",
+			"receipt":  fmt.Sprintf("topup_%s_%d", payReq.DriverID, time.Now().Unix()),
+			"notes": map[string]interface{}{
+				"driver_id": payReq.DriverID,
+				"user_id":   payReq.UserID,
+			},
+		}
+
+		order, err := client.Order.Create(orderData, nil)
+		if err != nil {
+			logger.Error("razorpay order creation failed", "error", err)
+			return &PaymentResult{
+				Success: false,
+				Error:   fmt.Sprintf("Failed to create order: %v", err),
+			}, nil
+		}
+
+		// TODO: Frontend pays using order.ID
+		// Payment confirmation happens via webhook
 		return &PaymentResult{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to create order: %v", err),
+			Success:       true,
+			OrderID:       order.ID,
+			TransactionID: order.ID, // Update after webhook
+			Provider:      "razorpay",
 		}, nil
-	}
-	
-	// TODO: Frontend pays using order.ID
-	// Payment confirmation happens via webhook
-	return &PaymentResult{
-		Success:       true,
-		OrderID:       order.ID,
-		TransactionID: order.ID, // Update after webhook
-		Provider:      "razorpay",
-	}, nil
 	*/
 
 	// ========================================================
@@ -736,35 +736,35 @@ func (s *service) ProcessPayment(ctx context.Context, payReq *PaymentRequest) (*
 	// ========================================================
 	// Uncomment to use Stripe (replace with your implementation)
 	/*
-	import "github.com/stripe/stripe-go/v72"
-	import "github.com/stripe/stripe-go/v72/paymentintent"
-	
-	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
-	
-	piParams := &stripe.PaymentIntentParams{
-		Amount:   stripe.Int64(int64(payReq.Amount * 100)), // Amount in cents
-		Currency: stripe.String(string(stripe.CurrencyINR)),
-		Metadata: map[string]string{
-			"driver_id": payReq.DriverID,
-			"user_id":   payReq.UserID,
-		},
-	}
-	
-	pi, err := paymentintent.New(piParams)
-	if err != nil {
-		logger.Error("stripe payment intent creation failed", "error", err)
+		import "github.com/stripe/stripe-go/v72"
+		import "github.com/stripe/stripe-go/v72/paymentintent"
+
+		stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
+
+		piParams := &stripe.PaymentIntentParams{
+			Amount:   stripe.Int64(int64(payReq.Amount * 100)), // Amount in cents
+			Currency: stripe.String(string(stripe.CurrencyINR)),
+			Metadata: map[string]string{
+				"driver_id": payReq.DriverID,
+				"user_id":   payReq.UserID,
+			},
+		}
+
+		pi, err := paymentintent.New(piParams)
+		if err != nil {
+			logger.Error("stripe payment intent creation failed", "error", err)
+			return &PaymentResult{
+				Success: false,
+				Error:   fmt.Sprintf("Failed to create payment: %v", err),
+			}, nil
+		}
+
 		return &PaymentResult{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to create payment: %v", err),
+			Success:       true,
+			OrderID:       pi.ID,
+			TransactionID: pi.ID,
+			Provider:      "stripe",
 		}, nil
-	}
-	
-	return &PaymentResult{
-		Success:       true,
-		OrderID:       pi.ID,
-		TransactionID: pi.ID,
-		Provider:      "stripe",
-	}, nil
 	*/
 
 	// ========================================================
@@ -772,45 +772,45 @@ func (s *service) ProcessPayment(ctx context.Context, payReq *PaymentRequest) (*
 	// ========================================================
 	// Uncomment to use PayPal (replace with your implementation)
 	/*
-	import "github.com/plutov/paypal/v4"
-	
-	client, err := paypal.NewClient(os.Getenv("PAYPAL_CLIENT_ID"), os.Getenv("PAYPAL_CLIENT_SECRET"), paypal.APIBaseSandBox)
-	if err != nil {
-		logger.Error("paypal client creation failed", "error", err)
-		return &PaymentResult{
-			Success: false,
-			Error:   "Failed to create PayPal client",
-		}, nil
-	}
-	
-	orderBody := paypal.OrderRequest{
-		Intent: "CAPTURE",
-		PurchaseUnits: []paypal.PurchaseUnitRequest{
-			{
-				ReferenceID: fmt.Sprintf("topup_%s_%d", payReq.DriverID, time.Now().Unix()),
-				Amount: &paypal.AmountWithBreakdown{
-					Value:    fmt.Sprintf("%.2f", payReq.Amount),
-					Currency: "INR",
+		import "github.com/plutov/paypal/v4"
+
+		client, err := paypal.NewClient(os.Getenv("PAYPAL_CLIENT_ID"), os.Getenv("PAYPAL_CLIENT_SECRET"), paypal.APIBaseSandBox)
+		if err != nil {
+			logger.Error("paypal client creation failed", "error", err)
+			return &PaymentResult{
+				Success: false,
+				Error:   "Failed to create PayPal client",
+			}, nil
+		}
+
+		orderBody := paypal.OrderRequest{
+			Intent: "CAPTURE",
+			PurchaseUnits: []paypal.PurchaseUnitRequest{
+				{
+					ReferenceID: fmt.Sprintf("topup_%s_%d", payReq.DriverID, time.Now().Unix()),
+					Amount: &paypal.AmountWithBreakdown{
+						Value:    fmt.Sprintf("%.2f", payReq.Amount),
+						Currency: "INR",
+					},
 				},
 			},
-		},
-	}
-	
-	order, err := client.CreateOrder(ctx, orderBody)
-	if err != nil {
-		logger.Error("paypal order creation failed", "error", err)
+		}
+
+		order, err := client.CreateOrder(ctx, orderBody)
+		if err != nil {
+			logger.Error("paypal order creation failed", "error", err)
+			return &PaymentResult{
+				Success: false,
+				Error:   fmt.Sprintf("Failed to create order: %v", err),
+			}, nil
+		}
+
 		return &PaymentResult{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to create order: %v", err),
+			Success:       true,
+			OrderID:       order.ID,
+			TransactionID: order.ID,
+			Provider:      "paypal",
 		}, nil
-	}
-	
-	return &PaymentResult{
-		Success:       true,
-		OrderID:       order.ID,
-		TransactionID: order.ID,
-		Provider:      "paypal",
-	}, nil
 	*/
 
 	// ========================================================
@@ -894,7 +894,7 @@ func (s *service) GetWalletTransactionHistory(ctx context.Context, userID string
 
 	// TODO: Implement proper transaction history from wallet service
 	// This requires adding a method to wallet service Repository to fetch transactions by wallet ID
-	
+
 	return []*driverdto.WalletTransactionResponse{}, nil
 }
 

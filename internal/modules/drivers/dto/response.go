@@ -110,44 +110,44 @@ func ToDriverProfileResponse(driver *models.DriverProfile) *DriverProfileRespons
 
 // ✅ WalletTopUpResponse - Response after successful wallet top-up
 type WalletTopUpResponse struct {
-	TransactionID    string    `json:"transactionId"`
-	Amount           float64   `json:"amount"`
-	PaymentMethod    string    `json:"paymentMethod"`
-	PreviousBalance  float64   `json:"previousBalance"`
-	NewBalance       float64   `json:"newBalance"`
-	AccountRestricted bool     `json:"accountRestricted"`
-	Message          string    `json:"message"`
-	Timestamp        time.Time `json:"timestamp"`
+	TransactionID     string    `json:"transactionId"`
+	Amount            float64   `json:"amount"`
+	PaymentMethod     string    `json:"paymentMethod"`
+	PreviousBalance   float64   `json:"previousBalance"`
+	NewBalance        float64   `json:"newBalance"`
+	AccountRestricted bool      `json:"accountRestricted"`
+	Message           string    `json:"message"`
+	Timestamp         time.Time `json:"timestamp"`
 }
 
 // ✅ WalletStatusResponse - Detailed wallet and account status
 type WalletStatusResponse struct {
-	Balance             float64  `json:"balance"`
-	HeldBalance         float64  `json:"heldBalance"`
-	AvailableBalance    float64  `json:"availableBalance"`
-	Currency            string   `json:"currency"`
-	IsRestricted        bool     `json:"isRestricted"`
-	AccountStatus       string   `json:"accountStatus"` // active, suspended, disabled
-	RestrictionReason   *string  `json:"restrictionReason,omitempty"`
-	MinBalanceThreshold float64  `json:"minBalanceThreshold"`
-	AmountNeededToLift  float64  `json:"amountNeededToLift"` // Amount to deposit to lift restriction
+	Balance             float64    `json:"balance"`
+	HeldBalance         float64    `json:"heldBalance"`
+	AvailableBalance    float64    `json:"availableBalance"`
+	Currency            string     `json:"currency"`
+	IsRestricted        bool       `json:"isRestricted"`
+	AccountStatus       string     `json:"accountStatus"` // active, suspended, disabled
+	RestrictionReason   *string    `json:"restrictionReason,omitempty"`
+	MinBalanceThreshold float64    `json:"minBalanceThreshold"`
+	AmountNeededToLift  float64    `json:"amountNeededToLift"` // Amount to deposit to lift restriction
 	RestrictedAt        *time.Time `json:"restrictedAt,omitempty"`
-	LastUpdated         time.Time `json:"lastUpdated"`
+	LastUpdated         time.Time  `json:"lastUpdated"`
 }
 
 // ✅ WalletTransactionResponse - Individual transaction details
 type WalletTransactionResponse struct {
-	TransactionID   string    `json:"transactionId"`
-	Type            string    `json:"type"`                    // credit, debit
-	Amount          float64   `json:"amount"`
-	BalanceBefore   float64   `json:"balanceBefore"`
-	BalanceAfter    float64   `json:"balanceAfter"`
-	ReferenceType   *string   `json:"referenceType,omitempty"` // ride_earnings, commission, penalty, topup, etc.
-	ReferenceID     *string   `json:"referenceId,omitempty"`
-	Description     *string   `json:"description,omitempty"`
-	Status          string    `json:"status"`
-	PaymentMethod   string    `json:"paymentMethod"`
-	CreatedAt       time.Time `json:"createdAt"`
+	TransactionID string    `json:"transactionId"`
+	Type          string    `json:"type"` // credit, debit
+	Amount        float64   `json:"amount"`
+	BalanceBefore float64   `json:"balanceBefore"`
+	BalanceAfter  float64   `json:"balanceAfter"`
+	ReferenceType *string   `json:"referenceType,omitempty"` // ride_earnings, commission, penalty, topup, etc.
+	ReferenceID   *string   `json:"referenceId,omitempty"`
+	Description   *string   `json:"description,omitempty"`
+	Status        string    `json:"status"`
+	PaymentMethod string    `json:"paymentMethod"`
+	CreatedAt     time.Time `json:"createdAt"`
 }
 
 func ToVehicleResponse(vehicle *models.Vehicle) *VehicleResponse {

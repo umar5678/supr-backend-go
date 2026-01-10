@@ -100,8 +100,9 @@ func (s *service) GetBalance(ctx context.Context, userID string) (*dto.WalletBal
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create wallet if doesn't exist
 			wallet = &models.Wallet{
-				UserID:      userID,
-				Balance:     0,
+				UserID:     userID,
+				WalletType: models.WalletTypeRider,
+				Balance:    0,
 				HeldBalance: 0,
 				Currency:    "INR",
 			}
@@ -391,9 +392,10 @@ func (s *service) HoldFunds(ctx context.Context, userID string, req dto.HoldFund
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			wallet = &models.Wallet{
-				UserID:   userID,
-				Balance:  0,
-				Currency: "INR",
+				UserID:     userID,
+				WalletType: models.WalletTypeRider,
+				Balance:    0,
+				Currency:   "INR",
 			}
 			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
 				return nil, response.InternalServerError("Failed to create wallet", err)
@@ -930,9 +932,10 @@ func (s *service) RecordCashCollection(ctx context.Context, userID string, req d
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			wallet = &models.Wallet{
-				UserID:   userID,
-				Balance:  0,
-				Currency: "INR",
+				UserID:     userID,
+				WalletType: models.WalletTypeDriver,
+				Balance:    0,
+				Currency:   "INR",
 			}
 			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
 				return nil, response.InternalServerError("Failed to create wallet", err)

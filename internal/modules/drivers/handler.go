@@ -286,4 +286,3 @@ func (h *Handler) GetWalletTransactionHistory(c *gin.Context) {
 
 	response.Success(c, history, "Transaction history retrieved successfully")
 }
-

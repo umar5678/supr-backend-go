@@ -17,11 +17,10 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		drivers.POST("/location", handler.UpdateLocation)
 		drivers.GET("/wallet", handler.GetWallet)
 		drivers.GET("/dashboard", handler.GetDashboard)
-		
+
 		// ✅ Wallet management endpoints
 		drivers.POST("/wallet/topup", handler.TopUpWallet)
 		drivers.GET("/wallet/status", handler.GetWalletStatus)
 		drivers.GET("/wallet/transactions", handler.GetWalletTransactionHistory)
 	}
 }
-

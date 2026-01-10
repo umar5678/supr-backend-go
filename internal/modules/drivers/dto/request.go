@@ -107,4 +107,3 @@ func (r *WalletTopUpRequest) Validate() error {
 	}
 	return nil
 }
-
