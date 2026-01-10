@@ -51,10 +51,26 @@ func (r *repository) FindWalletByID(ctx context.Context, id string) (*models.Wal
 
 func (r *repository) FindWalletByUserID(ctx context.Context, userID string, walletType models.WalletType) (*models.Wallet, error) {
 	var wallet models.Wallet
+	// First try: find wallet with matching type
 	err := r.db.WithContext(ctx).
 		Preload("User").
 		Where("user_id = ? AND wallet_type = ?", userID, walletType).
 		First(&wallet).Error
+	
+	// Fallback: if not found and no records, try finding ANY wallet for user (for legacy data)
+	if gorm.ErrRecordNotFound == err {
+		err = r.db.WithContext(ctx).
+			Preload("User").
+			Where("user_id = ?", userID).
+			First(&wallet).Error
+		
+		// If found via fallback, update it to the correct wallet type
+		if err == nil {
+			wallet.WalletType = walletType
+			r.UpdateWallet(ctx, &wallet)
+		}
+	}
+	
 	return &wallet, err
 }
 
