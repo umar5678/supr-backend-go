@@ -382,7 +382,7 @@ Content-Type: application/json
     "time_fare": 0.92,
     "surge_multiplier": 1.6,
     "total_fare": 11.35,
-    "currency": "USD"
+    "currency": "INR"
   },
   "eta_estimate": {
     "distance_km": 0.52,

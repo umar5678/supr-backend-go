@@ -63,7 +63,7 @@ func isAllowedOrigin(origin string, allowed []string) bool {
 	// Empty origin is allowed (for CLI tools like k6, curl, Postman without browser)
 	// Only reject if we have a specific origin whitelist and it's not in there
 	if origin == "" {
-		return true // Allow requests without Origin header (CLI tools, server-to-server)
+		return false // Allow requests without Origin header (CLI tools, server-to-server)
 	}
 
 	for _, o := range allowed {

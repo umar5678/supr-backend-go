@@ -9,6 +9,8 @@ import (
 
 	"github.com/umar5678/go-backend/internal/models"
 	driverdto "github.com/umar5678/go-backend/internal/modules/drivers/dto"
+	walletservice "github.com/umar5678/go-backend/internal/modules/wallet"
+	walletdto "github.com/umar5678/go-backend/internal/modules/wallet/dto"
 
 	// trackingDto "github.com/umar5678/go-backend/internal/modules/tracking/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
@@ -28,6 +30,11 @@ type Service interface {
 	// UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error
 	GetWallet(ctx context.Context, userID string) (*driverdto.WalletResponse, error)
 	GetDashboard(ctx context.Context, userID string) (*driverdto.DriverDashboardResponse, error)
+	
+	// ✅ Wallet management methods
+	TopUpWallet(ctx context.Context, userID string, req driverdto.WalletTopUpRequest) (*driverdto.WalletTopUpResponse, error)
+	GetWalletStatus(ctx context.Context, userID string) (*driverdto.WalletStatusResponse, error)
+	GetWalletTransactionHistory(ctx context.Context, userID string) ([]*driverdto.WalletTransactionResponse, error)
 
 	// CreateDriverProfile(ctx context.Context, userID string, req driverdto.CreateDriverProfileRequest) (*driverdto.DriverProfileResponse, error)
 	// GetDriverProfile(ctx context.Context, userID string) (*driverdto.DriverProfileResponse, error)
@@ -38,11 +45,17 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo          Repository
+	walletService walletservice.Service
+	db            *gorm.DB
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, walletService walletservice.Service, db *gorm.DB) Service {
+	return &service{
+		repo:          repo,
+		walletService: walletService,
+		db:            db,
+	}
 }
 
 func (s *service) RegisterDriver(ctx context.Context, userID string, req driverdto.RegisterDriverRequest) (*driverdto.DriverProfileResponse, error) {
@@ -539,6 +552,350 @@ func (s *service) UpdateLocation(ctx context.Context, userID string, req driverd
 	logger.Info("============================")
 
 	return nil
+}
+
+// ✅ TopUpWallet adds funds to driver wallet and handles account unrestriction
+// Production Ready: Only change ProcessPayment() implementation, everything else stays the same
+func (s *service) TopUpWallet(ctx context.Context, userID string, req driverdto.WalletTopUpRequest) (*driverdto.WalletTopUpResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, response.BadRequest(err.Error())
+	}
+
+	// Get driver profile to check restriction status
+	driver, err := s.repo.FindDriverByUserID(ctx, userID)
+	if err != nil {
+		return nil, response.NotFoundError("Driver profile")
+	}
+
+	logger.Info("processing wallet top-up",
+		"userID", userID,
+		"driverID", driver.ID,
+		"amount", req.Amount,
+		"paymentMethod", req.PaymentMethod)
+
+	// ✅ PRODUCTION: Only this function needs to be changed
+	// Everything else: Standard wallet operations (no changes needed)
+	paymentResult, err := s.ProcessPayment(ctx, &PaymentRequest{
+		DriverID:      driver.ID,
+		UserID:        userID,
+		Amount:        req.Amount,
+		PaymentMethod: req.PaymentMethod,
+		Reference:     req.Reference,
+	})
+	if err != nil {
+		logger.Error("payment processing failed", "error", err, "userID", userID)
+		return nil, response.BadRequest(fmt.Sprintf("Payment failed: %v", err))
+	}
+
+	if !paymentResult.Success {
+		logger.Warn("payment rejected",
+			"userID", userID,
+			"reason", paymentResult.Error)
+		return nil, response.BadRequest(paymentResult.Error)
+	}
+
+	// Credit driver wallet through wallet service
+	txn, err := s.walletService.CreditDriverWallet(
+		ctx,
+		userID,
+		req.Amount,
+		"wallet_topup",
+		paymentResult.TransactionID, // Payment provider transaction ID
+		fmt.Sprintf("Wallet top-up of $%.2f via %s (Order: %s)", req.Amount, req.PaymentMethod, paymentResult.OrderID),
+		map[string]interface{}{
+			"payment_method":   req.PaymentMethod,
+			"reference":        req.Reference,
+			"order_id":         paymentResult.OrderID,
+			"transaction_id":   paymentResult.TransactionID,
+			"payment_provider": paymentResult.Provider,
+		},
+	)
+	if err != nil {
+		logger.Error("failed to credit wallet", "error", err, "userID", userID)
+		return nil, response.InternalServerError("Failed to credit wallet", err)
+	}
+
+	// Get updated wallet info through wallet service
+	walletInfo, err := s.walletService.GetWallet(ctx, userID)
+	if err != nil {
+		logger.Error("failed to get wallet after top-up", "error", err, "userID", userID)
+		return nil, response.InternalServerError("Failed to fetch wallet", err)
+	}
+
+	// Check if account was restricted and can now be unrestricted
+	accountRestricted := driver.IsRestricted
+	if driver.IsRestricted && walletInfo.Balance >= 0 {
+		// Unrestrict account
+		if err := s.walletService.UnrestrictDriverAccount(ctx, driver.ID); err != nil {
+			logger.Error("failed to unrestrict account", "error", err, "driverID", driver.ID)
+		} else {
+			accountRestricted = false
+			logger.Info("driver account unrestricted after top-up",
+				"driverID", driver.ID,
+				"newBalance", walletInfo.Balance)
+		}
+	}
+
+	response := &driverdto.WalletTopUpResponse{
+		TransactionID:    txn.ID,
+		Amount:           req.Amount,
+		PaymentMethod:    req.PaymentMethod,
+		PreviousBalance:  walletInfo.Balance - req.Amount,
+		NewBalance:       walletInfo.Balance,
+		AccountRestricted: accountRestricted,
+		Message:          "Wallet topped up successfully",
+		Timestamp:        time.Now(),
+	}
+
+	if accountRestricted {
+		response.Message = fmt.Sprintf("Wallet topped up. Add $%.2f more to lift account restriction", driver.MinBalanceThreshold*-1)
+	}
+
+	logger.Info("wallet top-up completed successfully",
+		"userID", userID,
+		"driverID", driver.ID,
+		"amount", req.Amount,
+		"orderId", paymentResult.OrderID,
+		"transactionId", paymentResult.TransactionID)
+
+	return response, nil
+}
+
+// ============================================================
+// PAYMENT PROCESSING - Only file to modify for production
+// ============================================================
+
+// PaymentRequest wraps payment details for processing
+type PaymentRequest struct {
+	DriverID      string
+	UserID        string
+	Amount        float64
+	PaymentMethod string
+	Reference     *string
+}
+
+// PaymentResult from payment provider
+type PaymentResult struct {
+	Success       bool   // true if payment successful
+	OrderID       string // Order ID from payment provider
+	TransactionID string // Transaction ID from payment provider
+	Provider      string // Payment provider name (razorpay, stripe, etc.)
+	Error         string // Error message if failed
+}
+
+// ✅ ProcessPayment - PRODUCTION IMPLEMENTATION
+// This is the ONLY function that needs to change for real payment integration
+// Current: Mock implementation
+// Production: Replace with actual payment provider integration
+func (s *service) ProcessPayment(ctx context.Context, payReq *PaymentRequest) (*PaymentResult, error) {
+	logger.Info("processing payment",
+		"driverID", payReq.DriverID,
+		"amount", payReq.Amount,
+		"method", payReq.PaymentMethod)
+
+	// ========================================================
+	// OPTION 1: RAZORPAY INTEGRATION
+	// ========================================================
+	// Uncomment to use Razorpay (replace with your implementation)
+	/*
+	import "github.com/razorpay/razorpay-go"
+	
+	client := razorpay.NewClient(os.Getenv("RAZORPAY_KEY_ID"), os.Getenv("RAZORPAY_KEY_SECRET"))
+	
+	orderData := map[string]interface{}{
+		"amount":   int(payReq.Amount * 100), // Amount in paise
+		"currency": "INR",
+		"receipt":  fmt.Sprintf("topup_%s_%d", payReq.DriverID, time.Now().Unix()),
+		"notes": map[string]interface{}{
+			"driver_id": payReq.DriverID,
+			"user_id":   payReq.UserID,
+		},
+	}
+	
+	order, err := client.Order.Create(orderData, nil)
+	if err != nil {
+		logger.Error("razorpay order creation failed", "error", err)
+		return &PaymentResult{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to create order: %v", err),
+		}, nil
+	}
+	
+	// TODO: Frontend pays using order.ID
+	// Payment confirmation happens via webhook
+	return &PaymentResult{
+		Success:       true,
+		OrderID:       order.ID,
+		TransactionID: order.ID, // Update after webhook
+		Provider:      "razorpay",
+	}, nil
+	*/
+
+	// ========================================================
+	// OPTION 2: STRIPE INTEGRATION
+	// ========================================================
+	// Uncomment to use Stripe (replace with your implementation)
+	/*
+	import "github.com/stripe/stripe-go/v72"
+	import "github.com/stripe/stripe-go/v72/paymentintent"
+	
+	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
+	
+	piParams := &stripe.PaymentIntentParams{
+		Amount:   stripe.Int64(int64(payReq.Amount * 100)), // Amount in cents
+		Currency: stripe.String(string(stripe.CurrencyINR)),
+		Metadata: map[string]string{
+			"driver_id": payReq.DriverID,
+			"user_id":   payReq.UserID,
+		},
+	}
+	
+	pi, err := paymentintent.New(piParams)
+	if err != nil {
+		logger.Error("stripe payment intent creation failed", "error", err)
+		return &PaymentResult{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to create payment: %v", err),
+		}, nil
+	}
+	
+	return &PaymentResult{
+		Success:       true,
+		OrderID:       pi.ID,
+		TransactionID: pi.ID,
+		Provider:      "stripe",
+	}, nil
+	*/
+
+	// ========================================================
+	// OPTION 3: PAYPAL INTEGRATION
+	// ========================================================
+	// Uncomment to use PayPal (replace with your implementation)
+	/*
+	import "github.com/plutov/paypal/v4"
+	
+	client, err := paypal.NewClient(os.Getenv("PAYPAL_CLIENT_ID"), os.Getenv("PAYPAL_CLIENT_SECRET"), paypal.APIBaseSandBox)
+	if err != nil {
+		logger.Error("paypal client creation failed", "error", err)
+		return &PaymentResult{
+			Success: false,
+			Error:   "Failed to create PayPal client",
+		}, nil
+	}
+	
+	orderBody := paypal.OrderRequest{
+		Intent: "CAPTURE",
+		PurchaseUnits: []paypal.PurchaseUnitRequest{
+			{
+				ReferenceID: fmt.Sprintf("topup_%s_%d", payReq.DriverID, time.Now().Unix()),
+				Amount: &paypal.AmountWithBreakdown{
+					Value:    fmt.Sprintf("%.2f", payReq.Amount),
+					Currency: "INR",
+				},
+			},
+		},
+	}
+	
+	order, err := client.CreateOrder(ctx, orderBody)
+	if err != nil {
+		logger.Error("paypal order creation failed", "error", err)
+		return &PaymentResult{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to create order: %v", err),
+		}, nil
+	}
+	
+	return &PaymentResult{
+		Success:       true,
+		OrderID:       order.ID,
+		TransactionID: order.ID,
+		Provider:      "paypal",
+	}, nil
+	*/
+
+	// ========================================================
+	// CURRENT: MOCK IMPLEMENTATION (for testing)
+	// ========================================================
+	// In production, comment out this section and uncomment provider above
+
+	mockOrderID := fmt.Sprintf("ORDER_%s_%d", payReq.DriverID[:8], time.Now().Unix())
+	mockTxnID := fmt.Sprintf("TXN_%s_%d", payReq.DriverID[:8], time.Now().UnixNano())
+
+	logger.Info("✅ MOCK PAYMENT PROCESSED",
+		"orderID", mockOrderID,
+		"transactionID", mockTxnID,
+		"amount", payReq.Amount,
+		"note", "Replace with real payment provider")
+
+	return &PaymentResult{
+		Success:       true,
+		OrderID:       mockOrderID,
+		TransactionID: mockTxnID,
+		Provider:      "mock", // Change to "razorpay", "stripe", or "paypal"
+	}, nil
+}
+
+// ✅ GetWalletStatus returns detailed wallet and account status
+func (s *service) GetWalletStatus(ctx context.Context, userID string) (*driverdto.WalletStatusResponse, error) {
+	driver, err := s.repo.FindDriverByUserID(ctx, userID)
+	if err != nil {
+		return nil, response.NotFoundError("Driver profile")
+	}
+
+	// Get wallet through wallet service
+	walletInfo, err := s.walletService.GetWallet(ctx, userID)
+	if err != nil {
+		// Return zero balance if wallet doesn't exist
+		walletInfo = &walletdto.WalletResponse{
+			Balance:     0,
+			HeldBalance: 0,
+			Currency:    "INR",
+		}
+	}
+
+	// Calculate amount needed to lift restriction
+	amountNeeded := 0.0
+	if driver.IsRestricted {
+		amountNeeded = (driver.MinBalanceThreshold * -1) - walletInfo.Balance
+		if amountNeeded < 0 {
+			amountNeeded = 0
+		}
+	}
+
+	status := &driverdto.WalletStatusResponse{
+		Balance:             walletInfo.Balance,
+		HeldBalance:         walletInfo.HeldBalance,
+		AvailableBalance:    walletInfo.Balance - walletInfo.HeldBalance,
+		Currency:            walletInfo.Currency,
+		IsRestricted:        driver.IsRestricted,
+		AccountStatus:       driver.AccountStatus,
+		RestrictionReason:   driver.RestrictionReason,
+		MinBalanceThreshold: driver.MinBalanceThreshold,
+		AmountNeededToLift:  amountNeeded,
+		RestrictedAt:        driver.RestrictedAt,
+		LastUpdated:         time.Now(),
+	}
+
+	return status, nil
+}
+
+// ✅ GetWalletTransactionHistory returns transaction history for driver
+func (s *service) GetWalletTransactionHistory(ctx context.Context, userID string) ([]*driverdto.WalletTransactionResponse, error) {
+	driver, err := s.repo.FindDriverByUserID(ctx, userID)
+	if err != nil {
+		return nil, response.NotFoundError("Driver profile")
+	}
+
+	// For now, return mock transaction history
+	// In production, fetch from wallet service or a dedicated transaction service
+	logger.Info("fetching wallet transactions",
+		"driverID", driver.ID,
+		"userID", userID)
+
+	// TODO: Implement proper transaction history from wallet service
+	// This requires adding a method to wallet service Repository to fetch transactions by wallet ID
+	
+	return []*driverdto.WalletTransactionResponse{}, nil
 }
 
 // func (s *service) GetDriverStats(ctx context.Context, userID string) (*dto.DriverStatsResponse, error) {

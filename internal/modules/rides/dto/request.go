@@ -1,6 +1,9 @@
 package dto
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 type CreateRideRequest struct {
 	PickupLat       float64 `json:"pickupLat" binding:"required,min=-90,max=90"`
@@ -14,6 +17,9 @@ type CreateRideRequest struct {
 	VehicleTypeID   string  `json:"vehicleTypeId" binding:"required,uuid"`
 	RiderNotes      string  `json:"riderNotes" binding:"omitempty,max=500"`
 	PromoCode       string  `json:"promoCode" binding:"omitempty,min=3,max=50"`
+	IsScheduled     bool    `json:"isScheduled" binding:"omitempty"`
+	// Optional RFC3339 scheduled time for later rides. Example: 2026-01-11T15:04:05Z
+	ScheduledAt string `json:"scheduledAt" binding:"omitempty"`
 }
 
 func (r *CreateRideRequest) Validate() error {
@@ -25,6 +31,16 @@ func (r *CreateRideRequest) Validate() error {
 	}
 	if r.DropoffAddress == "" {
 		return errors.New("dropoff address is required")
+	}
+	// If scheduled time provided, ensure it's parsable and in the future
+	if r.ScheduledAt != "" {
+		t, err := time.Parse(time.RFC3339, r.ScheduledAt)
+		if err != nil {
+			return errors.New("scheduledAt must be a valid RFC3339 timestamp")
+		}
+		if !t.After(time.Now()) {
+			return errors.New("scheduledAt must be a future time")
+		}
 	}
 	return nil
 }

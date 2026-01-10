@@ -231,7 +231,7 @@ All in `/api/v1/pricing/`
   "estimatedDistance": 5.2,
   "estimatedDuration": 600,
   "vehicleTypeName": "Economy",
-  "currency": "USD",
+  "currency": "INR",
   "surgeDetails": {
     "isActive": true,
     "appliedMultiplier": 1.5,

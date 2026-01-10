@@ -87,7 +87,7 @@ CREATE TABLE wallets (
     wallet_type wallet_type NOT NULL,
     balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     held_balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+    currency VARCHAR(3) NOT NULL DEFAULT 'INR',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -434,7 +434,7 @@ CREATE TABLE service_provider_profiles (
     working_hours JSONB,
     service_areas JSONB,
     hourly_rate DECIMAL(10,2),
-    currency VARCHAR(3) DEFAULT 'USD',
+    currency VARCHAR(3) DEFAULT 'INR',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE,
@@ -598,6 +598,8 @@ ALTER TABLE rides ADD COLUMN rider_rating_comment TEXT;
 ALTER TABLE rides ADD COLUMN driver_rating_comment TEXT;
 ALTER TABLE rides ADD COLUMN rider_rated_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE rides ADD COLUMN driver_rated_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE rides ADD COLUMN scheduled_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE rides ADD COLUMN is_scheduled BOOLEAN DEFAULT FALSE;
 
 -- wallet transactions
 ALTER TABLE wallet_transactions 

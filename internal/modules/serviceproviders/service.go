@@ -33,7 +33,7 @@ func (s *service) CreateProfile(ctx context.Context, userID, serviceCategory str
 		TotalReviews:    0,
 		CompletedJobs:   0,
 		IsAvailable:     true,
-		Currency:        "USD",
+		Currency:        "INR",
 	}
 
 	if err := s.repo.CreateProfile(ctx, profile); err != nil {

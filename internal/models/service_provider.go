@@ -45,7 +45,7 @@ type ServiceProviderProfile struct {
 
 	// Financial
 	HourlyRate *float64 `gorm:"type:decimal(10,2)" json:"hourlyRate,omitempty"`
-	Currency   string   `gorm:"type:varchar(3);default:'USD'" json:"currency"`
+	Currency   string   `gorm:"type:varchar(3);default:'INR'" json:"currency"`
 
 	CreatedAt time.Time      `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`

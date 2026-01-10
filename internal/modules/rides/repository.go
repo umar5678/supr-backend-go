@@ -56,19 +56,19 @@ func (r *repository) CreateRide(ctx context.Context, ride *models.Ride) error {
 			pickup_location, pickup_lat, pickup_lon, pickup_address,
 			dropoff_location, dropoff_lat, dropoff_lon, dropoff_address,
 			estimated_distance, estimated_duration, estimated_fare,
-			surge_multiplier, wallet_hold_id, rider_notes, requested_at
+			surge_multiplier, wallet_hold_id, rider_notes, requested_at, scheduled_at
 		) VALUES (
 			?, ?, ?, ?,
 			ST_GeomFromText(?, 4326), ?, ?, ?,
 			ST_GeomFromText(?, 4326), ?, ?, ?,
 			?, ?, ?,
-			?, ?, ?, ?
+			?, ?, ?, ?, ?,
 		)
 	`, ride.ID, ride.RiderID, ride.VehicleTypeID, ride.Status,
 		pickupPoint, ride.PickupLat, ride.PickupLon, ride.PickupAddress,
 		dropoffPoint, ride.DropoffLat, ride.DropoffLon, ride.DropoffAddress,
 		ride.EstimatedDistance, ride.EstimatedDuration, ride.EstimatedFare,
-		ride.SurgeMultiplier, ride.WalletHoldID, ride.RiderNotes, ride.RequestedAt,
+		ride.SurgeMultiplier, ride.WalletHoldID, ride.RiderNotes, ride.RequestedAt, ride.ScheduledAt,
 	).Error
 }
 

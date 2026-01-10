@@ -212,7 +212,7 @@ func main() {
 
 		// Drivers module
 		driversRepo := drivers.NewRepository(db)
-		driversService := drivers.NewService(driversRepo)
+		driversService := drivers.NewService(driversRepo, walletService, db)
 		driversHandler := drivers.NewHandler(driversService)
 		drivers.RegisterRoutes(v1, driversHandler, authMiddleware)
 

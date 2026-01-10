@@ -20,6 +20,14 @@ type DriverProfile struct {
 	CancellationRate float64        `gorm:"type:decimal(5,2);default:0.0" json:"cancellationRate"`
 	IsVerified       bool           `gorm:"default:true" json:"isVerified"`
 	WalletBalance    float64        `gorm:"type:decimal(10,2);default:0" json:"walletBalance"`
+	
+	// ✅ Account restriction fields (for cash-based wallet model)
+	AccountStatus         string     `gorm:"type:varchar(50);default:'active'" json:"accountStatus"` // active, suspended, disabled
+	IsRestricted          bool       `gorm:"default:false" json:"isRestricted"`                     // Flag for account restriction
+	RestrictedAt          *time.Time `json:"restrictedAt,omitempty"`                               // When account was restricted
+	RestrictionReason     *string    `gorm:"type:varchar(255)" json:"restrictionReason,omitempty"` // Why account was restricted
+	MinBalanceThreshold   float64    `gorm:"type:decimal(10,2);default:-2000.00" json:"minBalanceThreshold"` // Threshold for auto-disable
+	
 	CreatedAt        time.Time      `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt        time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`

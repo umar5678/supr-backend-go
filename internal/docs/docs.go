@@ -3523,6 +3523,196 @@ const docTemplate = `{
                 }
             }
         },
+        "/drivers/wallet/status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns wallet balance, restriction status, and required amount to lift restrictions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drivers"
+                ],
+                "summary": "Get detailed wallet status including restrictions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletStatusResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/drivers/wallet/topup": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Driver can add funds to wallet for commissions and penalties and subscriptions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drivers"
+                ],
+                "summary": "Add funds to driver wallet (balance top-up)",
+                "parameters": [
+                    {
+                        "description": "Top-up details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTopUpRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTopUpResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request or insufficient funds",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/drivers/wallet/transactions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all transactions including earnings, commissions, penalties, and top-ups",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drivers"
+                ],
+                "summary": "Get driver wallet transaction history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTransactionResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/fraud/patterns": {
             "get": {
                 "security": [
@@ -11127,6 +11317,142 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletStatusResponse": {
+            "type": "object",
+            "properties": {
+                "accountStatus": {
+                    "description": "active, suspended, disabled",
+                    "type": "string"
+                },
+                "amountNeededToLift": {
+                    "description": "Amount to deposit to lift restriction",
+                    "type": "number"
+                },
+                "availableBalance": {
+                    "type": "number"
+                },
+                "balance": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "heldBalance": {
+                    "type": "number"
+                },
+                "isRestricted": {
+                    "type": "boolean"
+                },
+                "lastUpdated": {
+                    "type": "string"
+                },
+                "minBalanceThreshold": {
+                    "type": "number"
+                },
+                "restrictedAt": {
+                    "type": "string"
+                },
+                "restrictionReason": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTopUpRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "paymentMethod"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "paymentMethod": {
+                    "description": "card, upi, netbanking, wallet",
+                    "type": "string",
+                    "enum": [
+                        "card",
+                        "upi",
+                        "netbanking",
+                        "wallet"
+                    ]
+                },
+                "reference": {
+                    "description": "Transaction reference/order ID",
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTopUpResponse": {
+            "type": "object",
+            "properties": {
+                "accountRestricted": {
+                    "type": "boolean"
+                },
+                "amount": {
+                    "type": "number"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "newBalance": {
+                    "type": "number"
+                },
+                "paymentMethod": {
+                    "type": "string"
+                },
+                "previousBalance": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "transactionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTransactionResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "balanceAfter": {
+                    "type": "number"
+                },
+                "balanceBefore": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "paymentMethod": {
+                    "type": "string"
+                },
+                "referenceId": {
+                    "type": "string"
+                },
+                "referenceType": {
+                    "description": "ride_earnings, commission, penalty, topup, etc.",
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "transactionId": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "credit, debit",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternListResponse": {
             "type": "object",
             "properties": {
@@ -17127,6 +17453,9 @@ const docTemplate = `{
                     "maximum": 180,
                     "minimum": -180
                 },
+                "isScheduled": {
+                    "type": "boolean"
+                },
                 "pickupAddress": {
                     "type": "string",
                     "maxLength": 500
@@ -17151,6 +17480,10 @@ const docTemplate = `{
                     "maxLength": 500
                 },
                 "savedLocationId": {
+                    "type": "string"
+                },
+                "scheduledAt": {
+                    "description": "Optional RFC3339 scheduled time for later rides. Example: 2026-01-11T15:04:05Z",
                     "type": "string"
                 },
                 "useSavedAs": {
@@ -17280,6 +17613,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "isScheduled": {
+                    "type": "boolean"
+                },
                 "pickupAddress": {
                     "type": "string"
                 },
@@ -17302,6 +17638,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "riderNotes": {
+                    "type": "string"
+                },
+                "scheduledAt": {
                     "type": "string"
                 },
                 "sosAlertId": {

@@ -154,6 +154,23 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 		logger.Warn("Ride created without emergency contact", "userID", riderID)
 	}
 
+	// Parse scheduled time if provided (applies to all rides, not just those with saved locations)
+	var scheduledAtPtr *time.Time
+	isScheduled := false
+	if req.ScheduledAt != "" {
+		t, err := time.Parse(time.RFC3339, req.ScheduledAt)
+		if err != nil {
+			return nil, response.BadRequest("scheduledAt must be a valid RFC3339 timestamp")
+		}
+		// scheduledAt already validated to be in future by DTO validate, but double-check
+		if !t.After(time.Now()) {
+			return nil, response.BadRequest("scheduledAt must be a future time")
+		}
+		scheduledAtPtr = &t
+		isScheduled = true
+		logger.Info("ride scheduled in advance", "riderID", riderID, "scheduledAt", t)
+	}
+
 	// Handle saved locations if provided
 	// Integrate with profile service when methods are available
 	if req.SavedLocationID != nil && s.profileService != nil {
@@ -264,32 +281,29 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 		}
 	}
 
-	// ✅ Calculate amount to hold (after applying free credits)
+	// ✅ CASH-BASED MODEL: No balance pre-checks for riders (100% cash payment)
+	// Free ride credits are still supported for existing promotions
+	// GetWallet is now ONLY used to check for free ride credits, not balance validation
 	walletInfo, err := s.walletService.GetWallet(ctx, riderID)
 	if err != nil {
-		logger.Warn("failed to get wallet info", "error", err, "riderID", riderID)
-	}
-
-	amountToHold := finalAmount
-	if walletInfo != nil && walletInfo.FreeRideCredits > 0 {
+		logger.Warn("could not get free credits info", "error", err, "riderID", riderID)
+	} else if walletInfo != nil && walletInfo.FreeRideCredits > 0 {
 		// Free ride credits can cover part or all of the fare
 		if walletInfo.FreeRideCredits >= finalAmount {
-			amountToHold = 0 // Free credits cover everything
 			logger.Info("ride fully covered by free credits", "riderID", riderID, "fareAmount", finalAmount, "freeCredits", walletInfo.FreeRideCredits)
 		} else {
-			// Free credits cover partial amount, hold the remaining
-			amountToHold = finalAmount - walletInfo.FreeRideCredits
-			logger.Info("ride partially covered by free credits", "riderID", riderID, "fareAmount", finalAmount, "freeCredits", walletInfo.FreeRideCredits, "amountToHold", amountToHold)
+			logger.Info("ride partially covered by free credits", "riderID", riderID, "fareAmount", finalAmount, "freeCredits", walletInfo.FreeRideCredits)
 		}
 	}
 
 	rideID := uuid.New().String()
 
-	// 2. Hold funds with ReferenceID (only if amount > 0)
+	// 2. Create cash hold tracking (not actual fund hold - cash payment model)
+	// This is only for tracking expected payment amount, not for authorization
 	var holdID *string
-	if amountToHold > 0 {
+	if !isScheduled && finalAmount > 0 {
 		holdReq := walletdto.HoldFundsRequest{
-			Amount:        amountToHold,
+			Amount:        finalAmount,
 			ReferenceType: "ride",
 			ReferenceID:   rideID,
 			HoldDuration:  1800, // 30 minutes
@@ -297,20 +311,27 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 
 		holdResp, err := s.walletService.HoldFunds(ctx, riderID, holdReq)
 		if err != nil {
-			return nil, response.BadRequest("Insufficient wallet balance. Please add funds.")
+			logger.Warn("failed to create cash payment tracking hold", "error", err, "rideID", rideID)
+			// Don't fail the ride creation - cash payment doesn't require wallet authorization
+		} else {
+			holdID = &holdResp.ID
+			logger.Info("cash payment hold created for tracking", "rideID", rideID, "holdID", holdResp.ID, "amount", finalAmount)
 		}
-		holdID = &holdResp.ID
-		logger.Info("funds held for ride", "rideID", rideID, "holdID", holdResp.ID, "amount", amountToHold)
-	} else {
-		logger.Info("no funds to hold - free credits cover entire fare", "rideID", rideID)
+	} else if isScheduled {
+		logger.Info("scheduled ride - cash payment tracking deferred until activation", "rideID", rideID)
 	}
 
-	// 3. Create ride
+	// 3. Create ride with scheduled status if applicable
+	status := "searching"
+	if isScheduled {
+		status = "scheduled"
+	}
+
 	ride := &models.Ride{
 		ID:                rideID,
 		RiderID:           riderID,
 		VehicleTypeID:     req.VehicleTypeID,
-		Status:            "searching",
+		Status:            status,
 		PickupLat:         req.PickupLat,
 		PickupLon:         req.PickupLon,
 		PickupAddress:     req.PickupAddress,
@@ -322,6 +343,8 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 		EstimatedFare:     finalAmount,
 		SurgeMultiplier:   fareEstimate.SurgeMultiplier,
 		WalletHoldID:      holdID,
+		ScheduledAt:       scheduledAtPtr,
+		IsScheduled:       isScheduled,
 		RiderNotes:        req.RiderNotes,
 		PromoCodeID:       promoCodeID,
 		PromoDiscount:     &promoDiscount,
@@ -338,93 +361,181 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 
 	// 4. Store in Redis for quick access
 	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
-	cache.SetJSON(ctx, cacheKey, ride, 30*time.Minute)
+	if isScheduled {
+		cacheKey = fmt.Sprintf("ride:scheduled:%s", rideID)
+		cache.SetJSON(ctx, cacheKey, ride, 24*time.Hour)
+		logger.Info("scheduled ride stored in cache", "rideID", rideID, "scheduledAt", scheduledAtPtr)
+	} else {
+		cache.SetJSON(ctx, cacheKey, ride, 30*time.Minute)
+	}
 
 	// 5. Start finding driver asynchronously using batching service
-	go func() {
-		bgCtx := context.Background()
+	// For scheduled rides, spawn a goroutine that waits until the scheduled time
+	// then triggers matching. For immediate rides, start matching now.
+	if isScheduled && scheduledAtPtr != nil {
+		// Schedule the matching to happen at the scheduled time
+		go func(rideID string, scheduledTime time.Time) {
+			bgCtx := context.Background()
+			wait := time.Until(scheduledTime)
+			if wait > 0 {
+				logger.Info("ride scheduled for future matching", "rideID", rideID, "waitSeconds", int(wait.Seconds()))
+				time.Sleep(wait)
+			}
 
-		// ✅ OPTION A: Use intelligent request batching with 4-factor driver ranking
-		if s.batchingService != nil {
-			// Add request to batch for intelligent matching
-			// Requests in the same vehicle type get batched for 10 seconds
-			// and matched using 4-factor driver ranking algorithm
-			batchID, err := s.batchingService.AddRequestToBatch(bgCtx, struct {
-				RideID        string
-				RiderID       string
-				PickupLat     float64
-				PickupLon     float64
-				DropoffLat    float64
-				DropoffLon    float64
-				PickupGeohash string
-				VehicleTypeID string
-				RequestedAt   time.Time
-			}{
-				RideID:        ride.ID,
-				RiderID:       ride.RiderID,
-				PickupLat:     ride.PickupLat,
-				PickupLon:     ride.PickupLon,
-				DropoffLat:    ride.DropoffLat,
-				DropoffLon:    ride.DropoffLon,
-				VehicleTypeID: ride.VehicleTypeID,
-				RequestedAt:   time.Now(),
-			})
-
-			if err == nil {
-				logger.Info("Request added to batch for intelligent matching",
-					"batchID", batchID,
-					"rideID", ride.ID,
-					"riderID", ride.RiderID,
-					"vehicleType", ride.VehicleTypeID,
-				)
-				// Batch will be processed when:
-				// - 10-second window expires, or
-				// - Maximum batch size (20 requests) is reached
-				// Matches are then delivered to drivers via processMatchingResult()
+			// Update ride status from "scheduled" to "searching" to activate matching
+			if err := s.repo.UpdateRideStatus(bgCtx, rideID, "searching"); err != nil {
+				logger.Error("failed to update scheduled ride status to searching", "rideID", rideID, "error", err)
 				return
 			}
+			logger.Info("scheduled ride activated, starting driver matching", "rideID", rideID)
 
-			logger.Warn("Failed to add request to batch, falling back to sequential matching",
-				"error", err,
-				"rideID", ride.ID,
-			)
-		}
+			// Now trigger matching via batching service
+			if s.batchingService != nil {
+				ride, err := s.repo.FindRideByID(bgCtx, rideID)
+				if err != nil {
+					logger.Error("failed to fetch ride for scheduled matching", "rideID", rideID, "error", err)
+					return
+				}
 
-		// ✅ FALLBACK: Sequential driver matching (if batching unavailable)
-		if err := s.FindDriverForRide(bgCtx, rideID); err != nil {
-			logger.Error("failed to find driver", "error", err, "rideID", rideID)
+				batchID, err := s.batchingService.AddRequestToBatch(bgCtx, struct {
+					RideID        string
+					RiderID       string
+					PickupLat     float64
+					PickupLon     float64
+					DropoffLat    float64
+					DropoffLon    float64
+					PickupGeohash string
+					VehicleTypeID string
+					RequestedAt   time.Time
+				}{
+					RideID:        ride.ID,
+					RiderID:       ride.RiderID,
+					PickupLat:     ride.PickupLat,
+					PickupLon:     ride.PickupLon,
+					DropoffLat:    ride.DropoffLat,
+					DropoffLon:    ride.DropoffLon,
+					VehicleTypeID: ride.VehicleTypeID,
+					RequestedAt:   time.Now(),
+				})
 
-			currentRide, statusErr := s.repo.FindRideByID(bgCtx, rideID)
-			if statusErr != nil {
-				logger.Error("failed to fetch ride status", "error", statusErr, "rideID", rideID)
-				return
+				if err == nil {
+					logger.Info("scheduled ride added to batch for matching",
+						"batchID", batchID,
+						"rideID", rideID,
+					)
+					if result, err := s.batchingService.ProcessBatch(bgCtx, batchID); err != nil {
+						logger.Error("failed to process scheduled batch", "batchID", batchID, "error", err)
+					} else {
+						s.processMatchingResult(bgCtx, result)
+					}
+				}
+			} else {
+				// Fallback to sequential matching if batching unavailable
+				if err := s.FindDriverForRide(bgCtx, rideID); err != nil {
+					logger.Error("failed to find driver for scheduled ride", "rideID", rideID, "error", err)
+				}
 			}
+		}(rideID, *scheduledAtPtr)
+	} else {
+		// Immediate ride - start matching now
+		go func() {
+			bgCtx := context.Background()
 
-			if currentRide.Status != "searching" {
-				logger.Info("ride already accepted by driver, not canceling",
-					"rideID", rideID,
-					"currentStatus", currentRide.Status,
-					"driverID", currentRide.DriverID,
-				)
-				return
-			}
+			// ✅ OPTION A: Use intelligent request batching with 4-factor driver ranking
+			if s.batchingService != nil {
+				// Add request to batch for intelligent matching
+				// Requests in the same vehicle type get batched for 10 seconds
+				// and matched using 4-factor driver ranking algorithm
+				batchID, err := s.batchingService.AddRequestToBatch(bgCtx, struct {
+					RideID        string
+					RiderID       string
+					PickupLat     float64
+					PickupLon     float64
+					DropoffLat    float64
+					DropoffLon    float64
+					PickupGeohash string
+					VehicleTypeID string
+					RequestedAt   time.Time
+				}{
+					RideID:        ride.ID,
+					RiderID:       ride.RiderID,
+					PickupLat:     ride.PickupLat,
+					PickupLon:     ride.PickupLon,
+					DropoffLat:    ride.DropoffLat,
+					DropoffLon:    ride.DropoffLon,
+					VehicleTypeID: ride.VehicleTypeID,
+					RequestedAt:   time.Now(),
+				})
 
-			if err := s.repo.UpdateRideStatus(bgCtx, rideID, "cancelled"); err != nil {
-				logger.Error("failed to update ride status", "error", err, "rideID", rideID)
-			}
+				if err == nil {
+					logger.Info("Request added to batch for intelligent matching",
+						"batchID", batchID,
+						"rideID", ride.ID,
+						"riderID", ride.RiderID,
+						"vehicleType", ride.VehicleTypeID,
+					)
+					// Batch will be processed when:
+					// - 10-second window expires, or
+					// - Maximum batch size (20 requests) is reached
+					// Matches are then delivered to drivers via processMatchingResult()
+					if result, err := s.batchingService.ProcessBatch(bgCtx, batchID); err != nil {
+						logger.Error("Failed to process batch",
+							"batchID", batchID,
+							"error", err,
+						)
+					} else {
+						s.processMatchingResult(bgCtx, result)
+					}
+				}
 
-			if holdID != nil {
-				if err := s.walletService.ReleaseHold(bgCtx, riderID, walletdto.ReleaseHoldRequest{HoldID: *holdID}); err != nil {
-					logger.Error("failed to release hold", "error", err, "rideID", rideID)
+				if err != nil {
+					logger.Warn("Failed to add request to batch, falling back to sequential matching",
+						"error", err,
+						"rideID", ride.ID,
+					)
 				}
 			}
 
-			s.wsHelper.SendRideStatusToBoth(bgCtx, riderID, "", rideID, "cancelled", "No drivers available. Your payment has been refunded.")
-		}
-	}()
+			// ✅ FALLBACK: Sequential driver matching (if batching unavailable)
+			if err := s.FindDriverForRide(bgCtx, rideID); err != nil {
+				logger.Error("failed to find driver", "error", err, "rideID", rideID)
 
-	// 6. Notify rider via WebSocket
-	s.wsHelper.SendRideStatusToBoth(ctx, riderID, "", rideID, "searching", "Searching for nearby drivers...")
+				currentRide, statusErr := s.repo.FindRideByID(bgCtx, rideID)
+				if statusErr != nil {
+					logger.Error("failed to fetch ride status", "error", statusErr, "rideID", rideID)
+					return
+				}
+
+				if currentRide.Status != "searching" {
+					logger.Info("ride already accepted by driver, not canceling",
+						"rideID", rideID,
+						"currentStatus", currentRide.Status,
+						"driverID", currentRide.DriverID,
+					)
+					return
+				}
+
+				if err := s.repo.UpdateRideStatus(bgCtx, rideID, "cancelled"); err != nil {
+					logger.Error("failed to update ride status", "error", err, "rideID", rideID)
+				}
+
+				if holdID != nil {
+					if err := s.walletService.ReleaseHold(bgCtx, riderID, walletdto.ReleaseHoldRequest{HoldID: *holdID}); err != nil {
+						logger.Error("failed to release hold", "error", err, "rideID", rideID)
+					}
+				}
+
+				s.wsHelper.SendRideStatusToBoth(bgCtx, riderID, "", rideID, "cancelled", "No drivers available. Your payment has been refunded.")
+			}
+		}()
+	}
+
+	// 6. Notify rider via WebSocket (only for immediate rides; scheduled rides notify when activated)
+	if !isScheduled {
+		s.wsHelper.SendRideStatusToBoth(ctx, riderID, "", rideID, "searching", "Searching for nearby drivers...")
+	} else {
+		s.wsHelper.SendRideStatusToBoth(ctx, riderID, "", rideID, "scheduled", "Your ride has been scheduled and will start matching at the scheduled time")
+	}
 
 	logger.Info("ride created",
 		"rideID", rideID,
@@ -432,6 +543,8 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 		"estimatedFare", finalAmount,
 		"surge", fareEstimate.SurgeMultiplier,
 		"promoDiscount", promoDiscount,
+		"isScheduled", isScheduled,
+		"status", status,
 	)
 
 	// Fetch fresh ride data for response
@@ -1102,6 +1215,14 @@ func (s *service) MarkArrived(ctx context.Context, userID, rideID string) (*dto.
 		"riderID", ride.RiderID,
 	)
 
+	// wait three minutes for rider after marking arrived then start charging
+	time.AfterFunc(3*time.Minute, func() {
+		if ride.WaitTimeCharge == nil {
+			ride.WaitTimeCharge = new(float64)
+		}
+		*ride.WaitTimeCharge += 1.0
+	})
+
 	// Fetch fresh ride data for response
 	freshRide, err := s.repo.FindRideByID(ctx, rideID)
 	if err != nil {
@@ -1269,13 +1390,13 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		return nil, response.BadRequest("Ride must be started first")
 	}
 
-	// CRITICAL: Verify rider's PIN
-	if err := s.ridePINService.VerifyRidePIN(ctx, ride.RiderID, req.RiderPIN); err != nil {
-		logger.Warn("invalid ride PIN attempt at completion", "rideID", rideID, "driverID", driverID, "riderID", ride.RiderID)
-		return nil, response.BadRequest("Invalid Rider PIN. Please ask the rider for their 4-digit Ride PIN.")
-	}
+	// // CRITICAL: Verify rider's PIN
+	// if err := s.ridePINService.VerifyRidePIN(ctx, ride.RiderID, req.RiderPIN); err != nil {
+	// 	logger.Warn("invalid ride PIN attempt at completion", "rideID", rideID, "driverID", driverID, "riderID", ride.RiderID)
+	// 	return nil, response.BadRequest("Invalid Rider PIN. Please ask the rider for their 4-digit Ride PIN.")
+	// }
 
-	logger.Info("ride PIN verified at completion", "rideID", rideID)
+	// logger.Info("ride PIN verified at completion", "rideID", rideID)
 
 	// ✅ VERIFY: Driver is within 150m of dropoff location
 	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
@@ -1385,17 +1506,40 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		"commissionRate", actualFareResp.CommissionRate,
 	)
 
+	// ✅ CASH-BASED MODEL: Credit gross earnings, then deduct commission separately
+	// Driver credits gross cash collected from rider
 	_, err = s.walletService.CreditDriverWallet(
 		ctx,
 		driver.UserID,
-		driverEarnings,
+		actualFare, // Credit full fare (cash collected from rider)
 		"ride_earnings",
 		rideID,
-		fmt.Sprintf("Earnings from ride %s (after %.1f%% commission)", rideID, actualFareResp.CommissionRate),
-		nil,
+		fmt.Sprintf("Cash collected from ride %s", rideID),
+		map[string]interface{}{"total_fare": actualFare},
 	)
 	if err != nil {
 		logger.Error("failed to credit driver wallet", "error", err, "rideID", rideID)
+	}
+
+	// ✅ Deduct platform commission from driver wallet
+	// Commission is tracked separately for reporting and settlement
+	if platformCommission > 0 {
+		_, commissionErr := s.walletService.DeductCommission(
+			ctx,
+			driver.UserID,
+			platformCommission,
+			actualFareResp.CommissionRate,
+			rideID,
+		)
+		if commissionErr != nil {
+			logger.Error("failed to deduct commission from driver wallet", "error", commissionErr, "rideID", rideID)
+		} else {
+			logger.Info("commission deducted from driver",
+				"driverID", driverID,
+				"commission", platformCommission,
+				"rate", actualFareResp.CommissionRate,
+				"rideID", rideID)
+		}
 	}
 
 	// Update stats
@@ -1955,22 +2099,22 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 				)
 			}
 
-			// Debit driver's wallet as penalty
-			if driver != nil {
-				if _, err := s.walletService.DebitWallet(
+			// ✅ Debit driver's wallet as penalty using new method
+			if driver != nil && driverPenalty > 0 {
+				_, err := s.walletService.DeductPenalty(
 					ctx,
 					driver.UserID,
 					driverPenalty,
-					"cancellation_penalty",
+					"cancelled_ongoing_ride",
 					rideID,
-					"Penalty for cancelling ongoing ride",
-					nil,
-				); err != nil {
-					logger.Error("failed to debit driver penalty", "error", err, "driverID", driver.ID)
+				)
+				if err != nil {
+					logger.Error("failed to deduct driver penalty", "error", err, "driverID", driver.ID, "rideID", rideID)
 				} else {
-					logger.Info("driver penalty applied",
+					logger.Info("driver cancellation penalty deducted",
 						"rideID", rideID,
 						"driverID", driver.ID,
+						"driverUserID", driver.UserID,
 						"penalty", driverPenalty,
 					)
 
@@ -2039,21 +2183,21 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 				logger.Error("failed to release hold", "error", err, "rideID", rideID)
 			}
 
-			// Debit driver's wallet as penalty
-			if _, err := s.walletService.DebitWallet(
+			// ✅ Deduct driver's wallet penalty using new method
+			_, err := s.walletService.DeductPenalty(
 				ctx,
 				driver.UserID,
 				driverPenalty,
-				"cancellation_penalty",
+				"cancelled_accepted_ride",
 				rideID,
-				"Penalty for cancelling accepted ride",
-				nil,
-			); err != nil {
-				logger.Error("failed to debit driver penalty", "error", err, "driverID", driver.ID)
+			)
+			if err != nil {
+				logger.Error("failed to deduct driver penalty", "error", err, "driverID", driver.ID, "rideID", rideID)
 			} else {
-				logger.Info("driver cancellation penalty applied",
+				logger.Info("driver cancellation penalty deducted",
 					"rideID", rideID,
 					"driverID", driver.ID,
+					"driverUserID", driver.UserID,
 					"penalty", driverPenalty,
 				)
 			}

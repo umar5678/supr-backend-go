@@ -45,7 +45,7 @@ type Wallet struct {
 	WalletType      WalletType `gorm:"type:wallet_type;not null" json:"walletType"`
 	Balance         float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"balance"`
 	HeldBalance     float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"heldBalance"`
-	Currency        string     `gorm:"type:varchar(3);not null;default:'USD'" json:"currency"`
+	Currency        string     `gorm:"type:varchar(3);not null;default:'INR'" json:"currency"`
 	IsActive        bool       `gorm:"not null;default:true" json:"isActive"`
 	CreatedAt       time.Time  `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt       time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`

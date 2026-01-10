@@ -207,3 +207,83 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 
 	response.Success(c, dashboard, "Dashboard retrieved successfully")
 }
+
+// ✅ TopUpWallet godoc
+// @Summary Add funds to driver wallet (balance top-up)
+// @Description Driver can add funds to wallet for commissions and penalties and subscriptions
+// @Tags drivers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body driverdto.WalletTopUpRequest true "Top-up details"
+// @Success 200 {object} response.Response{data=driverdto.WalletTopUpResponse}
+// @Failure 400 {object} response.Response "Invalid request or insufficient funds"
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 500 {object} response.Response "Server error"
+// @Router /drivers/wallet/topup [post]
+func (h *Handler) TopUpWallet(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var req driverdto.WalletTopUpRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body: " + err.Error()))
+		return
+	}
+
+	result, err := h.service.TopUpWallet(c.Request.Context(), userID.(string), req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result, "Wallet topped up successfully")
+}
+
+// ✅ GetWalletStatus godoc
+// @Summary Get detailed wallet status including restrictions
+// @Description Returns wallet balance, restriction status, and required amount to lift restrictions
+// @Tags drivers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=driverdto.WalletStatusResponse}
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 500 {object} response.Response "Server error"
+// @Router /drivers/wallet/status [get]
+func (h *Handler) GetWalletStatus(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	status, err := h.service.GetWalletStatus(c.Request.Context(), userID.(string))
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, status, "Wallet status retrieved successfully")
+}
+
+// ✅ GetWalletTransactionHistory godoc
+// @Summary Get driver wallet transaction history
+// @Description Get all transactions including earnings, commissions, penalties, and top-ups
+// @Tags drivers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 20)"
+// @Success 200 {object} response.Response{data=[]driverdto.WalletTransactionResponse}
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 500 {object} response.Response "Server error"
+// @Router /drivers/wallet/transactions [get]
+func (h *Handler) GetWalletTransactionHistory(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	history, err := h.service.GetWalletTransactionHistory(c.Request.Context(), userID.(string))
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, history, "Transaction history retrieved successfully")
+}
+

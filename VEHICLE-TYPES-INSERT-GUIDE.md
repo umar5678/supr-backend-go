@@ -111,7 +111,7 @@ Edit the `insert_vehicle_types.sql` file to adjust pricing before inserting:
 - ✅ All vehicle types are set to `is_active = TRUE` by default
 - ✅ You can modify the `icon_url` to point to your actual icon files
 - ✅ Capacity is important for the algorithm to match riders with appropriate vehicles
-- ✅ Pricing is in USD - adjust currency in the application as needed
+- ✅ Pricing is in INR - adjust currency in the application as needed
 
 ## Testing in Your API
 

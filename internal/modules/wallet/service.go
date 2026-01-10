@@ -37,6 +37,19 @@ type Service interface {
 	CreditWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 	CreditDriverWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 
+	// ✅ Driver wallet operations (for cash-based model with commissions/penalties)
+	DebitDriverWallet(ctx context.Context, driverID string, amount float64, reason, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
+	DeductCommission(ctx context.Context, driverID string, amount float64, commissionRate float64, rideID string) (*models.WalletTransaction, error)
+	DeductPenalty(ctx context.Context, driverID string, amount float64, penaltyReason, rideID string) (*models.WalletTransaction, error)
+	DeductSubscription(ctx context.Context, driverID string, amount float64, planName string) (*models.WalletTransaction, error)
+	ValidateDriverWalletBalance(ctx context.Context, driverID string, amount float64) (float64, error)
+
+	// ✅ Driver account restrictions (auto-disable on negative balance)
+	CheckAndEnforceAccountRestriction(ctx context.Context, driverID string) (isRestricted bool, reason string, err error)
+	RestrictDriverAccount(ctx context.Context, driverID string, reason string) error
+	UnrestrictDriverAccount(ctx context.Context, driverID string) error
+	RecordBalanceAudit(ctx context.Context, driverID, userID string, previousBalance, newBalance float64, action, reason string) error
+
 	// Cash collection tracking
 	RecordCashCollection(ctx context.Context, userID string, req dto.CashCollectionRequest) (*dto.TransactionResponse, error)
 	RecordCashPayment(ctx context.Context, userID string, req dto.CashPaymentRequest) (*dto.TransactionResponse, error)
@@ -90,7 +103,7 @@ func (s *service) GetBalance(ctx context.Context, userID string) (*dto.WalletBal
 				UserID:      userID,
 				Balance:     0,
 				HeldBalance: 0,
-				Currency:    "USD",
+				Currency:    "INR",
 			}
 			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
 				return nil, response.InternalServerError("Failed to create wallet", err)
@@ -380,7 +393,7 @@ func (s *service) HoldFunds(ctx context.Context, userID string, req dto.HoldFund
 			wallet = &models.Wallet{
 				UserID:   userID,
 				Balance:  0,
-				Currency: "USD",
+				Currency: "INR",
 			}
 			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
 				return nil, response.InternalServerError("Failed to create wallet", err)
@@ -626,7 +639,7 @@ func (s *service) CreditWallet(ctx context.Context, userID string, amount float6
 			wallet = &models.Wallet{
 				UserID:     userID,
 				Balance:    0,
-				Currency:   "USD",
+				Currency:   "INR",
 				WalletType: models.WalletTypeRider, // Set wallet type to rider
 			}
 			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
@@ -670,7 +683,7 @@ func (s *service) CreditDriverWallet(ctx context.Context, userID string, amount 
 			wallet = &models.Wallet{
 				UserID:     userID,
 				Balance:    0,
-				Currency:   "USD",
+				Currency:   "INR",
 				WalletType: models.WalletTypeDriver, // Set wallet type to driver
 			}
 			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
@@ -704,6 +717,179 @@ func (s *service) CreditDriverWallet(ctx context.Context, userID string, amount 
 	logger.Info("driver wallet credited", "userID", userID, "amount", amount, "transactionID", txn.ID, "type", transactionType)
 
 	return txn, nil
+}
+
+// ✅ DebitDriverWallet debits amount from driver wallet (for commissions, penalties, subscriptions)
+// This ensures driver has funds in wallet to debit before deducting
+func (s *service) DebitDriverWallet(ctx context.Context, driverID string, amount float64, reason, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error) {
+	wallet, err := s.repo.FindWalletByUserID(ctx, driverID, models.WalletTypeDriver)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			wallet = &models.Wallet{
+				UserID:     driverID,
+				Balance:    0,
+				Currency:   "INR",
+				WalletType: models.WalletTypeDriver,
+			}
+			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
+				return nil, response.InternalServerError("Failed to create driver wallet", err)
+			}
+		} else {
+			return nil, response.InternalServerError("Failed to fetch driver wallet", err)
+		}
+	}
+
+	// Check available balance (allow negative balance for now, but log it)
+	availableBalance := wallet.GetAvailableBalance()
+	if availableBalance < amount {
+		logger.Warn("driver insufficient balance for debit",
+			"driverID", driverID,
+			"requiredAmount", amount,
+			"availableBalance", availableBalance,
+			"reason", reason)
+	}
+
+	var transaction *models.WalletTransaction
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		balanceBefore := wallet.Balance
+		wallet.Balance -= amount
+
+		if err := tx.Save(wallet).Error; err != nil {
+			return err
+		}
+
+		now := time.Now()
+		transaction = &models.WalletTransaction{
+			WalletID:      wallet.ID,
+			Type:          models.TransactionTypeDebit,
+			Amount:        amount,
+			BalanceBefore: balanceBefore,
+			BalanceAfter:  wallet.Balance,
+			Status:        models.TransactionStatusCompleted,
+			ReferenceType: &reason,
+			ReferenceID:   &referenceID,
+			Description:   &description,
+			Metadata:      metadata,
+			ProcessedAt:   &now,
+		}
+
+		return tx.Create(transaction).Error
+	})
+
+	if err != nil {
+		return nil, response.InternalServerError("Failed to debit driver wallet", err)
+	}
+
+	s.invalidateWalletCache(ctx, driverID)
+	logger.Info("driver wallet debited",
+		"driverID", driverID,
+		"amount", amount,
+		"reason", reason,
+		"referenceID", referenceID,
+		"newBalance", wallet.Balance)
+
+	// ✅ Record balance audit for compliance
+	var driver models.DriverProfile
+	if err := s.db.WithContext(ctx).Where("id = ?", driverID).First(&driver).Error; err == nil {
+		_ = s.RecordBalanceAudit(ctx, driverID, driver.UserID, wallet.Balance+amount, wallet.Balance, reason, description)
+	}
+
+	// ✅ Check if account should be restricted due to negative balance
+	go func() {
+		bgCtx := context.Background()
+		if isRestricted, restrictReason, err := s.CheckAndEnforceAccountRestriction(bgCtx, driverID); err != nil {
+			logger.Error("failed to check account restriction", "error", err, "driverID", driverID)
+		} else if isRestricted {
+			logger.Warn("driver account restricted due to negative balance",
+				"driverID", driverID,
+				"reason", restrictReason)
+		}
+	}()
+
+	return transaction, nil
+}
+
+// ✅ DeductCommission deducts platform commission from driver earnings
+// For cash-based rides: driver earns after commission already calculated
+// This method tracks commission separately for reporting
+func (s *service) DeductCommission(ctx context.Context, driverID string, amount float64, commissionRate float64, rideID string) (*models.WalletTransaction, error) {
+	reason := "ride_commission"
+	description := fmt.Sprintf("Platform commission (%.1f%%) for ride %s", commissionRate, rideID)
+
+	metadata := map[string]interface{}{
+		"commission_rate": commissionRate,
+		"ride_id":         rideID,
+		"type":            "platform_commission",
+	}
+
+	return s.DebitDriverWallet(ctx, driverID, amount, reason, rideID, description, metadata)
+}
+
+// ✅ DeductPenalty deducts penalty from driver wallet
+// Penalties: cancellation fees, ratings-based penalties, rule violations
+func (s *service) DeductPenalty(ctx context.Context, driverID string, amount float64, penaltyReason, rideID string) (*models.WalletTransaction, error) {
+	reason := "driver_penalty"
+	description := fmt.Sprintf("Penalty (%s) - %s", penaltyReason, rideID)
+
+	metadata := map[string]interface{}{
+		"penalty_reason": penaltyReason,
+		"ride_id":        rideID,
+		"type":           "penalty",
+	}
+
+	logger.Info("applying driver penalty",
+		"driverID", driverID,
+		"amount", amount,
+		"reason", penaltyReason,
+		"rideID", rideID)
+
+	return s.DebitDriverWallet(ctx, driverID, amount, reason, rideID, description, metadata)
+}
+
+// ✅ DeductSubscription deducts subscription fees from driver wallet
+// For future subscriptions: premium support, features, insurance
+func (s *service) DeductSubscription(ctx context.Context, driverID string, amount float64, planName string) (*models.WalletTransaction, error) {
+	reason := "subscription_fee"
+	referenceID := fmt.Sprintf("subscription_%s_%d", planName, time.Now().Unix())
+	description := fmt.Sprintf("Subscription fee for %s plan", planName)
+
+	metadata := map[string]interface{}{
+		"plan_name": planName,
+		"type":      "subscription",
+		"date":      time.Now().Format("2006-01-02"),
+	}
+
+	logger.Info("deducting subscription fee",
+		"driverID", driverID,
+		"plan", planName,
+		"amount", amount)
+
+	return s.DebitDriverWallet(ctx, driverID, amount, reason, referenceID, description, metadata)
+}
+
+// ✅ ValidateDriverWalletBalance checks if driver has sufficient balance
+// Returns available balance for verification
+func (s *service) ValidateDriverWalletBalance(ctx context.Context, driverID string, amount float64) (float64, error) {
+	wallet, err := s.repo.FindWalletByUserID(ctx, driverID, models.WalletTypeDriver)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil // No wallet = no balance
+		}
+		return 0, response.InternalServerError("Failed to fetch driver wallet", err)
+	}
+
+	availableBalance := wallet.GetAvailableBalance()
+
+	if availableBalance < amount {
+		logger.Warn("insufficient driver wallet balance",
+			"driverID", driverID,
+			"required", amount,
+			"available", availableBalance)
+		return availableBalance, response.BadRequest(
+			fmt.Sprintf("Insufficient wallet balance. Required: $%.2f, Available: $%.2f", amount, availableBalance))
+	}
+
+	return availableBalance, nil
 }
 
 // GetTransactionHistory retrieves transaction history
@@ -746,7 +932,7 @@ func (s *service) RecordCashCollection(ctx context.Context, userID string, req d
 			wallet = &models.Wallet{
 				UserID:   userID,
 				Balance:  0,
-				Currency: "USD",
+				Currency: "INR",
 			}
 			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
 				return nil, response.InternalServerError("Failed to create wallet", err)
@@ -833,6 +1019,151 @@ func (s *service) RecordCashPayment(ctx context.Context, userID string, req dto.
 		"transactionID", txn.ID)
 
 	return dto.ToTransactionResponse(txn), nil
+}
+
+// ✅ CheckAndEnforceAccountRestriction checks if driver account should be restricted
+// Returns true if account is restricted or should be restricted
+func (s *service) CheckAndEnforceAccountRestriction(ctx context.Context, driverID string) (bool, string, error) {
+	// Get driver profile
+	var driver models.DriverProfile
+	if err := s.db.WithContext(ctx).Where("id = ?", driverID).First(&driver).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, "", response.NotFoundError("Driver")
+		}
+		return false, "", response.InternalServerError("Failed to fetch driver profile", err)
+	}
+
+	// Get driver's wallet balance
+	wallet, err := s.repo.FindWalletByUserID(ctx, driver.UserID, models.WalletTypeDriver)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, "", nil // No wallet = no restriction
+		}
+		return false, "", response.InternalServerError("Failed to fetch wallet", err)
+	}
+
+	// Check if balance is below threshold
+	if wallet.Balance < driver.MinBalanceThreshold {
+		reason := fmt.Sprintf("Negative balance: $%.2f (threshold: $%.2f)", wallet.Balance, driver.MinBalanceThreshold)
+
+		// Auto-restrict if not already restricted
+		if !driver.IsRestricted {
+			if err := s.RestrictDriverAccount(ctx, driverID, reason); err != nil {
+				logger.Error("failed to restrict driver account", "error", err, "driverID", driverID)
+			}
+		}
+
+		return true, reason, nil
+	}
+
+	// If balance is positive and account was restricted, unrestrict it
+	if driver.IsRestricted && wallet.Balance >= 0 {
+		if err := s.UnrestrictDriverAccount(ctx, driverID); err != nil {
+			logger.Error("failed to unrestrict driver account", "error", err, "driverID", driverID)
+		}
+	}
+
+	return driver.IsRestricted, "", nil
+}
+
+// ✅ RestrictDriverAccount disables driver account due to negative balance
+func (s *service) RestrictDriverAccount(ctx context.Context, driverID string, reason string) error {
+	now := time.Now()
+	result := s.db.WithContext(ctx).Model(&models.DriverProfile{}).
+		Where("id = ?", driverID).
+		Updates(map[string]interface{}{
+			"is_restricted":      true,
+			"account_status":     "disabled",
+			"restricted_at":      now,
+			"restriction_reason": reason,
+		})
+
+	if result.Error != nil {
+		return response.InternalServerError("Failed to restrict account", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return response.NotFoundError("Driver")
+	}
+
+	logger.Info("driver account restricted",
+		"driverID", driverID,
+		"reason", reason,
+		"restrictedAt", now)
+
+	// Invalidate driver cache
+	cache.Delete(ctx, fmt.Sprintf("driver:profile:%s", driverID))
+
+	return nil
+}
+
+// ✅ UnrestrictDriverAccount re-enables driver account after adding funds
+func (s *service) UnrestrictDriverAccount(ctx context.Context, driverID string) error {
+	result := s.db.WithContext(ctx).Model(&models.DriverProfile{}).
+		Where("id = ?", driverID).
+		Updates(map[string]interface{}{
+			"is_restricted":      false,
+			"account_status":     "active",
+			"restricted_at":      nil,
+			"restriction_reason": nil,
+		})
+
+	if result.Error != nil {
+		return response.InternalServerError("Failed to unrestrict account", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return response.NotFoundError("Driver")
+	}
+
+	logger.Info("driver account unrestricted",
+		"driverID", driverID)
+
+	// Invalidate driver cache
+	cache.Delete(ctx, fmt.Sprintf("driver:profile:%s", driverID))
+
+	return nil
+}
+
+// ✅ RecordBalanceAudit logs all balance changes for auditing
+func (s *service) RecordBalanceAudit(ctx context.Context, driverID, userID string, previousBalance, newBalance float64, action, reason string) error {
+	changeAmount := newBalance - previousBalance
+
+	// Check if this triggers a restriction
+	var driver models.DriverProfile
+	triggeredRestriction := false
+	if err := s.db.WithContext(ctx).Where("id = ?", driverID).First(&driver).Error; err == nil {
+		if newBalance < driver.MinBalanceThreshold && !driver.IsRestricted {
+			triggeredRestriction = true
+		}
+	}
+
+	audit := &models.DriverBalanceAudit{
+		DriverID:             driverID,
+		UserID:               userID,
+		PreviousBalance:      previousBalance,
+		NewBalance:           newBalance,
+		ChangeAmount:         changeAmount,
+		Action:               action,
+		Reason:               &reason,
+		TriggeredRestriction: triggeredRestriction,
+	}
+
+	if err := s.db.WithContext(ctx).Create(audit).Error; err != nil {
+		logger.Error("failed to record balance audit", "error", err, "driverID", driverID, "action", action)
+		// Don't return error - auditing failure shouldn't break the transaction
+		return nil
+	}
+
+	logger.Info("balance audit recorded",
+		"driverID", driverID,
+		"action", action,
+		"previousBalance", previousBalance,
+		"newBalance", newBalance,
+		"changeAmount", changeAmount,
+		"triggeredRestriction", triggeredRestriction)
+
+	return nil
 }
 
 // Helper functions

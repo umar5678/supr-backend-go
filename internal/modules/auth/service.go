@@ -563,7 +563,7 @@ func (s *service) createUserWallet(ctx context.Context, user *models.User) error
 		WalletType:  walletType,
 		Balance:     initialBalance,
 		HeldBalance: 0.00,
-		Currency:    "USD",
+		Currency:    "INR",
 		IsActive:    true,
 	}
 

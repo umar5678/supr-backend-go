@@ -121,7 +121,7 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 		EstimatedDistance: estimate.EstimatedDistance,
 		EstimatedDuration: estimate.EstimatedDuration,
 		VehicleTypeName:   estimate.VehicleTypeName,
-		Currency:          "USD",
+		Currency:          "INR",
 
 		// Driver payout and commission
 		DriverPayout:       driverPayout,
@@ -203,7 +203,7 @@ func (s *service) CalculateActualFare(ctx context.Context, req dto.CalculateActu
 		EstimatedDistance:  estimate.EstimatedDistance,
 		EstimatedDuration:  estimate.EstimatedDuration,
 		VehicleTypeName:    estimate.VehicleTypeName,
-		Currency:           "USD",
+		Currency:           "INR",
 	}
 
 	logger.Info("actual fare calculated",

@@ -196,7 +196,7 @@ The wallet endpoint now returns free credits:
   "heldBalance": 10.00,
   "availableBalance": 40.00,
   "freeRideCredits": 25.00,
-  "currency": "USD",
+  "currency": "INR",
   "isActive": true,
   "createdAt": "2024-01-15T10:00:00Z",
   "updatedAt": "2024-01-15T10:00:00Z"

@@ -53,8 +53,10 @@ type Ride struct {
 	RiderNotes         string  `gorm:"type:text" json:"riderNotes"`
 	CancellationReason string  `gorm:"type:text" json:"cancellationReason"`
 	CancelledBy        *string `gorm:"type:varchar(50)" json:"cancelledBy"` // rider, driver, system
+	IsScheduled        bool    `gorm:"default:false" json:"isScheduled"`
 
 	// Timestamps
+	ScheduledAt *time.Time `json:"scheduledAt"`
 	RequestedAt time.Time  `gorm:"not null" json:"requestedAt"`
 	AcceptedAt  *time.Time `json:"acceptedAt"`
 	ArrivedAt   *time.Time `json:"arrivedAt"`

@@ -533,6 +533,99 @@ definitions:
       totalEarnings:
         type: number
     type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletStatusResponse:
+    properties:
+      accountStatus:
+        description: active, suspended, disabled
+        type: string
+      amountNeededToLift:
+        description: Amount to deposit to lift restriction
+        type: number
+      availableBalance:
+        type: number
+      balance:
+        type: number
+      currency:
+        type: string
+      heldBalance:
+        type: number
+      isRestricted:
+        type: boolean
+      lastUpdated:
+        type: string
+      minBalanceThreshold:
+        type: number
+      restrictedAt:
+        type: string
+      restrictionReason:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTopUpRequest:
+    properties:
+      amount:
+        type: number
+      paymentMethod:
+        description: card, upi, netbanking, wallet
+        enum:
+        - card
+        - upi
+        - netbanking
+        - wallet
+        type: string
+      reference:
+        description: Transaction reference/order ID
+        maxLength: 100
+        type: string
+    required:
+    - amount
+    - paymentMethod
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTopUpResponse:
+    properties:
+      accountRestricted:
+        type: boolean
+      amount:
+        type: number
+      message:
+        type: string
+      newBalance:
+        type: number
+      paymentMethod:
+        type: string
+      previousBalance:
+        type: number
+      timestamp:
+        type: string
+      transactionId:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTransactionResponse:
+    properties:
+      amount:
+        type: number
+      balanceAfter:
+        type: number
+      balanceBefore:
+        type: number
+      createdAt:
+        type: string
+      description:
+        type: string
+      paymentMethod:
+        type: string
+      referenceId:
+        type: string
+      referenceType:
+        description: ride_earnings, commission, penalty, topup, etc.
+        type: string
+      status:
+        type: string
+      transactionId:
+        type: string
+      type:
+        description: credit, debit
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_modules_fraud_dto.FraudPatternListResponse:
     properties:
       createdAt:
@@ -4578,6 +4671,8 @@ definitions:
         maximum: 180
         minimum: -180
         type: number
+      isScheduled:
+        type: boolean
       pickupAddress:
         maxLength: 500
         type: string
@@ -4597,6 +4692,9 @@ definitions:
         maxLength: 500
         type: string
       savedLocationId:
+        type: string
+      scheduledAt:
+        description: 'Optional RFC3339 scheduled time for later rides. Example: 2026-01-11T15:04:05Z'
         type: string
       useSavedAs:
         enum:
@@ -4690,6 +4788,8 @@ definitions:
         type: boolean
       id:
         type: string
+      isScheduled:
+        type: boolean
       pickupAddress:
         type: string
       pickupLat:
@@ -4705,6 +4805,8 @@ definitions:
       riderId:
         type: string
       riderNotes:
+        type: string
+      scheduledAt:
         type: string
       sosAlertId:
         type: string
@@ -7267,6 +7369,121 @@ paths:
       security:
       - BearerAuth: []
       summary: Get driver wallet balance
+      tags:
+      - drivers
+  /drivers/wallet/status:
+    get:
+      consumes:
+      - application/json
+      description: Returns wallet balance, restriction status, and required amount
+        to lift restrictions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletStatusResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get detailed wallet status including restrictions
+      tags:
+      - drivers
+  /drivers/wallet/topup:
+    post:
+      consumes:
+      - application/json
+      description: Driver can add funds to wallet for commissions and penalties and
+        subscriptions
+      parameters:
+      - description: Top-up details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTopUpRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTopUpResponse'
+              type: object
+        "400":
+          description: Invalid request or insufficient funds
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Add funds to driver wallet (balance top-up)
+      tags:
+      - drivers
+  /drivers/wallet/transactions:
+    get:
+      consumes:
+      - application/json
+      description: Get all transactions including earnings, commissions, penalties,
+        and top-ups
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 20)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.WalletTransactionResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get driver wallet transaction history
       tags:
       - drivers
   /fraud/patterns:

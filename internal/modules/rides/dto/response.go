@@ -40,6 +40,9 @@ type RideResponse struct {
 	CancellationReason string  `json:"cancellationReason,omitempty"`
 	CancelledBy        *string `json:"cancelledBy,omitempty"`
 
+	IsScheduled bool       `json:"isScheduled"`
+	ScheduledAt *time.Time `json:"scheduledAt,omitempty"`
+
 	RequestedAt time.Time  `json:"requestedAt"`
 	AcceptedAt  *time.Time `json:"acceptedAt,omitempty"`
 	ArrivedAt   *time.Time `json:"arrivedAt,omitempty"`
@@ -93,6 +96,8 @@ func ToRideResponse(ride *models.Ride) *RideResponse {
 		RiderNotes:         ride.RiderNotes,
 		CancellationReason: ride.CancellationReason,
 		CancelledBy:        ride.CancelledBy,
+		IsScheduled:        ride.IsScheduled,
+		ScheduledAt:        ride.ScheduledAt,
 		RequestedAt:        ride.RequestedAt,
 		AcceptedAt:         ride.AcceptedAt,
 		ArrivedAt:          ride.ArrivedAt,
