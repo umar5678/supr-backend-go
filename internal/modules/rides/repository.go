@@ -62,7 +62,7 @@ func (r *repository) CreateRide(ctx context.Context, ride *models.Ride) error {
 			ST_GeomFromText(?, 4326), ?, ?, ?,
 			ST_GeomFromText(?, 4326), ?, ?, ?,
 			?, ?, ?,
-			?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?
 		)
 	`, ride.ID, ride.RiderID, ride.VehicleTypeID, ride.Status,
 		pickupPoint, ride.PickupLat, ride.PickupLon, ride.PickupAddress,
