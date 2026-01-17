@@ -7911,6 +7911,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/rides/available-cars": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rides"
+                ],
+                "summary": "Get available cars near the rider",
+                "parameters": [
+                    {
+                        "description": "Location and radius",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.AvailableCarRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.AvailableCarsListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/rides/{id}": {
             "get": {
                 "security": [
@@ -17389,6 +17439,166 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_rides_dto.AvailableCarRequest": {
+            "type": "object",
+            "required": [
+                "latitude",
+                "longitude",
+                "radiusKm"
+            ],
+            "properties": {
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "radiusKm": {
+                    "description": "Default 5 km, Max 50 km",
+                    "type": "number",
+                    "maximum": 50,
+                    "minimum": 0.1
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_rides_dto.AvailableCarResponse": {
+            "type": "object",
+            "properties": {
+                "acceptanceRate": {
+                    "description": "Driver acceptance rate",
+                    "type": "number"
+                },
+                "cancellationRate": {
+                    "description": "Driver cancellation rate",
+                    "type": "number"
+                },
+                "capacity": {
+                    "description": "Passenger capacity",
+                    "type": "integer"
+                },
+                "color": {
+                    "description": "e.g., \"Silver\"",
+                    "type": "string"
+                },
+                "currentLatitude": {
+                    "description": "Current location",
+                    "type": "number"
+                },
+                "currentLongitude": {
+                    "type": "number"
+                },
+                "distanceKm": {
+                    "description": "Distance from rider",
+                    "type": "number"
+                },
+                "driverId": {
+                    "description": "Driver ID",
+                    "type": "string"
+                },
+                "driverImage": {
+                    "type": "string"
+                },
+                "driverName": {
+                    "description": "Driver name",
+                    "type": "string"
+                },
+                "driverRating": {
+                    "description": "Driver rating (0-5)",
+                    "type": "number"
+                },
+                "estimatedFare": {
+                    "description": "Estimated ride fare",
+                    "type": "number"
+                },
+                "etaMinutes": {
+                    "description": "ETA in minutes",
+                    "type": "integer"
+                },
+                "etaSeconds": {
+                    "description": "ETA in seconds",
+                    "type": "integer"
+                },
+                "heading": {
+                    "description": "Direction (0-360)",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "Car/Vehicle ID",
+                    "type": "string"
+                },
+                "isVerified": {
+                    "type": "boolean"
+                },
+                "licensePlate": {
+                    "description": "e.g., \"DHA-1234\"",
+                    "type": "string"
+                },
+                "make": {
+                    "description": "e.g., \"Toyota\"",
+                    "type": "string"
+                },
+                "model": {
+                    "description": "e.g., \"Corolla\"",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"online\", \"busy\", etc.",
+                    "type": "string"
+                },
+                "surgeMultiplier": {
+                    "description": "Current surge pricing multiplier",
+                    "type": "number"
+                },
+                "totalTrips": {
+                    "description": "Driver total trips",
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "vehicleDisplayName": {
+                    "type": "string"
+                },
+                "vehicleType": {
+                    "description": "e.g., \"economy\", \"comfort\", \"premium\", \"xl\"",
+                    "type": "string"
+                },
+                "vehicleTypeId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_rides_dto.AvailableCarsListResponse": {
+            "type": "object",
+            "properties": {
+                "cars": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.AvailableCarResponse"
+                    }
+                },
+                "carsCount": {
+                    "description": "Number of cars in response",
+                    "type": "integer"
+                },
+                "radiusKm": {
+                    "type": "number"
+                },
+                "riderLat": {
+                    "type": "number"
+                },
+                "riderLon": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "totalCount": {
+                    "description": "Total available cars found",
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_rides_dto.CancelRideRequest": {
             "type": "object",
             "properties": {
@@ -17583,6 +17793,10 @@ const docTemplate = `{
                 "driver": {
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse"
                 },
+                "driverFare": {
+                    "description": "Driver and Rider Fares - Both see the same amount (with promo discount applied if used)",
+                    "type": "number"
+                },
                 "driverId": {
                     "type": "string"
                 },
@@ -17633,6 +17847,10 @@ const docTemplate = `{
                 },
                 "rider": {
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse"
+                },
+                "riderFare": {
+                    "description": "What rider pays (with discount applied)",
+                    "type": "number"
                 },
                 "riderId": {
                     "type": "string"
