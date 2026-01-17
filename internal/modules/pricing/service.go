@@ -104,11 +104,8 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 		surgeMultiplier,
 	)
 
-	// Calculate driver payout with 5% platform commission
-	const defaultCommissionRate = 5.0 // 5% commission
-	driverPayout, platformCommission := s.CalculateDriverPayout(estimate.TotalFare, defaultCommissionRate)
-
 	// Convert to response with surge details
+	// NOTE: No platform commission - driver gets full fare
 	fareResponse := &dto.FareEstimateResponse{
 		BaseFare:          estimate.BaseFare,
 		DistanceFare:      estimate.DistanceFare,
@@ -123,10 +120,10 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 		VehicleTypeName:   estimate.VehicleTypeName,
 		Currency:          "INR",
 
-		// Driver payout and commission
-		DriverPayout:       driverPayout,
-		PlatformCommission: platformCommission,
-		CommissionRate:     defaultCommissionRate,
+		// Driver gets full fare (no commission deduction)
+		DriverPayout:       estimate.TotalFare,
+		PlatformCommission: 0,
+		CommissionRate:     0,
 
 		// Add surge breakdown details
 		SurgeDetails: &dto.SurgeDetailsResponse{
@@ -150,6 +147,8 @@ func (s *service) GetFareEstimate(ctx context.Context, req dto.FareEstimateReque
 		"surge", surgeMultiplier,
 		"surgeReason", reason,
 		"totalFare", estimate.TotalFare,
+		"driverPayout", estimate.TotalFare,
+		"platformCommission", 0,
 	)
 
 	return fareResponse, nil
@@ -183,11 +182,8 @@ func (s *service) CalculateActualFare(ctx context.Context, req dto.CalculateActu
 		surgeMultiplier,
 	)
 
-	// Calculate driver payout with 5% platform commission
-	const defaultCommissionRate = 5.0 // 5% commission
-	driverPayout, platformCommission := s.CalculateDriverPayout(estimate.TotalFare, defaultCommissionRate)
-
 	// Convert to response
+	// NOTE: No platform commission - driver gets full fare
 	fareResponse := &dto.FareEstimateResponse{
 		BaseFare:           estimate.BaseFare,
 		DistanceFare:       estimate.DistanceFare,
@@ -197,9 +193,9 @@ func (s *service) CalculateActualFare(ctx context.Context, req dto.CalculateActu
 		SubTotal:           estimate.SubTotal,
 		SurgeAmount:        estimate.SurgeAmount,
 		TotalFare:          estimate.TotalFare,
-		DriverPayout:       driverPayout,
-		PlatformCommission: platformCommission,
-		CommissionRate:     defaultCommissionRate,
+		DriverPayout:       estimate.TotalFare, // Driver gets full fare
+		PlatformCommission: 0,                  // No commission
+		CommissionRate:     0,
 		EstimatedDistance:  estimate.EstimatedDistance,
 		EstimatedDuration:  estimate.EstimatedDuration,
 		VehicleTypeName:    estimate.VehicleTypeName,

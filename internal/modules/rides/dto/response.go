@@ -35,6 +35,10 @@ type RideResponse struct {
 	PromoDiscount  *float64 `json:"promoDiscount,omitempty"`
 	WaitTimeCharge *float64 `json:"waitTimeCharge,omitempty"`
 
+	// Driver and Rider Fares - Both see the same amount (with promo discount applied if used)
+	DriverFare *float64 `json:"driverFare,omitempty"` // What driver earns (with discount applied)
+	RiderFare  *float64 `json:"riderFare,omitempty"`  // What rider pays (with discount applied)
+
 	SurgeMultiplier    float64 `json:"surgeMultiplier"`
 	RiderNotes         string  `json:"riderNotes,omitempty"`
 	CancellationReason string  `json:"cancellationReason,omitempty"`
@@ -98,6 +102,10 @@ func ToRideResponse(ride *models.Ride) *RideResponse {
 		CancelledBy:        ride.CancelledBy,
 		IsScheduled:        ride.IsScheduled,
 		ScheduledAt:        ride.ScheduledAt,
+		PromoDiscount:      ride.PromoDiscount,
+		WaitTimeCharge:     ride.WaitTimeCharge,
+		DriverFare:         ride.DriverFare,
+		RiderFare:          ride.RiderFare,
 		RequestedAt:        ride.RequestedAt,
 		AcceptedAt:         ride.AcceptedAt,
 		ArrivedAt:          ride.ArrivedAt,

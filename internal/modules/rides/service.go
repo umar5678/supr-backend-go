@@ -1423,22 +1423,39 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		return nil, err
 	}
 
-	actualFare := actualFareResp.TotalFare
+	// ✅ PROMO CODE PRICING
+	// Both driver and rider see the same discounted amount when promo is applied
+	driverFare := actualFareResp.TotalFare
+	riderFare := actualFareResp.TotalFare
 
-	// Add wait time charge if any
+	// Add wait time charge (both driver and rider see this)
 	if ride.WaitTimeCharge != nil {
-		actualFare += *ride.WaitTimeCharge
+		driverFare += *ride.WaitTimeCharge
+		riderFare += *ride.WaitTimeCharge
 	}
 
-	// Add destination change charge if any
+	// Add destination change charge (both driver and rider see this)
 	if ride.DestinationChangeCharge != nil {
-		actualFare += *ride.DestinationChangeCharge
+		driverFare += *ride.DestinationChangeCharge
+		riderFare += *ride.DestinationChangeCharge
 	}
 
-	// Apply promo discount
-	if ride.PromoDiscount != nil {
-		actualFare -= *ride.PromoDiscount
+	// ✅ Apply promo discount to BOTH driver and rider
+	// Both see the same discounted amount
+	if ride.PromoDiscount != nil && *ride.PromoDiscount > 0 {
+		driverFare -= *ride.PromoDiscount
+		riderFare -= *ride.PromoDiscount
+		logger.Info("promo code applied - both driver and rider get discount",
+			"rideID", rideID,
+			"originalFare", actualFareResp.TotalFare,
+			"driverFare", driverFare,
+			"riderFare", riderFare,
+			"promoDiscount", *ride.PromoDiscount,
+		)
 	}
+
+	// Use driverFare for crediting driver wallet
+	actualFare := driverFare
 
 	// Check for active SOS and resolve when sosService is available
 	if s.sosService != nil {
@@ -1456,6 +1473,8 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 	ride.ActualDistance = &req.ActualDistance
 	ride.ActualDuration = &req.ActualDuration
 	ride.ActualFare = &actualFare
+	ride.DriverFare = &driverFare      // ✅ Store full amount driver earns
+	ride.RiderFare = &riderFare        // ✅ Store discounted amount rider pays
 	ride.Status = "completed"
 	completedAt := time.Now()
 	ride.CompletedAt = &completedAt
@@ -1493,54 +1512,34 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		}
 	}
 
-	// ✅ Credit driver earnings with commission-based split
-	// Using actual fare response which already has driver payout calculated
-	driverEarnings := actualFareResp.DriverPayout           // Driver gets reduced amount after commission
-	platformCommission := actualFareResp.PlatformCommission // Platform keeps commission
+	// ✅ Credit driver earnings (NO COMMISSION DEDUCTION)
+	// Using actual fare response - driver gets full amount
+	driverEarnings := actualFareResp.DriverPayout // Full fare (no commission)
 
 	logger.Info("ride payout breakdown",
 		"rideID", rideID,
 		"totalFare", actualFare,
 		"driverEarnings", driverEarnings,
-		"platformCommission", platformCommission,
-		"commissionRate", actualFareResp.CommissionRate,
+		"platformCommission", 0,
+		"commissionRate", 0,
 	)
 
-	// ✅ CASH-BASED MODEL: Credit gross earnings, then deduct commission separately
-	// Driver credits gross cash collected from rider
+	// ✅ CASH-BASED MODEL: Credit driver with full earnings
+	// Driver receives full amount - no commission deduction
 	_, err = s.walletService.CreditDriverWallet(
 		ctx,
 		driver.UserID,
-		actualFare, // Credit full fare (cash collected from rider)
+		actualFare, // Credit full fare
 		"ride_earnings",
 		rideID,
-		fmt.Sprintf("Cash collected from ride %s", rideID),
+		fmt.Sprintf("Cash earned from ride %s", rideID),
 		map[string]interface{}{"total_fare": actualFare},
 	)
 	if err != nil {
 		logger.Error("failed to credit driver wallet", "error", err, "rideID", rideID)
 	}
 
-	// ✅ Deduct platform commission from driver wallet
-	// Commission is tracked separately for reporting and settlement
-	if platformCommission > 0 {
-		_, commissionErr := s.walletService.DeductCommission(
-			ctx,
-			driver.UserID,
-			platformCommission,
-			actualFareResp.CommissionRate,
-			rideID,
-		)
-		if commissionErr != nil {
-			logger.Error("failed to deduct commission from driver wallet", "error", commissionErr, "rideID", rideID)
-		} else {
-			logger.Info("commission deducted from driver",
-				"driverID", driverID,
-				"commission", platformCommission,
-				"rate", actualFareResp.CommissionRate,
-				"rideID", rideID)
-		}
-	}
+	// NOTE: No platform commission deduction - driver keeps full earnings
 
 	// Update stats
 	s.driversRepo.IncrementTrips(ctx, driverID)

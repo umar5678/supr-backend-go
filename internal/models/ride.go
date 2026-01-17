@@ -42,6 +42,10 @@ type Ride struct {
 	PromoCode               *string  `gorm:"type:varchar(50)" json:"promoCode"`
 	DestinationChangeCharge *float64 `gorm:"type:decimal(10,2)" json:"destinationChangeCharge"`
 
+	// Driver and Rider Fares - Both see same amount (with promo discount applied if used)
+	DriverFare *float64 `gorm:"type:decimal(10,2)" json:"driverFare"` // What driver earns (with discount if applicable)
+	RiderFare  *float64 `gorm:"type:decimal(10,2)" json:"riderFare"`  // What rider pays (with discount if applicable)
+
 	// Rating
 	DriverRating *float64 `gorm:"type:decimal(2,1)" json:"driverRating"`
 	RiderRating  *float64 `gorm:"type:decimal(2,1)" json:"riderRating"`

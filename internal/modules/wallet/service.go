@@ -100,9 +100,9 @@ func (s *service) GetBalance(ctx context.Context, userID string) (*dto.WalletBal
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create wallet if doesn't exist
 			wallet = &models.Wallet{
-				UserID:     userID,
-				WalletType: models.WalletTypeRider,
-				Balance:    0,
+				UserID:      userID,
+				WalletType:  models.WalletTypeRider,
+				Balance:     0,
 				HeldBalance: 0,
 				Currency:    "INR",
 			}
