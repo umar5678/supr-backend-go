@@ -303,3 +303,35 @@ func (h *Handler) TriggerSOS(c *gin.Context) {
 
 	response.Success(c, nil, "SOS alert triggered - Help is on the way")
 }
+
+// GetAvailableCars godoc
+// @Summary Get available cars near the rider
+// @Tags rides
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body dto.AvailableCarRequest true "Location and radius"
+// @Success 200 {object} response.Response{data=dto.AvailableCarsListResponse}
+// @Router /rides/available-cars [post]
+func (h *Handler) GetAvailableCars(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var req dto.AvailableCarRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body"))
+		return
+	}
+
+	// Set default radius if not provided
+	if req.RadiusKm == 0 {
+		req.RadiusKm = 5.0
+	}
+
+	cars, err := h.service.GetAvailableCars(c.Request.Context(), userID.(string), req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, cars, "Available cars fetched successfully")
+}

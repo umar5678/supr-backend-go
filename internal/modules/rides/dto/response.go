@@ -145,7 +145,53 @@ type LocationDTO struct {
 	Longitude float64 `json:"longitude"`
 }
 
-// type RideResponse struct {
-//     // ... existing fields ...
-//     DriverLocation *LocationDTO `json:"driverLocation,omitempty"`
-// }
+// AvailableCarResponse represents a single available car
+type AvailableCarResponse struct {
+	ID                string                  `json:"id"`                // Car/Vehicle ID
+	DriverID          string                  `json:"driverId"`          // Driver ID
+	DriverName        string                  `json:"driverName"`        // Driver name
+	DriverRating      float64                 `json:"driverRating"`      // Driver rating (0-5)
+	DriverImage       *string                 `json:"driverImage,omitempty"`
+	VehicleTypeID     string                  `json:"vehicleTypeId"`
+	VehicleType       string                  `json:"vehicleType"`       // e.g., "economy", "comfort", "premium", "xl"
+	VehicleDisplayName string                 `json:"vehicleDisplayName"`
+	Make              string                  `json:"make"`              // e.g., "Toyota"
+	Model             string                  `json:"model"`             // e.g., "Corolla"
+	Color             string                  `json:"color"`             // e.g., "Silver"
+	LicensePlate      string                  `json:"licensePlate"`      // e.g., "DHA-1234"
+	Capacity          int                     `json:"capacity"`          // Passenger capacity
+	CurrentLatitude   float64                 `json:"currentLatitude"`   // Current location
+	CurrentLongitude  float64                 `json:"currentLongitude"`
+	Heading           int                     `json:"heading"`           // Direction (0-360)
+	DistanceKm        float64                 `json:"distanceKm"`        // Distance from rider
+	ETASeconds        int                     `json:"etaSeconds"`        // ETA in seconds
+	ETAMinutes        int                     `json:"etaMinutes"`        // ETA in minutes
+	EstimatedFare     float64                 `json:"estimatedFare"`     // Estimated ride fare
+	SurgeMultiplier   float64                 `json:"surgeMultiplier"`   // Current surge pricing multiplier
+	AcceptanceRate    float64                 `json:"acceptanceRate"`    // Driver acceptance rate
+	CancellationRate  float64                 `json:"cancellationRate"`  // Driver cancellation rate
+	TotalTrips        int                     `json:"totalTrips"`        // Driver total trips
+	Status            string                  `json:"status"`            // "online", "busy", etc.
+	IsVerified        bool                    `json:"isVerified"`
+	UpdatedAt         time.Time               `json:"updatedAt"`
+}
+
+// AvailableCarsListResponse represents a list of available cars
+type AvailableCarsListResponse struct {
+	TotalCount  int                      `json:"totalCount"`  // Total available cars found
+	CarsCount   int                      `json:"carsCount"`   // Number of cars in response
+	RiderLat    float64                  `json:"riderLat"`
+	RiderLon    float64                  `json:"riderLon"`
+	RadiusKm    float64                  `json:"radiusKm"`
+	Cars        []*AvailableCarResponse  `json:"cars"`
+	Timestamp   time.Time                `json:"timestamp"`
+}
+
+// WebSocketAvailableCarsMessage represents a WebSocket message for streaming available cars
+type WebSocketAvailableCarsMessage struct {
+	Type      string                    `json:"type"`       // "cars_update", "error", "end"
+	Data      *AvailableCarsListResponse `json:"data,omitempty"`
+	Error     string                    `json:"error,omitempty"`
+	Timestamp time.Time                 `json:"timestamp"`
+}
+

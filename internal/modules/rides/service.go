@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,6 +46,9 @@ type Service interface {
 	GetRide(ctx context.Context, userID, rideID string) (*dto.RideResponse, error)
 	ListRides(ctx context.Context, userID string, role string, req dto.ListRidesRequest) ([]*dto.RideListResponse, int64, error)
 	CancelRide(ctx context.Context, userID, rideID string, req dto.CancelRideRequest) error
+
+	// Available Cars
+	GetAvailableCars(ctx context.Context, riderID string, req dto.AvailableCarRequest) (*dto.AvailableCarsListResponse, error)
 
 	// Driver actions
 	AcceptRide(ctx context.Context, driverID, rideID string) (*dto.RideResponse, error)
@@ -112,6 +116,9 @@ func NewService(
 		batchingService:   batchingService,
 		wsHelper:          NewRideWebSocketHelper(),
 	}
+
+	// Set service in WebSocket helper for available cars streaming
+	svc.wsHelper.SetService(svc)
 
 	// Set up batch expiration callback to process batches when they expire
 	if batchingService != nil {
@@ -1473,8 +1480,8 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 	ride.ActualDistance = &req.ActualDistance
 	ride.ActualDuration = &req.ActualDuration
 	ride.ActualFare = &actualFare
-	ride.DriverFare = &driverFare      // ✅ Store full amount driver earns
-	ride.RiderFare = &riderFare        // ✅ Store discounted amount rider pays
+	ride.DriverFare = &driverFare // ✅ Store full amount driver earns
+	ride.RiderFare = &riderFare   // ✅ Store discounted amount rider pays
 	ride.Status = "completed"
 	completedAt := time.Now()
 	ride.CompletedAt = &completedAt
@@ -1825,6 +1832,147 @@ func (s *service) ProcessRideRequestTimeout(ctx context.Context, requestID strin
 	}
 
 	return nil
+}
+
+// ✅ GetAvailableCars returns a list of available cars near the rider with ETA and estimated fares
+func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.AvailableCarRequest) (*dto.AvailableCarsListResponse, error) {
+	// Get nearby drivers with vehicle info
+	drivers, err := s.driversRepo.FindNearbyDrivers(ctx, req.Latitude, req.Longitude, req.RadiusKm, "")
+	if err != nil {
+		logger.Error("failed to find nearby drivers", "error", err, "riderID", riderID)
+		return nil, response.InternalServerError("Failed to fetch available cars", err)
+	}
+
+	if len(drivers) == 0 {
+		return &dto.AvailableCarsListResponse{
+			TotalCount: 0,
+			CarsCount:  0,
+			RiderLat:   req.Latitude,
+			RiderLon:   req.Longitude,
+			RadiusKm:   req.RadiusKm,
+			Cars:       []*dto.AvailableCarResponse{},
+			Timestamp:  time.Now(),
+		}, nil
+	}
+
+	// Get rider's profile for rating-based filtering
+	riderProf, err := s.ridersRepo.FindByUserID(ctx, riderID)
+	if err != nil {
+		logger.Warn("failed to fetch rider profile", "error", err, "riderID", riderID)
+	}
+
+	var availableCars []*dto.AvailableCarResponse
+
+	for _, driver := range drivers {
+		// Skip if driver is busy or not verified
+		if driver.Status != "online" || !driver.IsVerified {
+			continue
+		}
+
+		// Skip drivers with poor ratings for good riders
+		if riderProf != nil && riderProf.Rating >= 4.5 && driver.Rating < 2.5 {
+			continue
+		}
+
+		// Get vehicle information
+		vehicle := driver.Vehicle
+		if vehicle == nil {
+			continue
+		}
+
+		// Calculate distance and ETA
+		// Parse driver current location (PostGIS geometry)
+		driverLat, driverLon, err := parseDriverLocation(driver.CurrentLocation)
+		if err != nil {
+			logger.Warn("failed to parse driver location", "error", err, "driverID", driver.ID)
+			continue
+		}
+
+		distanceKm := location.HaversineDistance(req.Latitude, req.Longitude, driverLat, driverLon)
+		
+		// Calculate ETA based on average speed (40 km/h in city)
+		const avgSpeedKmh = 40.0
+		etaSeconds := location.CalculateETA(distanceKm, avgSpeedKmh)
+		etaMinutes := (etaSeconds + 30) / 60 // Round up to nearest minute
+
+		// Calculate estimated fare from pickup location to a typical 5km distance
+		// This is just an estimate, actual fare will be calculated when ride is created
+		estimatedFare := 0.0
+		if vehicle.VehicleType.BaseFare > 0 {
+			// Estimate: Base fare + (avg 5km * PerKmRate) * surge multiplier
+			estimatedFare = vehicle.VehicleType.BaseFare + (5.0 * vehicle.VehicleType.PerKmRate)
+		}
+
+		driverName := driver.User.Name
+		driverImage := driver.User.ProfilePhotoURL
+
+		carResp := &dto.AvailableCarResponse{
+			ID:                 vehicle.ID,
+			DriverID:           driver.ID,
+			DriverName:         driverName,
+			DriverRating:       driver.Rating,
+			DriverImage:        driverImage,
+			VehicleTypeID:      vehicle.VehicleTypeID,
+			VehicleType:        vehicle.VehicleType.Name,
+			VehicleDisplayName: vehicle.VehicleType.DisplayName,
+			Make:               vehicle.Make,
+			Model:              vehicle.Model,
+			Color:              vehicle.Color,
+			LicensePlate:       vehicle.LicensePlate,
+			Capacity:           vehicle.Capacity,
+			CurrentLatitude:    driverLat,
+			CurrentLongitude:   driverLon,
+			Heading:            driver.Heading,
+			DistanceKm:         math.Round(distanceKm*10) / 10,        // Round to 1 decimal
+			ETASeconds:         etaSeconds,
+			ETAMinutes:         etaMinutes,
+			EstimatedFare:      math.Round(estimatedFare*100) / 100,   // Round to 2 decimals
+			SurgeMultiplier:    1.0,                                   // Default, can be updated based on current surge
+			AcceptanceRate:     driver.AcceptanceRate,
+			CancellationRate:   driver.CancellationRate,
+			TotalTrips:         driver.TotalTrips,
+			Status:             driver.Status,
+			IsVerified:         driver.IsVerified,
+			UpdatedAt:          driver.UpdatedAt,
+		}
+
+		availableCars = append(availableCars, carResp)
+	}
+
+	// Sort cars by distance (closest first)
+	sort.Slice(availableCars, func(i, j int) bool {
+		return availableCars[i].DistanceKm < availableCars[j].DistanceKm
+	})
+
+	// Limit to top 20 cars
+	if len(availableCars) > 20 {
+		availableCars = availableCars[:20]
+	}
+
+	return &dto.AvailableCarsListResponse{
+		TotalCount: len(drivers),
+		CarsCount:  len(availableCars),
+		RiderLat:   req.Latitude,
+		RiderLon:   req.Longitude,
+		RadiusKm:   req.RadiusKm,
+		Cars:       availableCars,
+		Timestamp:  time.Now(),
+	}, nil
+}
+
+// Helper function to parse PostGIS geometry point
+func parseDriverLocation(geom *string) (float64, float64, error) {
+	if geom == nil {
+		return 0, 0, fmt.Errorf("driver location is nil")
+	}
+
+	// PostGIS format: "POINT(lng lat)"
+	var lat, lon float64
+	_, err := fmt.Sscanf(*geom, "POINT(%f %f)", &lon, &lat)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse location: %w", err)
+	}
+	return lat, lon, nil
 }
 
 // ✅ UPDATED GetRide with driver location enrichment

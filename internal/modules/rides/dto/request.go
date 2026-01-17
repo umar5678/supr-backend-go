@@ -84,3 +84,9 @@ func (r *ListRidesRequest) SetDefaults() {
 		r.Limit = 20
 	}
 }
+
+type AvailableCarRequest struct {
+	Latitude  float64 `json:"latitude" binding:"required,latitude"`
+	Longitude float64 `json:"longitude" binding:"required,longitude"`
+	RadiusKm  float64 `json:"radiusKm" binding:"required,min=0.1,max=50"` // Default 5 km, Max 50 km
+}
