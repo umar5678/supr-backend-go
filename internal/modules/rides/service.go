@@ -1861,22 +1861,31 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 		logger.Warn("failed to fetch rider profile", "error", err, "riderID", riderID)
 	}
 
+	// Track why drivers are filtered out so we can explain empty results
 	var availableCars []*dto.AvailableCarResponse
+	var filteredStatus, filteredUnverified, filteredRating, filteredNoVehicle, filteredLocationParse int
 
 	for _, driver := range drivers {
 		// Skip if driver is busy or not verified
-		if driver.Status != "online" || !driver.IsVerified {
+		if driver.Status != "online" {
+			filteredStatus++
+			continue
+		}
+		if !driver.IsVerified {
+			filteredUnverified++
 			continue
 		}
 
 		// Skip drivers with poor ratings for good riders
 		if riderProf != nil && riderProf.Rating >= 4.5 && driver.Rating < 2.5 {
+			filteredRating++
 			continue
 		}
 
 		// Get vehicle information
 		vehicle := driver.Vehicle
 		if vehicle == nil {
+			filteredNoVehicle++
 			continue
 		}
 
@@ -1884,12 +1893,13 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 		// Parse driver current location (PostGIS geometry)
 		driverLat, driverLon, err := parseDriverLocation(driver.CurrentLocation)
 		if err != nil {
+			filteredLocationParse++
 			logger.Warn("failed to parse driver location", "error", err, "driverID", driver.ID)
 			continue
 		}
 
 		distanceKm := location.HaversineDistance(req.Latitude, req.Longitude, driverLat, driverLon)
-		
+
 		// Calculate ETA based on average speed (40 km/h in city)
 		const avgSpeedKmh = 40.0
 		etaSeconds := location.CalculateETA(distanceKm, avgSpeedKmh)
@@ -1923,11 +1933,11 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 			CurrentLatitude:    driverLat,
 			CurrentLongitude:   driverLon,
 			Heading:            driver.Heading,
-			DistanceKm:         math.Round(distanceKm*10) / 10,        // Round to 1 decimal
+			DistanceKm:         math.Round(distanceKm*10) / 10, // Round to 1 decimal
 			ETASeconds:         etaSeconds,
 			ETAMinutes:         etaMinutes,
-			EstimatedFare:      math.Round(estimatedFare*100) / 100,   // Round to 2 decimals
-			SurgeMultiplier:    1.0,                                   // Default, can be updated based on current surge
+			EstimatedFare:      math.Round(estimatedFare*100) / 100, // Round to 2 decimals
+			SurgeMultiplier:    1.0,                                 // Default, can be updated based on current surge
 			AcceptanceRate:     driver.AcceptanceRate,
 			CancellationRate:   driver.CancellationRate,
 			TotalTrips:         driver.TotalTrips,
@@ -1947,6 +1957,20 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 	// Limit to top 20 cars
 	if len(availableCars) > 20 {
 		availableCars = availableCars[:20]
+	}
+
+	// If no cars passed filters, log filter breakdown for debugging and ensure Cars is an empty array (not null)
+	if len(availableCars) == 0 {
+		logger.Info("no available cars after filtering",
+			"totalNearbyDrivers", len(drivers),
+			"filteredStatus", filteredStatus,
+			"filteredUnverified", filteredUnverified,
+			"filteredRating", filteredRating,
+			"filteredNoVehicle", filteredNoVehicle,
+			"filteredLocationParse", filteredLocationParse,
+		)
+		// Create empty slice to ensure JSON marshalling produces [] instead of null
+		availableCars = make([]*dto.AvailableCarResponse, 0)
 	}
 
 	return &dto.AvailableCarsListResponse{

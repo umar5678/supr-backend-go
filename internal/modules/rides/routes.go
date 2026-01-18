@@ -13,7 +13,7 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		rides.GET("", handler.ListRides)
 		rides.GET("/:id", handler.GetRide)
 		rides.POST("/:id/cancel", handler.CancelRide)
-		rides.POST("/:id/emergency", handler.TriggerSOS) // Emergency SOS
+		rides.POST("/:id/emergency", handler.TriggerSOS)        // Emergency SOS
 		rides.POST("/available-cars", handler.GetAvailableCars) // Available cars near rider
 
 		// Driver endpoints
@@ -24,4 +24,3 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		rides.POST("/:id/complete", handler.CompleteRide)
 	}
 }
-
