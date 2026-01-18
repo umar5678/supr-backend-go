@@ -1863,22 +1863,33 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 
 	// Track why drivers are filtered out so we can explain empty results
 	var availableCars []*dto.AvailableCarResponse
-	var filteredStatus, filteredUnverified, filteredRating, filteredNoVehicle, filteredLocationParse int
+	var filteredStatus, filteredUnverified, filteredRating, filteredNoVehicle, filteredLocationParse, filteredNoUser int
 
 	for _, driver := range drivers {
-		// Skip if driver is busy or not verified
+		// Note: Database query already filters for status="online" and is_verified=true
+		// These additional checks are defensive but shouldn't filter anything
 		if driver.Status != "online" {
 			filteredStatus++
+			logger.Warn("driver status not online (unexpected - db should have filtered)", "driverID", driver.ID, "status", driver.Status)
 			continue
 		}
 		if !driver.IsVerified {
 			filteredUnverified++
+			logger.Warn("driver not verified (unexpected - db should have filtered)", "driverID", driver.ID)
+			continue
+		}
+
+		// Check User data is loaded
+		if driver.User.ID == "" {
+			filteredNoUser++
+			logger.Warn("driver user data not loaded", "driverID", driver.ID)
 			continue
 		}
 
 		// Skip drivers with poor ratings for good riders
 		if riderProf != nil && riderProf.Rating >= 4.5 && driver.Rating < 2.5 {
 			filteredRating++
+			logger.Info("driver filtered by rating", "driverID", driver.ID, "driverRating", driver.Rating, "riderRating", riderProf.Rating)
 			continue
 		}
 
@@ -1886,15 +1897,29 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 		vehicle := driver.Vehicle
 		if vehicle == nil {
 			filteredNoVehicle++
+			logger.Warn("driver has no vehicle", "driverID", driver.ID)
+			continue
+		}
+
+		// Ensure vehicle type is loaded
+		if vehicle.VehicleType.ID == "" {
+			filteredNoVehicle++
+			logger.Warn("vehicle type not loaded for driver", "driverID", driver.ID, "vehicleID", vehicle.ID)
 			continue
 		}
 
 		// Calculate distance and ETA
 		// Parse driver current location (PostGIS geometry)
+		if driver.CurrentLocation == nil {
+			filteredLocationParse++
+			logger.Warn("driver current location is nil", "driverID", driver.ID)
+			continue
+		}
+
 		driverLat, driverLon, err := parseDriverLocation(driver.CurrentLocation)
 		if err != nil {
 			filteredLocationParse++
-			logger.Warn("failed to parse driver location", "error", err, "driverID", driver.ID)
+			logger.Warn("failed to parse driver location", "error", err, "driverID", driver.ID, "location", driver.CurrentLocation)
 			continue
 		}
 
@@ -1965,6 +1990,7 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 			"totalNearbyDrivers", len(drivers),
 			"filteredStatus", filteredStatus,
 			"filteredUnverified", filteredUnverified,
+			"filteredNoUser", filteredNoUser,
 			"filteredRating", filteredRating,
 			"filteredNoVehicle", filteredNoVehicle,
 			"filteredLocationParse", filteredLocationParse,

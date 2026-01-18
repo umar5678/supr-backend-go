@@ -185,6 +185,7 @@ func (r *repository) FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm f
 	locationStr := fmt.Sprintf("POINT(%f %f)", lng, lat)
 
 	query := r.db.WithContext(ctx).
+		Preload("User").
 		Preload("Vehicle").
 		Preload("Vehicle.VehicleType").
 		Where("status = ?", "online").
