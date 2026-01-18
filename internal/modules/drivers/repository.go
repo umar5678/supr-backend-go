@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
+	"github.com/umar5678/go-backend/internal/utils/logger"
 	"gorm.io/gorm"
 )
 
@@ -188,6 +189,7 @@ func (r *repository) FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm f
 		Preload("User").
 		Preload("Vehicle").
 		Preload("Vehicle.VehicleType").
+		Select("driver_profiles.*, ST_AsText(current_location) as current_location").
 		Where("status = ?", "online").
 		Where("is_verified = ?", true).
 		Where("ST_DWithin(current_location::geography, ST_GeomFromText(?, 4326)::geography, ?)",
@@ -202,6 +204,13 @@ func (r *repository) FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm f
 		Order(gorm.Expr("ST_Distance(current_location::geography, ST_GeomFromText(?, 4326)::geography)", locationStr)).
 		Limit(20).
 		Find(&drivers).Error
+
+	if err != nil {
+		logger.Error("FindNearbyDrivers query error", "error", err, "lat", lat, "lng", lng, "radiusKm", radiusKm)
+		return drivers, err
+	}
+	
+	logger.Info("FindNearbyDrivers query result", "count", len(drivers), "lat", lat, "lng", lng, "radiusKm", radiusKm)
 
 	return drivers, err
 }
