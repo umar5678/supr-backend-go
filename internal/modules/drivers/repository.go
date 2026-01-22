@@ -209,7 +209,7 @@ func (r *repository) FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm f
 		logger.Error("FindNearbyDrivers query error", "error", err, "lat", lat, "lng", lng, "radiusKm", radiusKm)
 		return drivers, err
 	}
-	
+
 	logger.Info("FindNearbyDrivers query result", "count", len(drivers), "lat", lat, "lng", lng, "radiusKm", radiusKm)
 
 	return drivers, err

@@ -1,0 +1,377 @@
+{
+  "info": {
+    "_postman_id": "messaging-api-tests",
+    "name": "Messaging System - Testing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Sign Up - Rider",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+1234567890\",\n  \"password\": \"password123\",\n  \"name\": \"John Rider\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/phone/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "phone", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Sign Up - Driver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+1987654321\",\n  \"password\": \"password123\",\n  \"name\": \"Jane Driver\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/phone/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "phone", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+1234567890\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/phone/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "phone", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rides Setup",
+      "item": [
+        {
+          "name": "Create Ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rider_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickupLocation\": {\n    \"latitude\": 40.7128,\n    \"longitude\": -74.0060,\n    \"address\": \"Times Square, NYC\"\n  },\n  \"dropoffLocation\": {\n    \"latitude\": 40.7580,\n    \"longitude\": -73.9855,\n    \"address\": \"Central Park, NYC\"\n  },\n  \"vehicleType\": \"cab_economy\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/rides",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "rides"]
+            }
+          }
+        },
+        {
+          "name": "List My Rides",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rider_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/rides?role=rider&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "rides"],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "rider"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Messages API",
+      "item": [
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rider_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideId\": \"{{ride_id}}\",\n  \"content\": \"Hi, I'm ready to go!\",\n  \"metadata\": {\n    \"type\": \"text\",\n    \"priority\": \"normal\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Get Messages for Ride",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rider_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages/rides/{{ride_id}}?limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages", "rides", "{{ride_id}}"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages/rides/{{ride_id}}/unread-count",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages", "rides", "{{ride_id}}", "unread-count"]
+            }
+          }
+        },
+        {
+          "name": "Mark as Read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages/{{message_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages", "{{message_id}}", "read"]
+            }
+          }
+        },
+        {
+          "name": "Delete Message",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rider_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages/{{message_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages", "{{message_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Send Message (Driver)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideId\": \"{{ride_id}}\",\n  \"content\": \"I'm 2 minutes away!\",\n  \"metadata\": {\n    \"type\": \"status\",\n    \"eta\": \"2 minutes\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Testing",
+      "item": [
+        {
+          "name": "Send Message - Missing RideId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rider_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This should fail\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Send Message - Missing Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rider_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideId\": \"{{ride_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Get Messages - Missing Auth",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages/rides/{{ride_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages", "rides", "{{ride_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Messages - Invalid RideId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rider_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/messages/rides/invalid_ride_id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "messages", "rides", "invalid_ride_id"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "rider_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "driver_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ride_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "message_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

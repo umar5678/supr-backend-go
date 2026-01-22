@@ -29,6 +29,7 @@ import (
 	_ "github.com/umar5678/go-backend/internal/modules/homeservices/dto" // Alias for clarity
 	homeservicesProvider "github.com/umar5678/go-backend/internal/modules/homeservices/provider"
 	"github.com/umar5678/go-backend/internal/modules/laundry"
+	"github.com/umar5678/go-backend/internal/modules/messages"
 	"github.com/umar5678/go-backend/internal/modules/pricing"
 	"github.com/umar5678/go-backend/internal/modules/profile"
 	"github.com/umar5678/go-backend/internal/modules/promotions"
@@ -261,6 +262,15 @@ func main() {
 		// RidePin Module (initialize before rides service)
 		ridePinRepo := ridepin.NewRepository(db)
 		ridePinService := ridepin.NewService(ridePinRepo)
+
+		// Messages Module (initialize before rides service)
+		messagesRepo := messages.NewRepository(db)
+		messagesService := messages.NewService(messagesRepo)
+		messagesHandler := messages.NewHandler(messagesService)
+		messages.RegisterRoutes(v1, messagesHandler, authMiddleware)
+
+		// Register WebSocket message handlers (requires messagesService)
+		handlers.RegisterMessageHandlers(wsManager, messagesService)
 
 		// Home Services module (initialize before ratings)
 		homeServicesRepo := homeservices.NewRepository(db)

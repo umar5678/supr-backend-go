@@ -1,7 +1,14 @@
 package rides
 
 import (
+	"context"
+	"encoding/json"
+	"sync"
+	"time"
+
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+	"github.com/umar5678/go-backend/internal/modules/messages"
 	"github.com/umar5678/go-backend/internal/modules/rides/dto"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
@@ -334,4 +341,198 @@ func (h *Handler) GetAvailableCars(c *gin.Context) {
 	}
 
 	response.Success(c, cars, "Available cars fetched successfully")
+}
+
+// ====================================================
+//  Ride Messaging
+// ====================================================
+
+// RideMessageManager handles real-time messaging for rides
+type RideMessageManager struct {
+	connections map[string]map[string]*websocket.Conn // rideID -> userID -> conn
+	mu          sync.RWMutex
+	msgService  messages.Service
+	broadcast   chan *BroadcastMessage
+}
+
+type BroadcastMessage struct {
+	RideID    string
+	UserID    string
+	EventType string
+	Data      interface{}
+	ExcludeID string
+}
+
+type WSChatMessage struct {
+	Type     string                 `json:"type"` // "message", "typing", "read"
+	RideID   string                 `json:"rideId"`
+	Content  string                 `json:"content"`
+	Metadata map[string]interface{} `json:"metadata"`
+}
+
+func NewRideMessageManager(msgService messages.Service) *RideMessageManager {
+	rm := &RideMessageManager{
+		connections: make(map[string]map[string]*websocket.Conn),
+		msgService:  msgService,
+		broadcast:   make(chan *BroadcastMessage, 100),
+	}
+	go rm.handleBroadcast()
+	return rm
+}
+
+func (rm *RideMessageManager) RegisterConnection(rideID, userID string, conn *websocket.Conn) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	if rm.connections[rideID] == nil {
+		rm.connections[rideID] = make(map[string]*websocket.Conn)
+	}
+
+	rm.connections[rideID][userID] = conn
+	logger.Info("user connected to ride chat", "rideID", rideID, "userID", userID)
+
+	// Notify other participants that user is online
+	rm.broadcast <- &BroadcastMessage{
+		RideID:    rideID,
+		UserID:    userID,
+		EventType: "user_online",
+		Data:      map[string]string{"userId": userID, "status": "online"},
+		ExcludeID: userID,
+	}
+}
+
+func (rm *RideMessageManager) UnregisterConnection(rideID, userID string) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	if conns, exists := rm.connections[rideID]; exists {
+		delete(conns, userID)
+		if len(conns) == 0 {
+			delete(rm.connections, rideID)
+		}
+	}
+
+	logger.Info("user disconnected from ride chat", "rideID", rideID, "userID", userID)
+
+	// Notify other participants that user is offline
+	rm.broadcast <- &BroadcastMessage{
+		RideID:    rideID,
+		UserID:    userID,
+		EventType: "user_offline",
+		Data:      map[string]string{"userId": userID, "status": "offline"},
+		ExcludeID: userID,
+	}
+}
+
+func (rm *RideMessageManager) BroadcastMessage(rideID, userID, senderType, content string, metadata map[string]interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Save message to database
+	msgResp, err := rm.msgService.SendMessage(ctx, rideID, userID, senderType, content, metadata)
+	if err != nil {
+		return err
+	}
+
+	// Broadcast to all connected users in this ride
+	rm.broadcast <- &BroadcastMessage{
+		RideID:    rideID,
+		UserID:    userID,
+		EventType: "message",
+		Data:      msgResp,
+	}
+
+	return nil
+}
+
+func (rm *RideMessageManager) MarkAsRead(messageID, userID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return rm.msgService.MarkAsRead(ctx, messageID, userID)
+}
+
+func (rm *RideMessageManager) BroadcastTyping(rideID, userID, senderType string) {
+	rm.broadcast <- &BroadcastMessage{
+		RideID:    rideID,
+		UserID:    userID,
+		EventType: "typing",
+		Data: map[string]string{
+			"userId":     userID,
+			"senderType": senderType,
+		},
+		ExcludeID: userID,
+	}
+}
+
+func (rm *RideMessageManager) handleBroadcast() {
+	for msg := range rm.broadcast {
+		rm.mu.RLock()
+		connections := rm.connections[msg.RideID]
+		rm.mu.RUnlock()
+
+		response := map[string]interface{}{
+			"type":      msg.EventType,
+			"data":      msg.Data,
+			"timestamp": time.Now(),
+		}
+
+		data, _ := json.Marshal(response)
+
+		for userID, conn := range connections {
+			// Skip sender for certain events
+			if msg.ExcludeID != "" && userID == msg.ExcludeID {
+				continue
+			}
+
+			go func(c *websocket.Conn) {
+				c.SetWriteDeadline(time.Now().Add(10 * time.Second))
+				if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
+					logger.Error("failed to write message", "error", err)
+				}
+			}(conn)
+		}
+	}
+}
+
+func (rm *RideMessageManager) HandleConnection(conn *websocket.Conn, rideID, userID, senderType string) {
+	rm.RegisterConnection(rideID, userID, conn)
+	defer rm.UnregisterConnection(rideID, userID)
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
+	for {
+		var msg WSChatMessage
+		if err := conn.ReadJSON(&msg); err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logger.Error("websocket error", "error", err)
+			}
+			return
+		}
+
+		msg.RideID = rideID
+
+		switch msg.Type {
+		case "message":
+			if err := rm.BroadcastMessage(rideID, userID, senderType, msg.Content, msg.Metadata); err != nil {
+				logger.Error("failed to broadcast message", "error", err)
+			}
+
+		case "typing":
+			rm.BroadcastTyping(rideID, userID, senderType)
+
+		case "read":
+			if messageID, ok := msg.Metadata["messageId"].(string); ok {
+				if err := rm.MarkAsRead(messageID, userID); err != nil {
+					logger.Error("failed to mark as read", "error", err)
+				}
+			}
+		}
+
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	}
 }

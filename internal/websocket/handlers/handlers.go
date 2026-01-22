@@ -6,6 +6,7 @@ import (
 )
 
 // RegisterAllHandlers registers all WebSocket handlers
+// Note: Message handlers must be registered separately after messages service is initialized
 func RegisterAllHandlers(manager *websocket.Manager) {
 	// Register Ride Handlers
 	RegisterRideHandlers(manager)
