@@ -90,7 +90,7 @@ npm install -g wscat
 # Connect to WebSocket
 wscat -c "ws://localhost:8080/ws/connect?token=$TOKEN"
 
-# Wait for connection message, then send JSON commands:
+# Wait for connection message, then in the wscat prompt (>) send JSON:
 
 # Send a message
 > {"type":"message:send","data":{"rideId":"ride-test-123","content":"Hello from WebSocket!","messageType":"text"}}
@@ -112,6 +112,20 @@ wscat -c "ws://localhost:8080/ws/connect?token=$TOKEN"
 
 # Delete message (within 5 minutes)
 > {"type":"message:delete","data":{"messageId":"msg-abc123","rideId":"ride-test-123"}}
+
+# Press Ctrl+C to disconnect
+```
+
+**IMPORTANT for PowerShell users:** The `>` is the **wscat prompt** (appears automatically), not a shell operator.
+
+```powershell
+# Example for PowerShell:
+$TOKEN = "your_jwt_token"
+wscat -c "ws://localhost:8080/ws/connect?token=$TOKEN"
+
+# Once connected, paste the JSON (wscat shows > automatically):
+{"type":"message:send","data":{"rideId":"ride-test-123","content":"Hello!","messageType":"text"}}
+```
 
 # Press Ctrl+C to disconnect
 ```

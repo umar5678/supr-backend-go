@@ -296,20 +296,44 @@ npm install -g wscat
 Connect and send messages:
 
 ```bash
-# Connect
+# Step 1: Connect to WebSocket
 wscat -c "ws://localhost:8080/ws/connect?token=YOUR_JWT_TOKEN"
 
-# In the wscat prompt, send JSON:
-{"type":"message:send","data":{"rideId":"ride-123","content":"Hello!","messageType":"text"}}
+# Step 2: Wait for "Connected" message, then in the wscat prompt (>) send JSON:
+
+# Send a message
+> {"type":"message:send","data":{"rideId":"ride-123","content":"Hello!","messageType":"text"}}
 
 # Mark as read
-{"type":"message:read","data":{"messageId":"msg-456","rideId":"ride-123"}}
+> {"type":"message:read","data":{"messageId":"msg-456","rideId":"ride-123"}}
 
 # Typing indicator
-{"type":"message:typing","data":{"rideId":"ride-123","isTyping":true}}
+> {"type":"message:typing","data":{"rideId":"ride-123","isTyping":true}}
 
 # Show presence
+> {"type":"presence:online","data":{"rideId":"ride-123"}}
+
+# Press Ctrl+C to disconnect
+```
+
+**Note for PowerShell users:** The `>` is the wscat prompt, not a shell redirect. Don't include it in your command.
+
+**Example for PowerShell:**
+```powershell
+# Connect
+wscat -c "ws://localhost:8080/ws/connect?token=$TOKEN"
+
+# Once connected, paste the JSON (wscat shows > automatically):
+{"type":"message:send","data":{"rideId":"ride-123","content":"Hello!","messageType":"text"}}
+```
+
+**Batch multiple commands:**
+```powershell
+@"
+{"type":"message:send","data":{"rideId":"ride-123","content":"Hello!","messageType":"text"}}
+{"type":"message:typing","data":{"rideId":"ride-123","isTyping":true}}
 {"type":"presence:online","data":{"rideId":"ride-123"}}
+"@ | wscat -c "ws://localhost:8080/ws/connect?token=$TOKEN"
 ```
 
 ### 3. WebSocket Test with VS Code REST Client

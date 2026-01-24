@@ -22,9 +22,9 @@ const (
 )
 
 type RideMessage struct {
-    ID        string        `json:"id" gorm:"primaryKey"`
-    RideID    string        `json:"rideId" gorm:"index"`
-    SenderID  string        `json:"senderId" gorm:"index"`
+    ID        string        `json:"id" gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
+    RideID    string        `json:"rideId" gorm:"type:uuid;index"`
+    SenderID  string        `json:"senderId" gorm:"type:uuid;index"`
     SenderType string      `json:"senderType"` // "rider" or "driver"
     MessageType MessageType `json:"messageType"`
     Content   string        `json:"content"`

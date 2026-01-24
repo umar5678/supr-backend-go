@@ -1,8 +1,8 @@
 -- Create ride_messages table
 CREATE TABLE IF NOT EXISTS ride_messages (
-    id VARCHAR(255) PRIMARY KEY,
-    ride_id VARCHAR(255) NOT NULL,
-    sender_id VARCHAR(255) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ride_id UUID NOT NULL,
+    sender_id UUID NOT NULL,
     sender_type VARCHAR(50) NOT NULL CHECK (sender_type IN ('rider', 'driver')),
     message_type VARCHAR(50) DEFAULT 'text' NOT NULL CHECK (message_type IN ('text', 'location', 'status', 'system')),
     content TEXT NOT NULL,

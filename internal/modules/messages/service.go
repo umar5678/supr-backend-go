@@ -2,7 +2,7 @@ package messages
 
 import (
     "context"
-    "fmt"
+    "github.com/google/uuid"
     "github.com/umar5678/go-backend/internal/models"
     "github.com/umar5678/go-backend/internal/utils/logger"
     "github.com/umar5678/go-backend/internal/utils/response"
@@ -35,7 +35,7 @@ func (s *service) SendMessage(ctx context.Context, rideID, senderID, senderType,
     }
 
     msg := &models.RideMessage{
-        ID:          generateID(),
+        ID:          uuid.New().String(),
         RideID:      rideID,
         SenderID:    senderID,
         SenderType:  senderType,
@@ -166,8 +166,4 @@ func (s *service) GetUnreadCount(ctx context.Context, rideID, userID string) (in
     }
 
     return count, nil
-}
-
-func generateID() string {
-    return fmt.Sprintf("msg_%d", time.Now().UnixNano())
 }
