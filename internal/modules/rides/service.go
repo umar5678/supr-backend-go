@@ -2071,28 +2071,48 @@ func (s *service) GetVehiclesWithDetails(ctx context.Context, riderID string, re
 	}
 
 	var vehicles []*dto.VehicleWithDetailsResponse
+	var filteredStatus, filteredUnverified, filteredNoUser, filteredRating, filteredNoVehicle int
 
 	for _, driver := range drivers {
-		// Validate driver status
-		if driver.Status != "online" || !driver.IsVerified {
+		// Note: Database query already filters for status="online" and is_verified=true
+		// These additional checks are defensive but shouldn't filter anything
+		if driver.Status != "online" {
+			filteredStatus++
+			logger.Warn("driver status not online (unexpected - db should have filtered)", "driverID", driver.ID, "status", driver.Status)
+			continue
+		}
+		if !driver.IsVerified {
+			filteredUnverified++
+			logger.Warn("driver not verified (unexpected - db should have filtered)", "driverID", driver.ID)
 			continue
 		}
 
+		// Check User data is loaded
 		if driver.User.ID == "" {
+			filteredNoUser++
 			logger.Warn("driver user data not loaded", "driverID", driver.ID)
 			continue
 		}
 
-		// Rating filter
+		// Skip drivers with poor ratings for good riders
 		if riderProf != nil && riderProf.Rating >= 4.5 && driver.Rating < 2.5 {
+			filteredRating++
 			logger.Info("driver filtered by rating", "driverID", driver.ID, "driverRating", driver.Rating, "riderRating", riderProf.Rating)
 			continue
 		}
 
-		// Validate vehicle
+		// Get vehicle information
 		vehicle := driver.Vehicle
-		if vehicle == nil || vehicle.VehicleType.ID == "" {
-			logger.Warn("driver has no vehicle or vehicle type", "driverID", driver.ID)
+		if vehicle == nil {
+			filteredNoVehicle++
+			logger.Warn("driver has no vehicle", "driverID", driver.ID)
+			continue
+		}
+
+		// Ensure vehicle type is loaded
+		if vehicle.VehicleType.ID == "" {
+			filteredNoVehicle++
+			logger.Warn("vehicle type not loaded for driver", "driverID", driver.ID, "vehicleID", vehicle.ID)
 			continue
 		}
 
@@ -2220,6 +2240,7 @@ func (s *service) GetVehiclesWithDetails(ctx context.Context, riderID string, re
 		}
 
 		vehicles = append(vehicles, vehicleResp)
+		logger.Debug("vehicle added to list", "driverID", driver.ID, "vehicleID", vehicle.ID, "distance", vehicleResp.DistanceKm, "fare", vehicleResp.EstimatedFare)
 	}
 
 	// Sort by distance (closest first)
@@ -2232,7 +2253,17 @@ func (s *service) GetVehiclesWithDetails(ctx context.Context, riderID string, re
 		vehicles = vehicles[:20]
 	}
 
+	// If no vehicles passed filters, log filter breakdown for debugging and ensure Vehicles is an empty array (not null)
 	if len(vehicles) == 0 {
+		logger.Info("no available vehicles after filtering",
+			"totalNearbyDrivers", len(drivers),
+			"filteredStatus", filteredStatus,
+			"filteredUnverified", filteredUnverified,
+			"filteredNoUser", filteredNoUser,
+			"filteredRating", filteredRating,
+			"filteredNoVehicle", filteredNoVehicle,
+		)
+		// Create empty slice to ensure JSON marshalling produces [] instead of null
 		vehicles = make([]*dto.VehicleWithDetailsResponse, 0)
 	}
 
