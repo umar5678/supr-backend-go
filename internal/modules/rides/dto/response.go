@@ -13,7 +13,7 @@ type RideResponse struct {
 	RiderID       string                          `json:"riderId"`
 	Rider         *authdto.UserResponse           `json:"rider,omitempty"`
 	DriverID      *string                         `json:"driverId"`
-	Driver        *authdto.UserResponse           `json:"driver,omitempty"`
+	Driver        *authdto.DriverResponse           `json:"driver,omitempty"`
 	VehicleTypeID string                          `json:"vehicleTypeId"`
 	VehicleType   *vehicledto.VehicleTypeResponse `json:"vehicleType,omitempty"`
 	Status        string                          `json:"status"`
@@ -120,7 +120,7 @@ func ToRideResponse(ride *models.Ride) *RideResponse {
 		resp.Rider = authdto.ToUserResponse(&ride.Rider)
 	}
 	if ride.Driver != nil && ride.Driver.ID != "" {
-		resp.Driver = authdto.ToUserResponse(ride.Driver)
+		resp.Driver = authdto.ToDriverResponse(ride.Driver, nil)
 	}
 	if ride.VehicleType.ID != "" {
 		resp.VehicleType = vehicledto.ToVehicleTypeResponse(&ride.VehicleType)
