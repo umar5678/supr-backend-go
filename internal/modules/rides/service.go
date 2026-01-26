@@ -49,6 +49,7 @@ type Service interface {
 
 	// Available Cars
 	GetAvailableCars(ctx context.Context, riderID string, req dto.AvailableCarRequest) (*dto.AvailableCarsListResponse, error)
+	GetVehiclesWithDetails(ctx context.Context, riderID string, req dto.VehicleDetailsRequest) (*dto.VehiclesWithDetailsListResponse, error)
 
 	// Driver actions
 	AcceptRide(ctx context.Context, driverID, rideID string) (*dto.RideResponse, error)
@@ -2007,6 +2008,249 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 		RadiusKm:   req.RadiusKm,
 		Cars:       availableCars,
 		Timestamp:  time.Now(),
+	}, nil
+}
+
+// ✅ GetVehiclesWithDetails returns available vehicles with complete pricing, demand, and surge information
+// This is the comprehensive endpoint for when user selects pickup and destination
+func (s *service) GetVehiclesWithDetails(ctx context.Context, riderID string, req dto.VehicleDetailsRequest) (*dto.VehiclesWithDetailsListResponse, error) {
+	// Calculate trip distance and duration
+	tripDistance := location.HaversineDistance(req.PickupLat, req.PickupLon, req.DropoffLat, req.DropoffLon)
+	if tripDistance < 0.5 {
+		return nil, response.BadRequest("Minimum trip distance is 0.5 km")
+	}
+	if tripDistance > 100 {
+		return nil, response.BadRequest("Maximum trip distance is 100 km")
+	}
+
+	// Calculate ETA for trip (40 km/h average city speed)
+	const avgSpeedKmh = 40.0
+	tripDurationSeconds := location.CalculateETA(tripDistance, avgSpeedKmh)
+
+	// Get nearby drivers near the pickup location
+	drivers, err := s.driversRepo.FindNearbyDrivers(ctx, req.PickupLat, req.PickupLon, req.RadiusKm, "")
+	if err != nil {
+		logger.Error("failed to find nearby drivers", "error", err, "riderID", riderID)
+		return nil, response.InternalServerError("Failed to fetch vehicles", err)
+	}
+
+	if len(drivers) == 0 {
+		return &dto.VehiclesWithDetailsListResponse{
+			PickupLat:        req.PickupLat,
+			PickupLon:        req.PickupLon,
+			PickupAddress:    req.PickupAddress,
+			DropoffLat:       req.DropoffLat,
+			DropoffLon:       req.DropoffLon,
+			DropoffAddress:   req.DropoffAddress,
+			RadiusKm:         req.RadiusKm,
+			TripDistance:     math.Round(tripDistance*10) / 10,
+			TripDuration:     tripDurationSeconds,
+			TripDurationMins: (tripDurationSeconds + 30) / 60,
+			TotalCount:       0,
+			CarsCount:        0,
+			Vehicles:         make([]*dto.VehicleWithDetailsResponse, 0),
+			Timestamp:        time.Now(),
+		}, nil
+	}
+
+	// Get rider profile for filtering
+	riderProf, err := s.ridersRepo.FindByUserID(ctx, riderID)
+	if err != nil {
+		logger.Warn("failed to fetch rider profile", "error", err, "riderID", riderID)
+	}
+
+	// Get current demand data
+	demandGeohash := fmt.Sprintf("%.1f_%.1f", req.PickupLat, req.PickupLon)
+	demandData, err := s.pricingService.GetCurrentDemand(ctx, demandGeohash)
+	if err != nil {
+		logger.Warn("failed to get demand data", "error", err, "geohash", demandGeohash)
+		demandData = &pricingdto.DemandTrackingResponse{
+			PendingRequests:  0,
+			AvailableDrivers: len(drivers),
+		}
+	}
+
+	var vehicles []*dto.VehicleWithDetailsResponse
+
+	for _, driver := range drivers {
+		// Validate driver status
+		if driver.Status != "online" || !driver.IsVerified {
+			continue
+		}
+
+		if driver.User.ID == "" {
+			logger.Warn("driver user data not loaded", "driverID", driver.ID)
+			continue
+		}
+
+		// Rating filter
+		if riderProf != nil && riderProf.Rating >= 4.5 && driver.Rating < 2.5 {
+			logger.Info("driver filtered by rating", "driverID", driver.ID, "driverRating", driver.Rating, "riderRating", riderProf.Rating)
+			continue
+		}
+
+		// Validate vehicle
+		vehicle := driver.Vehicle
+		if vehicle == nil || vehicle.VehicleType.ID == "" {
+			logger.Warn("driver has no vehicle or vehicle type", "driverID", driver.ID)
+			continue
+		}
+
+		// Parse driver location
+		if driver.CurrentLocation == nil {
+			logger.Warn("driver current location is nil", "driverID", driver.ID)
+			continue
+		}
+
+		driverLat, driverLon, err := parseDriverLocation(driver.CurrentLocation)
+		if err != nil {
+			logger.Warn("failed to parse driver location", "error", err, "driverID", driver.ID)
+			continue
+		}
+
+		// Calculate distance to pickup
+		distanceToPickup := location.HaversineDistance(req.PickupLat, req.PickupLon, driverLat, driverLon)
+		etaSecondsToPickup := location.CalculateETA(distanceToPickup, avgSpeedKmh)
+		etaMinutesToPickup := (etaSecondsToPickup + 30) / 60
+
+		// Get surge pricing information
+		geohash := fmt.Sprintf("%.1f_%.1f", req.PickupLat, req.PickupLon)
+		surgeResp, err := s.pricingService.CalculateCombinedSurge(ctx, vehicle.VehicleTypeID, geohash, req.PickupLat, req.PickupLon)
+		if err != nil {
+			logger.Warn("failed to get surge info", "error", err, "vehicleTypeID", vehicle.VehicleTypeID)
+			surgeResp = &pricingdto.SurgeCalculationResponse{
+				AppliedMultiplier: 1.0,
+				Reason:            "normal",
+			}
+		}
+
+		// Calculate fare estimate using pricing service
+		fareReq := pricingdto.FareEstimateRequest{
+			PickupLat:     req.PickupLat,
+			PickupLon:     req.PickupLon,
+			DropoffLat:    req.DropoffLat,
+			DropoffLon:    req.DropoffLon,
+			VehicleTypeID: vehicle.VehicleTypeID,
+		}
+		fareResp, err := s.pricingService.GetFareEstimate(ctx, fareReq)
+		if err != nil {
+			logger.Warn("failed to get fare estimate", "error", err, "vehicleTypeID", vehicle.VehicleTypeID)
+			// Fallback to simple calculation
+			estimatedFare := vehicle.VehicleType.BaseFare + (tripDistance*vehicle.VehicleType.PerKmRate)*surgeResp.AppliedMultiplier
+			fareResp = &pricingdto.FareEstimateResponse{
+				BaseFare:        vehicle.VehicleType.BaseFare,
+				DistanceFare:    tripDistance * vehicle.VehicleType.PerKmRate,
+				DurationFare:    0,
+				SurgeMultiplier: surgeResp.AppliedMultiplier,
+				TotalFare:       estimatedFare,
+			}
+		}
+
+		// Determine demand level
+		demandLevel := "normal"
+		if surgeResp.AppliedMultiplier > 2.0 {
+			demandLevel = "extreme"
+		} else if surgeResp.AppliedMultiplier > 1.5 {
+			demandLevel = "high"
+		} else if surgeResp.AppliedMultiplier > 1.0 {
+			demandLevel = "high"
+		} else if surgeResp.AppliedMultiplier < 1.0 {
+			demandLevel = "low"
+		}
+
+		// Format ETA
+		etaFormatted := fmt.Sprintf("%d min", etaMinutesToPickup)
+
+		vehicleResp := &dto.VehicleWithDetailsResponse{
+			// Vehicle
+			ID:               vehicle.ID,
+			DriverID:         driver.ID,
+			DriverName:       driver.User.Name,
+			DriverRating:     driver.Rating,
+			DriverImage:      driver.User.ProfilePhotoURL,
+			AcceptanceRate:   driver.AcceptanceRate,
+			CancellationRate: driver.CancellationRate,
+			TotalTrips:       driver.TotalTrips,
+			IsVerified:       driver.IsVerified,
+			Status:           driver.Status,
+
+			// Vehicle Details
+			VehicleTypeID:      vehicle.VehicleTypeID,
+			VehicleType:        vehicle.VehicleType.Name,
+			VehicleDisplayName: vehicle.VehicleType.DisplayName,
+			Make:               vehicle.Make,
+			Model:              vehicle.Model,
+			Year:               vehicle.Year,
+			Color:              vehicle.Color,
+			LicensePlate:       vehicle.LicensePlate,
+			Capacity:           vehicle.Capacity,
+
+			// Location & Distance
+			CurrentLatitude:  driverLat,
+			CurrentLongitude: driverLon,
+			Heading:          driver.Heading,
+			DistanceKm:       math.Round(distanceToPickup*10) / 10,
+
+			// ETA to Pickup
+			ETASeconds:   etaSecondsToPickup,
+			ETAMinutes:   etaMinutesToPickup,
+			ETAFormatted: etaFormatted,
+
+			// Pricing
+			BaseFare:              vehicle.VehicleType.BaseFare,
+			PerKmRate:             vehicle.VehicleType.PerKmRate,
+			PerMinRate:            vehicle.VehicleType.PerMinuteRate,
+			EstimatedFare:         math.Round(fareResp.TotalFare*100) / 100,
+			EstimatedDistance:     math.Round(tripDistance*10) / 10,
+			EstimatedDuration:     tripDurationSeconds,
+			EstimatedDurationMins: (tripDurationSeconds + 30) / 60,
+
+			// Surge
+			SurgeMultiplier: surgeResp.AppliedMultiplier,
+			SurgeReason:     surgeResp.Reason,
+
+			// Demand
+			PendingRequests:  demandData.PendingRequests,
+			AvailableDrivers: demandData.AvailableDrivers,
+			Demand:           demandLevel,
+
+			// Metadata
+			UpdatedAt: driver.UpdatedAt,
+			Timestamp: time.Now(),
+		}
+
+		vehicles = append(vehicles, vehicleResp)
+	}
+
+	// Sort by distance (closest first)
+	sort.Slice(vehicles, func(i, j int) bool {
+		return vehicles[i].DistanceKm < vehicles[j].DistanceKm
+	})
+
+	// Limit to top 20 vehicles
+	if len(vehicles) > 20 {
+		vehicles = vehicles[:20]
+	}
+
+	if len(vehicles) == 0 {
+		vehicles = make([]*dto.VehicleWithDetailsResponse, 0)
+	}
+
+	return &dto.VehiclesWithDetailsListResponse{
+		PickupLat:        req.PickupLat,
+		PickupLon:        req.PickupLon,
+		PickupAddress:    req.PickupAddress,
+		DropoffLat:       req.DropoffLat,
+		DropoffLon:       req.DropoffLon,
+		DropoffAddress:   req.DropoffAddress,
+		RadiusKm:         req.RadiusKm,
+		TripDistance:     math.Round(tripDistance*10) / 10,
+		TripDuration:     tripDurationSeconds,
+		TripDurationMins: (tripDurationSeconds + 30) / 60,
+		TotalCount:       len(drivers),
+		CarsCount:        len(vehicles),
+		Vehicles:         vehicles,
+		Timestamp:        time.Now(),
 	}, nil
 }
 

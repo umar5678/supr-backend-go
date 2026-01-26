@@ -343,6 +343,39 @@ func (h *Handler) GetAvailableCars(c *gin.Context) {
 	response.Success(c, cars, "Available cars fetched successfully")
 }
 
+// GetVehiclesWithDetails godoc
+// @Summary Get available vehicles with complete pricing and driver details
+// @Description Returns nearby online drivers with their vehicles, including pricing estimates, surge multipliers, and demand information
+// @Tags rides
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body dto.VehicleDetailsRequest true "Pickup and dropoff locations"
+// @Success 200 {object} response.Response{data=dto.VehiclesWithDetailsListResponse}
+// @Router /rides/vehicles-with-details [post]
+func (h *Handler) GetVehiclesWithDetails(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var req dto.VehicleDetailsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body"))
+		return
+	}
+
+	// Set default radius if not provided
+	if req.RadiusKm == 0 {
+		req.RadiusKm = 5.0
+	}
+
+	vehicles, err := h.service.GetVehiclesWithDetails(c.Request.Context(), userID.(string), req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, vehicles, "Vehicles with details fetched successfully")
+}
+
 // ====================================================
 //  Ride Messaging
 // ====================================================

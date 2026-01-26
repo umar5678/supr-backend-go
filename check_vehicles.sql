@@ -13,4 +13,5 @@ LEFT JOIN vehicles v ON d.id = v.driver_id
 LEFT JOIN vehicle_types vt ON v.vehicle_type_id = vt.id
 LEFT JOIN users u ON d.user_id = u.id
 WHERE d.status = 'online' AND d.is_verified = true
+SET d.status = 'offline'
 LIMIT 10;

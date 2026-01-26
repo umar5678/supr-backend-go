@@ -90,3 +90,14 @@ type AvailableCarRequest struct {
 	Longitude float64 `json:"longitude" binding:"required,longitude"`
 	RadiusKm  float64 `json:"radiusKm" binding:"required,min=0.1,max=50"` // Default 5 km, Max 50 km
 }
+
+// VehicleDetailsRequest represents request for vehicles with details (pickup & destination)
+type VehicleDetailsRequest struct {
+	PickupLat      float64 `json:"pickupLat" binding:"required,latitude"`
+	PickupLon      float64 `json:"pickupLon" binding:"required,longitude"`
+	PickupAddress  string  `json:"pickupAddress" binding:"required,max=500"`
+	DropoffLat     float64 `json:"dropoffLat" binding:"required,latitude"`
+	DropoffLon     float64 `json:"dropoffLon" binding:"required,longitude"`
+	DropoffAddress string  `json:"dropoffAddress" binding:"required,max=500"`
+	RadiusKm       float64 `json:"radiusKm" binding:"omitempty,min=0.1,max=50"` // Optional, defaults to 5km
+}

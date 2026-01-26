@@ -30,17 +30,17 @@ type MessageHandler struct {
 
 // Message event payloads
 type MessageEventPayload struct {
-	ID           string                 `json:"id"`
-	RideID       string                 `json:"rideId"`
-	SenderID     string                 `json:"senderId"`
-	SenderName   string                 `json:"senderName"`
-	SenderType   string                 `json:"senderType"`
-	Content      string                 `json:"content"`
-	MessageType  string                 `json:"messageType"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
-	IsRead       bool                   `json:"isRead"`
-	ReadAt       *time.Time             `json:"readAt,omitempty"`
-	Timestamp    time.Time              `json:"timestamp"`
+	ID          string                 `json:"id"`
+	RideID      string                 `json:"rideId"`
+	SenderID    string                 `json:"senderId"`
+	SenderName  string                 `json:"senderName"`
+	SenderType  string                 `json:"senderType"`
+	Content     string                 `json:"content"`
+	MessageType string                 `json:"messageType"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	IsRead      bool                   `json:"isRead"`
+	ReadAt      *time.Time             `json:"readAt,omitempty"`
+	Timestamp   time.Time              `json:"timestamp"`
 }
 
 // RegisterMessageHandlers registers message-related WebSocket handlers
@@ -326,4 +326,3 @@ func (h *MessageHandler) HandlePresenceOffline(client *websocket.Client, msg *we
 	logger.Info("user offline", "rideId", payload.RideID, "userId", client.UserID)
 	return nil
 }
-
