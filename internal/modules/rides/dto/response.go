@@ -120,7 +120,7 @@ func ToRideResponse(ride *models.Ride) *RideResponse {
 		resp.Rider = authdto.ToUserResponse(&ride.Rider)
 	}
 	if ride.Driver != nil && ride.Driver.ID != "" {
-		resp.Driver = authdto.ToDriverResponse(ride.Driver, nil)
+		resp.Driver = authdto.ToDriverResponse(ride.Driver, ride.DriverProfile)
 	}
 	if ride.VehicleType.ID != "" {
 		resp.VehicleType = vehicledto.ToVehicleTypeResponse(&ride.VehicleType)

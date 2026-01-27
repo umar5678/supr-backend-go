@@ -77,6 +77,7 @@ func (r *repository) FindRideByID(ctx context.Context, id string) (*models.Ride,
 	err := r.db.WithContext(ctx).
 		Preload("Rider").
 		Preload("Driver").
+		Preload("DriverProfile").
 		Preload("VehicleType").
 		Where("id = ?", id).
 		First(&ride).Error
