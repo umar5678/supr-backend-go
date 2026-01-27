@@ -69,8 +69,12 @@ func ToUserResponse(user *models.User) *UserResponse {
 
 func ToDriverResponse(user *models.User, driverProfile *models.DriverProfile) *DriverResponse {
 	licenseNumber := ""
+	licensePlate := ""
 	if driverProfile != nil {
 		licenseNumber = driverProfile.LicenseNumber
+		if driverProfile.Vehicle != nil {
+			licensePlate = driverProfile.Vehicle.LicensePlate
+		}
 	}
 	return &DriverResponse{
 		ID:                    user.ID,
@@ -79,7 +83,7 @@ func ToDriverResponse(user *models.User, driverProfile *models.DriverProfile) *D
 		Phone:                 user.Phone,
 		Role:				  user.Role,
 		LicenseNumber:        licenseNumber,
-		LicensePlate:         driverProfile.Vehicle.LicensePlate,
+		LicensePlate:         licensePlate,
 		Gender:                user.Gender,
 		RidePIN:               user.RidePIN,
 		EmergencyContactName:  user.EmergencyContactName,
