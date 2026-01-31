@@ -100,7 +100,7 @@ func (s *service) GetReferralInfo(ctx context.Context, userID string) (*dto.Refe
 	}
 
 	// Get user's referral code
-	user, err := s.repo.FindUserByReferralCode(ctx, "")
+	user, err := s.repo.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to get user info", err)
 	}

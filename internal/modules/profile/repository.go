@@ -13,6 +13,7 @@ type Repository interface {
     // Referrals
     GenerateReferralCode(ctx context.Context, userID, code string) error
     FindUserByReferralCode(ctx context.Context, code string) (*models.User, error)
+    FindUserByID(ctx context.Context, userID string) (*models.User, error)
     ApplyReferralCode(ctx context.Context, userID, referredBy string) error
     GetReferralStats(ctx context.Context, userID string) (count int64, bonus float64, err error)
     
@@ -60,6 +61,14 @@ func (r *repository) FindUserByReferralCode(ctx context.Context, code string) (*
     var user models.User
     err := r.db.WithContext(ctx).
         Where("referral_code = ?", code).
+        First(&user).Error
+    return &user, err
+}
+
+func (r *repository) FindUserByID(ctx context.Context, userID string) (*models.User, error) {
+    var user models.User
+    err := r.db.WithContext(ctx).
+        Where("id = ?", userID).
         First(&user).Error
     return &user, err
 }

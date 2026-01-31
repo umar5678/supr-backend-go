@@ -73,10 +73,10 @@ type Ride struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
 	// Relations
-	Rider           User            `gorm:"foreignKey:RiderID" json:"rider,omitempty"`
-	Driver          *User           `gorm:"foreignKey:DriverID" json:"driver,omitempty"`
-	DriverProfile   *DriverProfile  `gorm:"foreignKey:UserID;references:DriverID" json:"driverProfile,omitempty"`
-	VehicleType     VehicleType     `gorm:"foreignKey:VehicleTypeID" json:"vehicleType,omitempty"`
+	Rider         User           `gorm:"foreignKey:RiderID" json:"rider,omitempty"`
+	Driver        *User          `gorm:"foreignKey:DriverID" json:"driver,omitempty"`
+	DriverProfile *DriverProfile `gorm:"foreignKey:UserID;references:DriverID" json:"driverProfile,omitempty"`
+	VehicleType   VehicleType    `gorm:"foreignKey:VehicleTypeID" json:"vehicleType,omitempty"`
 }
 
 func (Ride) TableName() string {

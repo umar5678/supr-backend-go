@@ -13,7 +13,7 @@ type RideResponse struct {
 	RiderID       string                          `json:"riderId"`
 	Rider         *authdto.UserResponse           `json:"rider,omitempty"`
 	DriverID      *string                         `json:"driverId"`
-	Driver        *authdto.DriverResponse           `json:"driver,omitempty"`
+	Driver        *authdto.DriverResponse         `json:"driver,omitempty"`
 	VehicleTypeID string                          `json:"vehicleTypeId"`
 	VehicleType   *vehicledto.VehicleTypeResponse `json:"vehicleType,omitempty"`
 	Status        string                          `json:"status"`

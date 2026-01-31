@@ -34,11 +34,11 @@ type DriverResponse struct {
 	Name                  string            `json:"name"`
 	Email                 *string           `json:"email,omitempty"`
 	Phone                 *string           `json:"phone,omitempty"`
-	Gender				*string           `json:"gender,omitempty"`
+	Gender                *string           `json:"gender,omitempty"`
 	Role                  models.UserRole   `json:"role"`
 	RidePIN               string            `json:"ridePin"`
 	LicenseNumber         string            `json:"licenseNumber,omitempty"`
-	LicensePlate         string            `json:"licensePlate,omitempty"`
+	LicensePlate          string            `json:"licensePlate,omitempty"`
 	EmergencyContactName  string            `json:"emergencyContactName,omitempty"`
 	EmergencyContactPhone string            `json:"emergencyContactPhone,omitempty"`
 	ReferralCode          string            `json:"referralCode,omitempty"`
@@ -81,9 +81,9 @@ func ToDriverResponse(user *models.User, driverProfile *models.DriverProfile) *D
 		Name:                  user.Name,
 		Email:                 user.Email,
 		Phone:                 user.Phone,
-		Role:				  user.Role,
-		LicenseNumber:        licenseNumber,
-		LicensePlate:         licensePlate,
+		Role:                  user.Role,
+		LicenseNumber:         licenseNumber,
+		LicensePlate:          licensePlate,
 		Gender:                user.Gender,
 		RidePIN:               user.RidePIN,
 		EmergencyContactName:  user.EmergencyContactName,
