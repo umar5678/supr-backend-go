@@ -237,7 +237,7 @@ func main() {
 
 		// Profile Module (initialize before rides service)
 		profileRepo := profile.NewRepository(db)
-		profileService := profile.NewService(profileRepo)
+		profileService := profile.NewService(profileRepo, walletService)
 		profileHandler := profile.NewHandler(profileService)
 		profile.RegisterRoutes(v1, profileHandler, authMiddleware)
 

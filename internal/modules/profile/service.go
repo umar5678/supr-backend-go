@@ -11,6 +11,10 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
+type WalletService interface {
+	CreditWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
+}
+
 type Service interface {
 	UpdateEmergencyContact(ctx context.Context, userID string, req dto.UpdateEmergencyContactRequest) error
 	GenerateReferralCode(ctx context.Context, userID string) (*dto.ReferralInfoResponse, error)
@@ -26,11 +30,12 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo          Repository
+	walletService WalletService
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, walletService WalletService) Service {
+	return &service{repo: repo, walletService: walletService}
 }
 
 func (s *service) UpdateEmergencyContact(ctx context.Context, userID string, req dto.UpdateEmergencyContactRequest) error {
@@ -70,9 +75,19 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 }
 
 func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.ApplyReferralRequest) error {
+	// Check if code exists and is not empty
+	if req.ReferralCode == "" {
+		return response.BadRequest("Referral code cannot be empty")
+	}
+
 	// Check if code exists
 	referrer, err := s.repo.FindUserByReferralCode(ctx, req.ReferralCode)
 	if err != nil {
+		logger.Error("referral code lookup failed", "error", err, "code", req.ReferralCode)
+		return response.BadRequest("Invalid referral code")
+	}
+
+	if referrer == nil || referrer.ID == "" {
 		return response.BadRequest("Invalid referral code")
 	}
 
@@ -85,11 +100,23 @@ func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.
 		return response.InternalServerError("Failed to apply referral code", err)
 	}
 
-	// TODO: Credit both users with referral bonus in wallet
-	// walletService.CreditWallet(ctx, userID, 5.0, "referral_bonus")
-	// walletService.CreditWallet(ctx, referrer.ID, 5.0, "referral_bonus")
+	// Credit both users with referral bonus
+	bonusAmount := 5.0
+	metadata := map[string]interface{}{"referral_code": req.ReferralCode}
 
-	logger.Info("referral code applied", "userID", userID, "referredBy", req.ReferralCode)
+	// Credit new user
+	if _, err := s.walletService.CreditWallet(ctx, userID, bonusAmount, "referral_bonus", referrer.ID, "Referral bonus from code "+req.ReferralCode, metadata); err != nil {
+		logger.Error("failed to credit bonus to user", "error", err, "userID", userID)
+		// Don't fail the whole request, log it but continue
+	}
+
+	// Credit referrer
+	if _, err := s.walletService.CreditWallet(ctx, referrer.ID, bonusAmount, "referral_reward", userID, "Referral reward from user "+userID, metadata); err != nil {
+		logger.Error("failed to credit bonus to referrer", "error", err, "referrerID", referrer.ID)
+		// Don't fail the whole request, log it but continue
+	}
+
+	logger.Info("referral code applied", "userID", userID, "referredBy", req.ReferralCode, "bonusAmount", bonusAmount)
 	return nil
 }
 
