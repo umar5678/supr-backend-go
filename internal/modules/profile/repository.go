@@ -62,8 +62,6 @@ func (r *repository) FindUserByReferralCode(ctx context.Context, code string) (*
 	var user models.User
 	err := r.db.WithContext(ctx).
 		Where("referral_code = ?", code).
-		Where("referral_code IS NOT NULL").
-		Where("referral_code != ''").
 		First(&user).Error
 	return &user, err
 }

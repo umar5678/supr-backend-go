@@ -99,6 +99,8 @@ func (s *service) PhoneSignup(ctx context.Context, req authdto.PhoneSignupReques
 		return nil, response.InternalServerError("Failed to create account", err)
 	}
 
+	logger.Info("user created during signup", "userId", user.ID, "phone", req.Phone, "referralCode", user.ReferralCode)
+
 	// Create wallet for user
 	if err := s.createUserWallet(ctx, user); err != nil {
 		logger.Error("failed to create wallet", "error", err, "userId", user.ID)
@@ -227,6 +229,8 @@ func (s *service) EmailSignup(ctx context.Context, req authdto.EmailSignupReques
 		logger.Error("failed to create user", "error", err, "email", req.Email)
 		return nil, response.InternalServerError("Failed to create account", err)
 	}
+
+	logger.Info("user created during email signup", "userId", user.ID, "email", req.Email, "referralCode", user.ReferralCode)
 
 	// ✅ Create service provider profile if applicable
 	if user.IsServiceProvider() {

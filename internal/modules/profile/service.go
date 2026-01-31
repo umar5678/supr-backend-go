@@ -78,19 +78,25 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 }
 
 func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.ApplyReferralRequest) error {
-	// Check if code exists and is not empty
+	// Check if code is not empty
 	if req.ReferralCode == "" {
 		return response.BadRequest("Referral code cannot be empty")
 	}
+
+	logger.Info("attempting to apply referral code", "code", req.ReferralCode, "userID", userID)
 
 	// Check if code exists
 	referrer, err := s.repo.FindUserByReferralCode(ctx, req.ReferralCode)
 	if err != nil {
 		logger.Error("referral code lookup failed", "error", err, "code", req.ReferralCode)
-		return response.BadRequest("Invalid referral code")
+		
+		// Query all users to debug
+		logger.Info("DEBUG: Checking if any user has this code in database")
+		return response.BadRequest("Invalid referral code - code does not exist")
 	}
 
 	if referrer == nil || referrer.ID == "" {
+		logger.Error("referral code lookup returned nil or empty user", "code", req.ReferralCode)
 		return response.BadRequest("Invalid referral code")
 	}
 
@@ -119,7 +125,7 @@ func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.
 		// Don't fail the whole request, log it but continue
 	}
 
-	logger.Info("referral code applied", "userID", userID, "referredBy", req.ReferralCode, "bonusAmount", bonusAmount)
+	logger.Info("referral code applied successfully", "userID", userID, "referrerID", referrer.ID, "code", req.ReferralCode, "bonusAmount", bonusAmount)
 	return nil
 }
 
