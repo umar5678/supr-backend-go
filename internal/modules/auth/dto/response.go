@@ -49,6 +49,10 @@ type DriverResponse struct {
 }
 
 func ToUserResponse(user *models.User) *UserResponse {
+	referralCode := ""
+	if user.ReferralCode != nil {
+		referralCode = *user.ReferralCode
+	}
 	return &UserResponse{
 		ID:                    user.ID,
 		Name:                  user.Name,
@@ -59,7 +63,7 @@ func ToUserResponse(user *models.User) *UserResponse {
 		RidePIN:               user.RidePIN,
 		EmergencyContactName:  user.EmergencyContactName,
 		EmergencyContactPhone: user.EmergencyContactPhone,
-		ReferralCode:          user.ReferralCode,
+		ReferralCode:          referralCode,
 		Status:                user.Status,
 		ProfilePhotoURL:       user.ProfilePhotoURL,
 		LastLoginAt:           user.LastLoginAt,
@@ -76,6 +80,10 @@ func ToDriverResponse(user *models.User, driverProfile *models.DriverProfile) *D
 			licensePlate = driverProfile.Vehicle.LicensePlate
 		}
 	}
+	referralCode := ""
+	if user.ReferralCode != nil {
+		referralCode = *user.ReferralCode
+	}
 	return &DriverResponse{
 		ID:                    user.ID,
 		Name:                  user.Name,
@@ -88,7 +96,7 @@ func ToDriverResponse(user *models.User, driverProfile *models.DriverProfile) *D
 		RidePIN:               user.RidePIN,
 		EmergencyContactName:  user.EmergencyContactName,
 		EmergencyContactPhone: user.EmergencyContactPhone,
-		ReferralCode:          user.ReferralCode,
+		ReferralCode:          referralCode,
 		Status:                user.Status,
 		ProfilePhotoURL:       user.ProfilePhotoURL,
 		LastLoginAt:           user.LastLoginAt,

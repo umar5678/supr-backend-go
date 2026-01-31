@@ -141,8 +141,13 @@ func (s *service) GetReferralInfo(ctx context.Context, userID string) (*dto.Refe
 		return nil, response.InternalServerError("Failed to get user info", err)
 	}
 
+	code := ""
+	if user.ReferralCode != nil {
+		code = *user.ReferralCode
+	}
+
 	return &dto.ReferralInfoResponse{
-		ReferralCode:  user.ReferralCode,
+		ReferralCode:  code,
 		ReferralCount: count,
 		ReferralBonus: bonus,
 	}, nil

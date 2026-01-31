@@ -90,7 +90,7 @@ func (s *service) PhoneSignup(ctx context.Context, req authdto.PhoneSignupReques
 		Phone:        &req.Phone,
 		Role:         req.Role,
 		Status:       models.StatusActive,
-		ReferralCode: referralCode,
+		ReferralCode: &referralCode,
 		RidePIN:      ridePIN,
 	}
 
@@ -221,7 +221,7 @@ func (s *service) EmailSignup(ctx context.Context, req authdto.EmailSignupReques
 		Password:     &hashedPassword,
 		Role:         req.Role,
 		Status:       initialStatus,
-		ReferralCode: referralCode,
+		ReferralCode: &referralCode,
 		RidePIN:      ridePIN,
 	}
 

@@ -45,7 +45,7 @@ type User struct {
 	EmergencyContactName  string         `gorm:"type:varchar(255)" json:"emergencyContactName,omitempty"`
 	EmergencyContactPhone string         `gorm:"type:varchar(20)" json:"emergencyContactPhone,omitempty"`
 	LastLoginAt           *time.Time     `json:"lastLoginAt,omitempty"`
-	ReferralCode          string         `gorm:"type:varchar(20);uniqueIndex" json:"referralCode,omitempty"`
+	ReferralCode          *string        `gorm:"type:varchar(20);uniqueIndex:,where:referral_code IS NOT NULL" json:"referralCode,omitempty"`
 	CreatedAt             time.Time      `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt             time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 	DeletedAt             gorm.DeletedAt `gorm:"index" json:"-"`
