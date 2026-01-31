@@ -2,11 +2,10 @@ package profile
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/profile/dto"
+	"github.com/umar5678/go-backend/internal/utils/codegen"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -53,11 +52,15 @@ func (s *service) UpdateEmergencyContact(ctx context.Context, userID string, req
 }
 
 func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto.ReferralInfoResponse, error) {
-	code := generateReferralCode()
-
-	if err := s.repo.GenerateReferralCode(ctx, userID, code); err != nil {
+	code, err := codegen.GenerateReferralCode()
+	if err != nil {
 		logger.Error("failed to generate referral code", "error", err, "userID", userID)
 		return nil, response.InternalServerError("Failed to generate referral code", err)
+	}
+
+	if err := s.repo.GenerateReferralCode(ctx, userID, code); err != nil {
+		logger.Error("failed to save referral code", "error", err, "userID", userID)
+		return nil, response.InternalServerError("Failed to save referral code", err)
 	}
 
 	count, bonus, err := s.repo.GetReferralStats(ctx, userID)
@@ -273,10 +276,4 @@ func (s *service) GetRecentLocations(ctx context.Context, userID string) ([]*dto
 	}
 
 	return result, nil
-}
-
-func generateReferralCode() string {
-	b := make([]byte, 6)
-	rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)[:8]
 }
