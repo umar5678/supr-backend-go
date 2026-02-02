@@ -103,8 +103,19 @@ func (r *repository) GetReferralStats(ctx context.Context, userID string) (count
 		Where("referred_by = ?", user.ReferralCode).
 		Count(&count)
 
-	// Calculate bonus ($5 per referral)
-	bonus = float64(count) * 5.0
+	// Get actual wallet balance instead of calculating from count
+	var wallet models.Wallet
+	walletErr := r.db.WithContext(ctx).
+		Where("user_id = ? AND wallet_type = ?", userID, models.WalletTypeRider).
+		First(&wallet).Error
+	
+	// If wallet exists, use its balance; otherwise calculate from count
+	if walletErr == nil {
+		bonus = wallet.Balance
+	} else {
+		// Fallback: calculate bonus ($5 per referral) if no wallet found
+		bonus = float64(count) * 5.0
+	}
 
 	return count, bonus, nil
 }
