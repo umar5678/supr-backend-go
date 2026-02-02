@@ -16,6 +16,7 @@ type Repository interface {
 	FindUserByReferralCode(ctx context.Context, code string) (*models.User, error)
 	FindUserByID(ctx context.Context, userID string) (*models.User, error)
 	ApplyReferralCode(ctx context.Context, userID, referredBy string) error
+	HasUserAppliedCode(ctx context.Context, userID, code string) (bool, error)
 	GetReferralStats(ctx context.Context, userID string) (count int64, bonus float64, err error)
 
 	// KYC
@@ -79,6 +80,15 @@ func (r *repository) ApplyReferralCode(ctx context.Context, userID, referredBy s
 		Model(&models.User{}).
 		Where("id = ?", userID).
 		Update("referred_by", referredBy).Error
+}
+
+func (r *repository) HasUserAppliedCode(ctx context.Context, userID, code string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("id = ? AND referred_by = ?", userID, code).
+		Count(&count).Error
+	return count > 0, err
 }
 
 func (r *repository) GetReferralStats(ctx context.Context, userID string) (count int64, bonus float64, err error) {
