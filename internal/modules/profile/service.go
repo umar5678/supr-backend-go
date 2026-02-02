@@ -2,9 +2,11 @@ package profile
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/profile/dto"
+	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/codegen"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
@@ -161,6 +163,10 @@ func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.
 		logger.Error("failed to credit bonus to referrer", "error", err, "referrerID", referrer.ID)
 		return response.InternalServerError("Failed to credit referrer bonus - contact support", err)
 	}
+
+	// Invalidate rider profile cache for both users to force fresh wallet data
+	cache.Delete(ctx, fmt.Sprintf("rider:profile:%s", userID))
+	cache.Delete(ctx, fmt.Sprintf("rider:profile:%s", referrer.ID))
 
 	logger.Info("referral code applied successfully", "userID", userID, "referrerID", referrer.ID, "code", req.ReferralCode, "bonusAmount", bonusAmount)
 	return nil
