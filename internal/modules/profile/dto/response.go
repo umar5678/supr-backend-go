@@ -38,9 +38,10 @@ type RecentLocationResponse struct {
 }
 
 type ReferralInfoResponse struct {
-    ReferralCode  string `json:"referralCode"`
-    ReferralCount int64  `json:"referralCount"`
-    ReferralBonus float64 `json:"referralBonus"`
+	ReferralCode       string  `json:"referralCode"`
+	ReferralCount      int64   `json:"referralCount"`
+	ReferralBonus      float64 `json:"referralBonus"`
+	HasAppliedReferral bool    `json:"hasAppliedReferral"`
 }
 
 func ToKYCResponse(kyc *models.UserKYC) *KYCResponse {

@@ -70,10 +70,18 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 			return nil, response.InternalServerError("Failed to get referral stats", err)
 		}
 
+		// Check if user has applied a referral
+		hasApplied, err := s.repo.HasUserAppliedAnyReferral(ctx, userID)
+		if err != nil {
+			logger.Error("failed to check if user applied referral", "error", err, "userID", userID)
+			hasApplied = false
+		}
+
 		return &dto.ReferralInfoResponse{
-			ReferralCode:  *user.ReferralCode,
-			ReferralCount: count,
-			ReferralBonus: bonus,
+			ReferralCode:       *user.ReferralCode,
+			ReferralCount:      count,
+			ReferralBonus:      bonus,
+			HasAppliedReferral: hasApplied,
 		}, nil
 	}
 
@@ -94,12 +102,20 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 		return nil, response.InternalServerError("Failed to get referral stats", err)
 	}
 
+	// Check if user has applied a referral
+	hasApplied, err := s.repo.HasUserAppliedAnyReferral(ctx, userID)
+	if err != nil {
+		logger.Error("failed to check if user applied referral", "error", err, "userID", userID)
+		hasApplied = false
+	}
+
 	logger.Info("new referral code generated", "userID", userID, "code", code)
 
 	return &dto.ReferralInfoResponse{
-		ReferralCode:  code,
-		ReferralCount: count,
-		ReferralBonus: bonus,
+		ReferralCode:       code,
+		ReferralCount:      count,
+		ReferralBonus:      bonus,
+		HasAppliedReferral: hasApplied,
 	}, nil
 }
 
@@ -189,10 +205,18 @@ func (s *service) GetReferralInfo(ctx context.Context, userID string) (*dto.Refe
 		code = *user.ReferralCode
 	}
 
+	// Check if user has applied a referral
+	hasApplied, err := s.repo.HasUserAppliedAnyReferral(ctx, userID)
+	if err != nil {
+		logger.Error("failed to check if user applied referral", "error", err, "userID", userID)
+		hasApplied = false
+	}
+
 	return &dto.ReferralInfoResponse{
-		ReferralCode:  code,
-		ReferralCount: count,
-		ReferralBonus: bonus,
+		ReferralCode:       code,
+		ReferralCount:      count,
+		ReferralBonus:      bonus,
+		HasAppliedReferral: hasApplied,
 	}, nil
 }
 
