@@ -347,9 +347,11 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 
 	total := subtotal + surgeFee + platformFee - discount
 
-	// 5. Create wallet hold using existing wallet service
+	// 5. Create wallet hold using existing wallet service (non-blocking for cash model)
+	// This is only for tracking expected payment, not for authorization
 	orderCode := s.generateOrderCode()
 	holdDurationMinutes := int(HoldExpiryDuration.Minutes())
+	var holdID *string
 
 	holdReq := walletdto.HoldFundsRequest{
 		Amount:        total,
@@ -360,7 +362,11 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 
 	holdResp, err := s.walletService.HoldFunds(ctx, userID, holdReq)
 	if err != nil {
-		return nil, err
+		logger.Warn("failed to create payment tracking hold", "error", err, "orderCode", orderCode, "total", total)
+		// Don't fail the order - cash payment doesn't require wallet authorization
+	} else {
+		holdID = &holdResp.ID
+		logger.Info("payment hold created for tracking", "orderCode", orderCode, "holdID", holdResp.ID, "amount", total)
 	}
 
 	// 6. Create order
@@ -391,9 +397,11 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 	}
 
 	if err := s.repo.CreateOrder(ctx, order); err != nil {
-		// Release hold if order creation fails
-		releaseReq := walletdto.ReleaseHoldRequest{HoldID: holdResp.ID}
-		s.walletService.ReleaseHold(ctx, userID, releaseReq)
+		// Release hold if order creation fails and hold was successful
+		if holdID != nil {
+			releaseReq := walletdto.ReleaseHoldRequest{HoldID: *holdID}
+			s.walletService.ReleaseHold(ctx, userID, releaseReq)
+		}
 		logger.Error("failed to create order", "error", err, "userID", userID)
 		return nil, response.InternalServerError("Failed to create order", err)
 	}

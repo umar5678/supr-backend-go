@@ -118,7 +118,7 @@ func (r *repository) GetReferralStats(ctx context.Context, userID string) (count
 	walletErr := r.db.WithContext(ctx).
 		Where("user_id = ? AND wallet_type = ?", userID, models.WalletTypeRider).
 		First(&wallet).Error
-	
+
 	// If wallet exists, use its balance; otherwise calculate from count
 	if walletErr == nil {
 		bonus = wallet.Balance
