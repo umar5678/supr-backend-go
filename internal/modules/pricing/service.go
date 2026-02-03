@@ -33,7 +33,6 @@ type Service interface {
 	CalculateCombinedSurge(ctx context.Context, vehicleTypeID, geohash string, lat, lon float64) (*dto.SurgeCalculationResponse, error)
 	CreateSurgePricingRule(ctx context.Context, req dto.CreateSurgePricingRuleRequest) (*dto.SurgePricingRuleResponse, error)
 	GetActiveSurgePricingRules(ctx context.Context) ([]*dto.SurgePricingRuleResponse, error)
-	RecordDemandTracking(ctx context.Context, zoneID, geohash string, pendingRequests, availableDrivers int) error
 	GetCurrentDemand(ctx context.Context, geohash string) (*dto.DemandTrackingResponse, error)
 	CalculateETAEstimate(ctx context.Context, req dto.ETAEstimateRequest) (*dto.ETAEstimateResponse, error)
 }
@@ -590,59 +589,6 @@ func (s *service) CalculateCombinedSurge(ctx context.Context, vehicleTypeID, geo
 	}, nil
 }
 
-// LEGACY: Old CalculateCombinedSurge implementation - keeping for reference
-// Old signature: (ctx, vehicleTypeID, lat, lon) -> CombinedSurgeResponse
-func (s *service) CalculateCombinedSurgeLegacy(ctx context.Context, vehicleTypeID string, lat, lon float64) (*dto.CombinedSurgeResponse, error) {
-	// Get zone-based surge (includes demand calculation)
-	zoneSurge, err := s.CalculateZoneBasedSurge(ctx, lat, lon, vehicleTypeID)
-	if err != nil {
-		logger.Warn("zone surge calculation failed", "error", err)
-		zoneSurge = &dto.SurgeResponse{
-			Multiplier: 1.0,
-			Reason:     "No zone surge",
-		}
-	}
-
-	// Get time-based surge (peak hours)
-	timeSurge, err := s.CalculateTimeBasedSurge(ctx, vehicleTypeID)
-	if err != nil {
-		logger.Warn("time surge calculation failed", "error", err)
-		timeSurge = &dto.SurgeResponse{
-			Multiplier: 1.0,
-			Reason:     "No time surge",
-		}
-	}
-
-	// Combine surges - use maximum (not multiply)
-	finalMultiplier := math.Max(zoneSurge.Multiplier, timeSurge.Multiplier)
-
-	// Cap at 3.0x for fairness
-	if finalMultiplier > 3.0 {
-		finalMultiplier = 3.0
-	}
-
-	// Determine primary reason
-	reason := s.getCombinedSurgeReason(zoneSurge, timeSurge, finalMultiplier)
-
-	logger.Info("combined surge calculated",
-		"lat", lat,
-		"lon", lon,
-		"zoneSurge", zoneSurge.Multiplier,
-		"timeSurge", timeSurge.Multiplier,
-		"final", finalMultiplier,
-		"reason", reason)
-
-	return &dto.CombinedSurgeResponse{
-		AppliedMultiplier:     finalMultiplier,
-		ZoneBasedMultiplier:   zoneSurge.Multiplier,
-		TimeBasedMultiplier:   timeSurge.Multiplier,
-		DemandBasedMultiplier: zoneSurge.Multiplier, // Zone surge includes demand
-		Reason:                reason,
-		ZoneID:                zoneSurge.ZoneID,
-		ZoneName:              zoneSurge.ZoneName,
-	}, nil
-}
-
 // CreateSurgePricingRule creates a new surge pricing rule
 func (s *service) CreateSurgePricingRule(ctx context.Context, req dto.CreateSurgePricingRuleRequest) (*dto.SurgePricingRuleResponse, error) {
 	rule := &models.SurgePricingRule{
@@ -720,40 +666,6 @@ func (s *service) GetActiveSurgePricingRules(ctx context.Context) ([]*dto.SurgeP
 	return responses, nil
 }
 
-// RecordDemandTracking records demand metrics for a zone
-func (s *service) RecordDemandTracking(ctx context.Context, zoneID, geohash string, pendingRequests, availableDrivers int) error {
-	var surgeMultiplier float64
-	var demandSupplyRatio float64
-
-	if availableDrivers > 0 {
-		demandSupplyRatio = float64(pendingRequests) / float64(availableDrivers)
-		// Calculate surge from ratio
-		surgeMultiplier = 1.0 + (demandSupplyRatio * 0.25)
-		if surgeMultiplier > 2.0 {
-			surgeMultiplier = 2.0
-		}
-	}
-
-	demand := &models.DemandTracking{
-		ID:                uuid.New().String(),
-		ZoneID:            zoneID,
-		ZoneGeohash:       geohash,
-		PendingRequests:   pendingRequests,
-		AvailableDrivers:  availableDrivers,
-		DemandSupplyRatio: demandSupplyRatio,
-		SurgeMultiplier:   surgeMultiplier,
-		RecordedAt:        time.Now(),
-		ExpiresAt:         time.Now().Add(5 * time.Minute),
-	}
-
-	if err := s.repo.CreateDemandTracking(ctx, demand); err != nil {
-		logger.Error("failed to record demand tracking", "error", err)
-		return response.InternalServerError("Failed to record demand", err)
-	}
-
-	return nil
-}
-
 // GetCurrentDemand returns current demand metrics for a zone
 func (s *service) GetCurrentDemand(ctx context.Context, geohash string) (*dto.DemandTrackingResponse, error) {
 	demand, err := s.repo.GetLatestDemandByGeohash(ctx, geohash)
@@ -828,39 +740,6 @@ func (s *service) CalculateETAEstimate(ctx context.Context, req dto.ETAEstimateR
 		Source:              eta.Source,
 		CreatedAt:           eta.CreatedAt,
 	}, nil
-}
-
-// CalculateZoneBasedSurge calculates surge based on zone demand (LEGACY - simplified stub)
-func (s *service) CalculateZoneBasedSurge(ctx context.Context, lat, lon float64, vehicleTypeID string) (*dto.SurgeResponse, error) {
-	// Legacy method - just return normal pricing
-	// Real surge calculation is handled by SurgeManager
-	return &dto.SurgeResponse{
-		Multiplier: 1.0,
-		Reason:     "use_surge_manager",
-	}, nil
-}
-
-// STUB METHODS FOR LEGACY CODE - These are placeholders to make legacy code compile
-// TODO: Replace legacy methods with SurgeManager calls
-
-func (s *service) CalculateTimeBasedSurge(ctx context.Context, vehicleTypeID string) (*dto.SurgeResponse, error) {
-	// Delegate to surge manager
-	timeSurge, err := s.surgeManager.CalculateTimeBasedSurge(ctx, vehicleTypeID)
-	if err != nil {
-		return &dto.SurgeResponse{Multiplier: 1.0, Reason: "error"}, err
-	}
-	return &dto.SurgeResponse{Multiplier: timeSurge, Reason: "time_based"}, nil
-}
-
-func (s *service) getCombinedSurgeReason(zoneSurge, timeSurge *dto.SurgeResponse, final float64) string {
-	if zoneSurge.Multiplier > 1.0 && timeSurge.Multiplier > 1.0 {
-		return "combined"
-	} else if zoneSurge.Multiplier > 1.0 {
-		return "zone_surge"
-	} else if timeSurge.Multiplier > 1.0 {
-		return "time_surge"
-	}
-	return "normal"
 }
 
 func (s *service) isRuleActiveNow(rule *models.SurgePricingRule) bool {

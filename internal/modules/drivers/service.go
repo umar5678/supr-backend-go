@@ -151,8 +151,7 @@ func (s *service) GetProfile(ctx context.Context, userID string) (*driverdto.Dri
 		return nil, response.InternalServerError("Failed to fetch profile", err)
 	}
 
-	// Cache for 5 minutes
-	cache.SetJSON(ctx, cacheKey, driver, 5*time.Minute)
+	cache.Delete(ctx, fmt.Sprintf("driver:profile:%s", userID))
 
 	return driverdto.ToDriverProfileResponse(driver), nil
 }
