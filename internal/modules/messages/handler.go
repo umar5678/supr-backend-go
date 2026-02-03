@@ -25,7 +25,7 @@ func NewHandler(service Service) *Handler {
 // @Param rideId path string true "Ride ID"
 // @Param limit query int false "Limit (default: 50)"
 // @Param offset query int false "Offset (default: 0)"
-// @Success 200 {object} response.Response{data=[]models.MessageResponse}
+// @Success 200 {object} response.Response{data=dto.MessageResponse}
 // @Router /messages/rides/{rideId} [get]
 func (h *Handler) GetMessages(c *gin.Context) {
 	userID, _ := c.Get("userID")
@@ -67,7 +67,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body SendMessageRequest true "Message data"
-// @Success 201 {object} response.Response{data=models.MessageResponse}
+// @Success 201 {object} response.Response{data=dto.MessageResponse}
 // @Router /messages [post]
 func (h *Handler) SendMessage(c *gin.Context) {
 	userID, _ := c.Get("userID")

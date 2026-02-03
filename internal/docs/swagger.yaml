@@ -1,4 +1,22 @@
 definitions:
+  dto.MessageResponse:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      rideId:
+        type: string
+      senderId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_models.TransactionStatus:
     enum:
     - pending
@@ -197,6 +215,41 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_auth_dto.DriverResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      gender:
+        type: string
+      id:
+        type: string
+      lastLoginAt:
+        type: string
+      licenseNumber:
+        type: string
+      licensePlate:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      profilePhotoUrl:
+        type: string
+      referralCode:
+        type: string
+      ridePin:
+        type: string
+      role:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+      status:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus'
     type: object
   github_com_umar5678_go-backend_internal_modules_auth_dto.EmailLoginRequest:
     properties:
@@ -4237,6 +4290,8 @@ definitions:
     type: object
   github_com_umar5678_go-backend_internal_modules_profile_dto.ReferralInfoResponse:
     properties:
+      hasAppliedReferral:
+        type: boolean
       referralBonus:
         type: number
       referralCode:
@@ -4882,7 +4937,7 @@ definitions:
       createdAt:
         type: string
       driver:
-        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.DriverResponse'
       driverFare:
         description: Driver and Rider Fares - Both see the same amount (with promo
           discount applied if used)
@@ -4954,6 +5009,198 @@ definitions:
         type: string
     required:
     - riderPin
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleDetailsRequest:
+    properties:
+      dropoffAddress:
+        maxLength: 500
+        type: string
+      dropoffLat:
+        type: number
+      dropoffLon:
+        type: number
+      pickupAddress:
+        maxLength: 500
+        type: string
+      pickupLat:
+        type: number
+      pickupLon:
+        type: number
+      radiusKm:
+        description: Optional, defaults to 5km
+        maximum: 50
+        minimum: 0.1
+        type: number
+    required:
+    - dropoffAddress
+    - dropoffLat
+    - dropoffLon
+    - pickupAddress
+    - pickupLat
+    - pickupLon
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleWithDetailsResponse:
+    properties:
+      acceptanceRate:
+        description: Driver acceptance rate %
+        type: number
+      availableDrivers:
+        description: Available drivers in zone
+        type: integer
+      baseFare:
+        description: Pricing Information
+        type: number
+      cancellationRate:
+        description: Driver cancellation rate %
+        type: number
+      capacity:
+        description: Passenger capacity
+        type: integer
+      color:
+        description: e.g., "Silver"
+        type: string
+      currentLatitude:
+        description: Location & Distance
+        type: number
+      currentLongitude:
+        description: Driver current longitude
+        type: number
+      demand:
+        description: 'Demand level: "low", "normal", "high", "extreme"'
+        type: string
+      distanceKm:
+        description: Distance from pickup
+        type: number
+      driverId:
+        description: Driver Profile ID
+        type: string
+      driverImage:
+        type: string
+      driverName:
+        description: Driver name
+        type: string
+      driverRating:
+        description: Driver rating (0-5)
+        type: number
+      estimatedDistance:
+        description: Estimated trip distance
+        type: number
+      estimatedDuration:
+        description: Estimated trip duration in seconds
+        type: integer
+      estimatedDurationMins:
+        description: Estimated duration in minutes
+        type: integer
+      estimatedFare:
+        description: Estimated fare for trip
+        type: number
+      etaFormatted:
+        description: Formatted ETA string e.g., "4 min"
+        type: string
+      etaMinutes:
+        description: ETA in minutes
+        type: integer
+      etaSeconds:
+        description: ETA Information
+        type: integer
+      heading:
+        description: Direction 0-360
+        type: integer
+      id:
+        description: Vehicle Information
+        type: string
+      isVerified:
+        description: Is driver verified
+        type: boolean
+      licensePlate:
+        description: e.g., "DHA-1234"
+        type: string
+      make:
+        description: e.g., "Toyota"
+        type: string
+      model:
+        description: e.g., "Corolla"
+        type: string
+      pendingRequests:
+        description: Demand Information
+        type: integer
+      perKmRate:
+        description: Rate per km
+        type: number
+      perMinRate:
+        description: Rate per minute
+        type: number
+      status:
+        description: 'Driver status: online, busy'
+        type: string
+      surgeMultiplier:
+        description: Surge Pricing
+        type: number
+      surgeReason:
+        description: 'Why surge is active: "peak_hours", "high_demand", etc.'
+        type: string
+      timestamp:
+        description: Response timestamp
+        type: string
+      totalTrips:
+        description: Driver total trips
+        type: integer
+      updatedAt:
+        description: Timestamps
+        type: string
+      vehicleDisplayName:
+        description: e.g., "Economy"
+        type: string
+      vehicleType:
+        description: e.g., "economy", "comfort"
+        type: string
+      vehicleTypeId:
+        description: Vehicle Details
+        type: string
+      year:
+        description: Year of manufacture
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_rides_dto.VehiclesWithDetailsListResponse:
+    properties:
+      carsCount:
+        description: Number of vehicles in response
+        type: integer
+      dropoffAddress:
+        type: string
+      dropoffLat:
+        type: number
+      dropoffLon:
+        type: number
+      pickupAddress:
+        type: string
+      pickupLat:
+        description: Trip Information
+        type: number
+      pickupLon:
+        type: number
+      radiusKm:
+        type: number
+      timestamp:
+        description: Metadata
+        type: string
+      totalCount:
+        description: Vehicles List
+        type: integer
+      tripDistance:
+        description: Trip Estimates (applies to all vehicles)
+        type: number
+      tripDuration:
+        description: Total trip duration in seconds
+        type: integer
+      tripDurationMins:
+        description: Trip duration in minutes
+        type: integer
+      vehicles:
+        description: List of vehicles
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleWithDetailsResponse'
+        type: array
     type: object
   github_com_umar5678_go-backend_internal_modules_sos_dto.ResolveSOSRequest:
     properties:
@@ -5343,6 +5590,19 @@ definitions:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Meta'
       success:
         type: boolean
+    type: object
+  internal_modules_messages.SendMessageRequest:
+    properties:
+      content:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      rideId:
+        type: string
+    required:
+    - content
+    - rideId
     type: object
 info:
   contact: {}
@@ -8405,6 +8665,134 @@ paths:
       summary: Get frequent services
       tags:
       - Home Services - Customer
+  /messages:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Message data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_messages.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.MessageResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Send a message
+      tags:
+      - messages
+  /messages/{messageId}:
+    delete:
+      parameters:
+      - description: Message ID
+        in: path
+        name: messageId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete a message
+      tags:
+      - messages
+  /messages/{messageId}/read:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Message ID
+        in: path
+        name: messageId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Mark message as read
+      tags:
+      - messages
+  /messages/rides/{rideId}:
+    get:
+      parameters:
+      - description: Ride ID
+        in: path
+        name: rideId
+        required: true
+        type: string
+      - description: 'Limit (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.MessageResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get messages for a ride
+      tags:
+      - messages
+  /messages/rides/{rideId}/unread-count:
+    get:
+      parameters:
+      - description: Ride ID
+        in: path
+        name: rideId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  type: integer
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get unread message count for a ride
+      tags:
+      - messages
   /pricing/calculate-eta:
     post:
       consumes:
@@ -10349,6 +10737,36 @@ paths:
       security:
       - BearerAuth: []
       summary: Get available cars near the rider
+      tags:
+      - rides
+  /rides/vehicles-with-details:
+    post:
+      consumes:
+      - application/json
+      description: Returns nearby online drivers with their vehicles, including pricing
+        estimates, surge multipliers, and demand information
+      parameters:
+      - description: Pickup and dropoff locations
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleDetailsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.VehiclesWithDetailsListResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get available vehicles with complete pricing and driver details
       tags:
       - rides
   /services:

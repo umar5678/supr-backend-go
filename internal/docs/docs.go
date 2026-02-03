@@ -5021,6 +5021,227 @@ const docTemplate = `{
                 }
             }
         },
+        "/messages": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "Send a message",
+                "parameters": [
+                    {
+                        "description": "Message data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_messages.SendMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/rides/{rideId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "Get messages for a ride",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ride ID",
+                        "name": "rideId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (default: 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/rides/{rideId}/unread-count": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "Get unread message count for a ride",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ride ID",
+                        "name": "rideId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/{messageId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "Delete a message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/{messageId}/read": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "Mark message as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/pricing/calculate-eta": {
             "post": {
                 "description": "Calculates estimated time of arrival for pickup and dropoff",
@@ -7961,6 +8182,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/rides/vehicles-with-details": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns nearby online drivers with their vehicles, including pricing estimates, surge multipliers, and demand information",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rides"
+                ],
+                "summary": "Get available vehicles with complete pricing and driver details",
+                "parameters": [
+                    {
+                        "description": "Pickup and dropoff locations",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleDetailsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.VehiclesWithDetailsListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/rides/{id}": {
             "get": {
                 "security": [
@@ -10608,6 +10880,33 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "rideId": {
+                    "type": "string"
+                },
+                "senderId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_models.TransactionStatus": {
             "type": "string",
             "enum": [
@@ -10879,6 +11178,59 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_auth_dto.DriverResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "emergencyContactName": {
+                    "type": "string"
+                },
+                "emergencyContactPhone": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastLoginAt": {
+                    "type": "string"
+                },
+                "licenseNumber": {
+                    "type": "string"
+                },
+                "licensePlate": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profilePhotoUrl": {
+                    "type": "string"
+                },
+                "referralCode": {
+                    "type": "string"
+                },
+                "ridePin": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserRole"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus"
                 }
             }
         },
@@ -16868,6 +17220,9 @@ const docTemplate = `{
         "github_com_umar5678_go-backend_internal_modules_profile_dto.ReferralInfoResponse": {
             "type": "object",
             "properties": {
+                "hasAppliedReferral": {
+                    "type": "boolean"
+                },
                 "referralBonus": {
                     "type": "number"
                 },
@@ -17791,7 +18146,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "driver": {
-                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse"
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.DriverResponse"
                 },
                 "driverFare": {
                     "description": "Driver and Rider Fares - Both see the same amount (with promo discount applied if used)",
@@ -17896,6 +18251,267 @@ const docTemplate = `{
                 "riderPin": {
                     "description": "NEW: 4-digit PIN",
                     "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleDetailsRequest": {
+            "type": "object",
+            "required": [
+                "dropoffAddress",
+                "dropoffLat",
+                "dropoffLon",
+                "pickupAddress",
+                "pickupLat",
+                "pickupLon"
+            ],
+            "properties": {
+                "dropoffAddress": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "dropoffLat": {
+                    "type": "number"
+                },
+                "dropoffLon": {
+                    "type": "number"
+                },
+                "pickupAddress": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "pickupLat": {
+                    "type": "number"
+                },
+                "pickupLon": {
+                    "type": "number"
+                },
+                "radiusKm": {
+                    "description": "Optional, defaults to 5km",
+                    "type": "number",
+                    "maximum": 50,
+                    "minimum": 0.1
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleWithDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "acceptanceRate": {
+                    "description": "Driver acceptance rate %",
+                    "type": "number"
+                },
+                "availableDrivers": {
+                    "description": "Available drivers in zone",
+                    "type": "integer"
+                },
+                "baseFare": {
+                    "description": "Pricing Information",
+                    "type": "number"
+                },
+                "cancellationRate": {
+                    "description": "Driver cancellation rate %",
+                    "type": "number"
+                },
+                "capacity": {
+                    "description": "Passenger capacity",
+                    "type": "integer"
+                },
+                "color": {
+                    "description": "e.g., \"Silver\"",
+                    "type": "string"
+                },
+                "currentLatitude": {
+                    "description": "Location \u0026 Distance",
+                    "type": "number"
+                },
+                "currentLongitude": {
+                    "description": "Driver current longitude",
+                    "type": "number"
+                },
+                "demand": {
+                    "description": "Demand level: \"low\", \"normal\", \"high\", \"extreme\"",
+                    "type": "string"
+                },
+                "distanceKm": {
+                    "description": "Distance from pickup",
+                    "type": "number"
+                },
+                "driverId": {
+                    "description": "Driver Profile ID",
+                    "type": "string"
+                },
+                "driverImage": {
+                    "type": "string"
+                },
+                "driverName": {
+                    "description": "Driver name",
+                    "type": "string"
+                },
+                "driverRating": {
+                    "description": "Driver rating (0-5)",
+                    "type": "number"
+                },
+                "estimatedDistance": {
+                    "description": "Estimated trip distance",
+                    "type": "number"
+                },
+                "estimatedDuration": {
+                    "description": "Estimated trip duration in seconds",
+                    "type": "integer"
+                },
+                "estimatedDurationMins": {
+                    "description": "Estimated duration in minutes",
+                    "type": "integer"
+                },
+                "estimatedFare": {
+                    "description": "Estimated fare for trip",
+                    "type": "number"
+                },
+                "etaFormatted": {
+                    "description": "Formatted ETA string e.g., \"4 min\"",
+                    "type": "string"
+                },
+                "etaMinutes": {
+                    "description": "ETA in minutes",
+                    "type": "integer"
+                },
+                "etaSeconds": {
+                    "description": "ETA Information",
+                    "type": "integer"
+                },
+                "heading": {
+                    "description": "Direction 0-360",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "Vehicle Information",
+                    "type": "string"
+                },
+                "isVerified": {
+                    "description": "Is driver verified",
+                    "type": "boolean"
+                },
+                "licensePlate": {
+                    "description": "e.g., \"DHA-1234\"",
+                    "type": "string"
+                },
+                "make": {
+                    "description": "e.g., \"Toyota\"",
+                    "type": "string"
+                },
+                "model": {
+                    "description": "e.g., \"Corolla\"",
+                    "type": "string"
+                },
+                "pendingRequests": {
+                    "description": "Demand Information",
+                    "type": "integer"
+                },
+                "perKmRate": {
+                    "description": "Rate per km",
+                    "type": "number"
+                },
+                "perMinRate": {
+                    "description": "Rate per minute",
+                    "type": "number"
+                },
+                "status": {
+                    "description": "Driver status: online, busy",
+                    "type": "string"
+                },
+                "surgeMultiplier": {
+                    "description": "Surge Pricing",
+                    "type": "number"
+                },
+                "surgeReason": {
+                    "description": "Why surge is active: \"peak_hours\", \"high_demand\", etc.",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "Response timestamp",
+                    "type": "string"
+                },
+                "totalTrips": {
+                    "description": "Driver total trips",
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "description": "Timestamps",
+                    "type": "string"
+                },
+                "vehicleDisplayName": {
+                    "description": "e.g., \"Economy\"",
+                    "type": "string"
+                },
+                "vehicleType": {
+                    "description": "e.g., \"economy\", \"comfort\"",
+                    "type": "string"
+                },
+                "vehicleTypeId": {
+                    "description": "Vehicle Details",
+                    "type": "string"
+                },
+                "year": {
+                    "description": "Year of manufacture",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_rides_dto.VehiclesWithDetailsListResponse": {
+            "type": "object",
+            "properties": {
+                "carsCount": {
+                    "description": "Number of vehicles in response",
+                    "type": "integer"
+                },
+                "dropoffAddress": {
+                    "type": "string"
+                },
+                "dropoffLat": {
+                    "type": "number"
+                },
+                "dropoffLon": {
+                    "type": "number"
+                },
+                "pickupAddress": {
+                    "type": "string"
+                },
+                "pickupLat": {
+                    "description": "Trip Information",
+                    "type": "number"
+                },
+                "pickupLon": {
+                    "type": "number"
+                },
+                "radiusKm": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "description": "Metadata",
+                    "type": "string"
+                },
+                "totalCount": {
+                    "description": "Vehicles List",
+                    "type": "integer"
+                },
+                "tripDistance": {
+                    "description": "Trip Estimates (applies to all vehicles)",
+                    "type": "number"
+                },
+                "tripDuration": {
+                    "description": "Total trip duration in seconds",
+                    "type": "integer"
+                },
+                "tripDurationMins": {
+                    "description": "Trip duration in minutes",
+                    "type": "integer"
+                },
+                "vehicles": {
+                    "description": "List of vehicles",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleWithDetailsResponse"
+                    }
                 }
             }
         },
@@ -18474,6 +19090,25 @@ const docTemplate = `{
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_modules_messages.SendMessageRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "rideId"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "rideId": {
+                    "type": "string"
                 }
             }
         }
