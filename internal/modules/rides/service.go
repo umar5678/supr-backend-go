@@ -533,7 +533,7 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 					}
 				}
 
-				s.wsHelper.SendRideStatusToBoth(bgCtx, riderID, "", rideID, "cancelled", "No drivers available. Your payment has been refunded.")
+				s.wsHelper.SendRideStatusToBoth(bgCtx, riderID, "", rideID, "cancelled", "No drivers are currently active in you area.")
 			}
 		}()
 	}
