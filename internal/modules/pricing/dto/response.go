@@ -26,6 +26,8 @@ type SurgeZoneResponse struct {
 	ID         string  `json:"id"`
 	AreaName   string  `json:"areaName"`
 	Geohash    string  `json:"geohash"`
+	CenterLat  float64 `json:"centerLat"`
+	CenterLon  float64 `json:"centerLon"`
 	Multiplier float64 `json:"multiplier"`
 	RadiusKm   float64 `json:"radiusKm"`
 	IsActive   bool    `json:"isActive"`
