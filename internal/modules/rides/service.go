@@ -1410,7 +1410,7 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
 	distanceKm := distanceToDropoff
 	const maxCompletionRadiusKm = 0.1 // 100 meters
-	const epsilon = 1e-6              // Floating-point tolerance
+	const epsilon = 0.001             // Small tolerance for floating-point precision (1 meter)
 
 	if distanceKm > maxCompletionRadiusKm+epsilon {
 		logger.Warn("driver outside completion radius", "rideID", rideID, "distanceKm", distanceKm, "maxRadiusKm", maxCompletionRadiusKm)
