@@ -353,8 +353,8 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 	// Estimate duration (assuming 30 km/h average speed)
 	duration := int((distance / 30.0) * 60) // minutes
 
-	// Get surge multiplier
-	surgeMultiplier, _ := s.repo.GetSurgeMultiplier(ctx, req.PickupLat, req.PickupLon, req.VehicleTypeID)
+	// Get surge multiplier using SurgeManager (checks active surge zones)
+	surgeMultiplier, _ := s.surgeManager.GetSurgeMultiplier(ctx, req.PickupLat, req.PickupLon)
 
 	// Calculate fare components
 	baseFare := vehicleType.BaseFare
