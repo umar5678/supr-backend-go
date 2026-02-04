@@ -63,7 +63,7 @@ type StartRideRequest struct {
 }
 
 type CompleteRideRequest struct {
-	RiderPIN       string  `json:"riderPin" binding:"required,len=4"`
+	RiderPIN       string  `json:"riderPin" binding:"omitempty,len=4"`
 	ActualDistance float64 `json:"actualDistance" binding:"required,min=0"`
 	ActualDuration int     `json:"actualDuration" binding:"required,min=0"`
 	DriverLat      float64 `json:"driverLat" binding:"required"`
