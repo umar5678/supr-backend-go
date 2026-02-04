@@ -13,8 +13,8 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		pricing.GET("/surge", handler.GetSurgeMultiplier)
 		pricing.GET("/surge/zones", handler.GetActiveSurgeZones)
 
-		// Admin endpoints (admin role required)
-		pricing.POST("/surge/zones", middleware.RequireAdmin(), handler.CreateSurgeZone)
+		// Admin endpoints (auth + admin role required)
+		pricing.POST("/surge/zones", authMiddleware, middleware.RequireAdmin(), handler.CreateSurgeZone)
 
 		// Enhanced surge pricing endpoints
 		pricing.GET("/surge-rules", handler.GetSurgePricingRules)
