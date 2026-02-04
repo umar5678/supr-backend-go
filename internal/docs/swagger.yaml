@@ -3926,6 +3926,73 @@ definitions:
     - name
     - startTime
     type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneRequest:
+    properties:
+      activeFrom:
+        description: ISO 8601 timestamp
+        type: string
+      activeUntil:
+        description: ISO 8601 timestamp
+        type: string
+      areaGeohash:
+        maxLength: 12
+        type: string
+      areaName:
+        maxLength: 255
+        type: string
+      centerLat:
+        maximum: 90
+        minimum: -90
+        type: number
+      centerLon:
+        maximum: 180
+        minimum: -180
+        type: number
+      isActive:
+        type: boolean
+      multiplier:
+        maximum: 5
+        minimum: 1
+        type: number
+      radiusKm:
+        maximum: 100
+        minimum: 0.1
+        type: number
+    required:
+    - activeFrom
+    - activeUntil
+    - areaGeohash
+    - areaName
+    - centerLat
+    - centerLon
+    - multiplier
+    - radiusKm
+    type: object
+  github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneResponse:
+    properties:
+      activeFrom:
+        type: string
+      activeUntil:
+        type: string
+      areaGeohash:
+        type: string
+      areaName:
+        type: string
+      centerLat:
+        type: number
+      centerLon:
+        type: number
+      createdAt:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      multiplier:
+        type: number
+      radiusKm:
+        type: number
+    type: object
   github_com_umar5678_go-backend_internal_modules_pricing_dto.DemandTrackingResponse:
     properties:
       availableDrivers:
@@ -9041,6 +9108,33 @@ paths:
       summary: Get all active surge zones
       tags:
       - pricing
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Surge zone details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new surge pricing zone
+      tags:
+      - pricing - admin
   /pricing/wait-time:
     post:
       consumes:

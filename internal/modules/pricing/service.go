@@ -24,6 +24,7 @@ type Service interface {
 	CalculateActualFare(ctx context.Context, req dto.CalculateActualFareRequest) (*dto.FareEstimateResponse, error)
 	GetSurgeMultiplier(ctx context.Context, lat, lon float64) (float64, error)
 	GetActiveSurgeZones(ctx context.Context) ([]*dto.SurgeZoneResponse, error)
+	CreateSurgeZone(ctx context.Context, req dto.CreateSurgeZoneRequest) (*dto.CreateSurgeZoneResponse, error)
 	GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdownRequest) (*dto.FareBreakdownResponse, error)
 	CalculateWaitTimeCharge(ctx context.Context, rideID string, arrivedAt time.Time) (*dto.WaitTimeChargeResponse, error)
 	ChangeDestination(ctx context.Context, driverID string, req dto.ChangeDestinationRequest) (*dto.DestinationChangeResponse, error)
@@ -273,6 +274,65 @@ func (s *service) GetActiveSurgeZones(ctx context.Context) ([]*dto.SurgeZoneResp
 
 	// Cache for 5 minutes
 	cache.SetJSON(ctx, cacheKey, result, 5*time.Minute)
+
+	return result, nil
+}
+
+// CreateSurgeZone creates a new surge pricing zone
+func (s *service) CreateSurgeZone(ctx context.Context, req dto.CreateSurgeZoneRequest) (*dto.CreateSurgeZoneResponse, error) {
+	// Parse timestamps
+	activeFrom, err := time.Parse(time.RFC3339, req.ActiveFrom)
+	if err != nil {
+		return nil, response.BadRequest("Invalid activeFrom timestamp format (expected RFC3339)")
+	}
+
+	activeUntil, err := time.Parse(time.RFC3339, req.ActiveUntil)
+	if err != nil {
+		return nil, response.BadRequest("Invalid activeUntil timestamp format (expected RFC3339)")
+	}
+
+	// Validate timestamps
+	if activeUntil.Before(activeFrom) {
+		return nil, response.BadRequest("activeUntil must be after activeFrom")
+	}
+
+	// Create model
+	zone := &models.SurgePricingZone{
+		AreaName:    req.AreaName,
+		AreaGeohash: req.AreaGeohash,
+		CenterLat:   req.CenterLat,
+		CenterLon:   req.CenterLon,
+		RadiusKm:    req.RadiusKm,
+		Multiplier:  req.Multiplier,
+		ActiveFrom:  activeFrom,
+		ActiveUntil: activeUntil,
+		IsActive:    req.IsActive,
+	}
+
+	// Save to database
+	if err := s.repo.CreateSurgeZone(ctx, zone); err != nil {
+		logger.Error("failed to create surge zone", "error", err)
+		return nil, response.InternalServerError("Failed to create surge zone", err)
+	}
+
+	// Invalidate cache
+	cacheKey := "surge:zones:active"
+	cache.Delete(ctx, cacheKey)
+
+	// Convert to response
+	result := &dto.CreateSurgeZoneResponse{
+		ID:          zone.ID,
+		AreaName:    zone.AreaName,
+		AreaGeohash: zone.AreaGeohash,
+		CenterLat:   zone.CenterLat,
+		CenterLon:   zone.CenterLon,
+		RadiusKm:    zone.RadiusKm,
+		Multiplier:  zone.Multiplier,
+		IsActive:    zone.IsActive,
+		ActiveFrom:  zone.ActiveFrom,
+		ActiveUntil: zone.ActiveUntil,
+		CreatedAt:   zone.CreatedAt,
+	}
 
 	return result, nil
 }

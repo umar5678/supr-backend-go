@@ -1,6 +1,8 @@
 // internal/modules/pricing/dto/response.go
 package dto
 
+import "time"
+
 type FareEstimateResponse struct {
 	BaseFare           float64               `json:"baseFare"`
 	DistanceFare       float64               `json:"distanceFare"`
@@ -26,6 +28,21 @@ type SurgeZoneResponse struct {
 	Multiplier float64 `json:"multiplier"`
 	RadiusKm   float64 `json:"radiusKm"`
 	IsActive   bool    `json:"isActive"`
+}
+
+// CreateSurgeZoneResponse returns created surge zone details
+type CreateSurgeZoneResponse struct {
+	ID          string    `json:"id"`
+	AreaName    string    `json:"areaName"`
+	AreaGeohash string    `json:"areaGeohash"`
+	CenterLat   float64   `json:"centerLat"`
+	CenterLon   float64   `json:"centerLon"`
+	RadiusKm    float64   `json:"radiusKm"`
+	Multiplier  float64   `json:"multiplier"`
+	IsActive    bool      `json:"isActive"`
+	ActiveFrom  time.Time `json:"activeFrom"`
+	ActiveUntil time.Time `json:"activeUntil"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 type FareBreakdownResponse struct {

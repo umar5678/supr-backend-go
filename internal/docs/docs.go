@@ -5651,6 +5651,54 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing - admin"
+                ],
+                "summary": "Create a new surge pricing zone",
+                "parameters": [
+                    {
+                        "description": "Surge zone details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
             }
         },
         "/pricing/wait-time": {
@@ -16679,6 +16727,98 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneRequest": {
+            "type": "object",
+            "required": [
+                "activeFrom",
+                "activeUntil",
+                "areaGeohash",
+                "areaName",
+                "centerLat",
+                "centerLon",
+                "multiplier",
+                "radiusKm"
+            ],
+            "properties": {
+                "activeFrom": {
+                    "description": "ISO 8601 timestamp",
+                    "type": "string"
+                },
+                "activeUntil": {
+                    "description": "ISO 8601 timestamp",
+                    "type": "string"
+                },
+                "areaGeohash": {
+                    "type": "string",
+                    "maxLength": 12
+                },
+                "areaName": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "centerLat": {
+                    "type": "number",
+                    "maximum": 90,
+                    "minimum": -90
+                },
+                "centerLon": {
+                    "type": "number",
+                    "maximum": 180,
+                    "minimum": -180
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "multiplier": {
+                    "type": "number",
+                    "maximum": 5,
+                    "minimum": 1
+                },
+                "radiusKm": {
+                    "type": "number",
+                    "maximum": 100,
+                    "minimum": 0.1
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneResponse": {
+            "type": "object",
+            "properties": {
+                "activeFrom": {
+                    "type": "string"
+                },
+                "activeUntil": {
+                    "type": "string"
+                },
+                "areaGeohash": {
+                    "type": "string"
+                },
+                "areaName": {
+                    "type": "string"
+                },
+                "centerLat": {
+                    "type": "number"
+                },
+                "centerLon": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "multiplier": {
+                    "type": "number"
+                },
+                "radiusKm": {
+                    "type": "number"
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_pricing_dto.DemandTrackingResponse": {
             "type": "object",
             "properties": {
@@ -19125,6 +19265,8 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "Production-grade Go backend API",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
+	LeftDelim:        "{{",
+	RightDelim:       "}}",
 }
 
 func init() {

@@ -97,6 +97,36 @@ func (h *Handler) GetActiveSurgeZones(c *gin.Context) {
 	response.Success(c, zones, "Active surge zones retrieved successfully")
 }
 
+// CreateSurgeZone godoc
+// @Summary Create a new surge pricing zone
+// @Tags pricing - admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body dto.CreateSurgeZoneRequest true "Surge zone details"
+// @Success 201 {object} response.Response{data=dto.CreateSurgeZoneResponse}
+// @Router /pricing/surge/zones [post]
+func (h *Handler) CreateSurgeZone(c *gin.Context) {
+	var req dto.CreateSurgeZoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body"))
+		return
+	}
+
+	if err := req.Validate(); err != nil {
+		c.Error(response.BadRequest(err.Error()))
+		return
+	}
+
+	result, err := h.service.CreateSurgeZone(c.Request.Context(), req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result, "Surge zone created successfully")
+}
+
 func (h *Handler) getSurgeMessage(multiplier float64) string {
 	switch {
 	case multiplier == 1.0:
