@@ -27,9 +27,9 @@ func (m *SurgeManager) GetSurgeMultiplier(ctx context.Context, lat, lon float64)
 		return 1.0, err // Default to no surge
 	}
 
-	// If no surge zones found, return default or random fake surge
+	// If no surge zones found, return 1.0 (no surge)
 	if len(zones) == 0 {
-		return m.getFakeSurgeMultiplier(), nil
+		return 1.0, nil
 	}
 
 	// Return highest surge multiplier if in multiple zones

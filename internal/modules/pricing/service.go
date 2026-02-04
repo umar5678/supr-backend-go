@@ -354,7 +354,17 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 	duration := int((distance / 30.0) * 60) // minutes
 
 	// Get surge multiplier using SurgeManager (checks active surge zones)
-	surgeMultiplier, _ := s.surgeManager.GetSurgeMultiplier(ctx, req.PickupLat, req.PickupLon)
+	surgeMultiplier, err := s.surgeManager.GetSurgeMultiplier(ctx, req.PickupLat, req.PickupLon)
+	if err != nil {
+		logger.Warn("failed to get surge multiplier", "error", err, "lat", req.PickupLat, "lon", req.PickupLon)
+		surgeMultiplier = 1.0
+	}
+	
+	logger.Info("surge multiplier retrieved for fare breakdown",
+		"lat", req.PickupLat,
+		"lon", req.PickupLon,
+		"surgeMultiplier", surgeMultiplier,
+	)
 
 	// Calculate fare components
 	baseFare := vehicleType.BaseFare
@@ -365,6 +375,17 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 	subTotal := baseFare + distanceCharge + timeCharge + bookingFee
 	surgeCharge := subTotal * (surgeMultiplier - 1.0)
 	totalFare := subTotal + surgeCharge
+
+	logger.Info("fare breakdown calculation",
+		"baseFare", baseFare,
+		"distanceCharge", distanceCharge,
+		"timeCharge", timeCharge,
+		"bookingFee", bookingFee,
+		"subTotal", subTotal,
+		"surgeMultiplier", surgeMultiplier,
+		"surgeCharge", surgeCharge,
+		"totalFare", totalFare,
+	)
 
 	// Build fare components
 	components := []dto.FareComponent{
