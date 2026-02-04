@@ -266,6 +266,7 @@ func (s *service) GetActiveSurgeZones(ctx context.Context) ([]*dto.SurgeZoneResp
 		result[i] = &dto.SurgeZoneResponse{
 			ID:         zone.ID,
 			AreaName:   zone.AreaName,
+			Geohash:    zone.AreaGeohash,
 			Multiplier: zone.Multiplier,
 			RadiusKm:   zone.RadiusKm,
 			IsActive:   zone.IsActive,

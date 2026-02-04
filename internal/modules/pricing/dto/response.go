@@ -25,6 +25,7 @@ type FareEstimateResponse struct {
 type SurgeZoneResponse struct {
 	ID         string  `json:"id"`
 	AreaName   string  `json:"areaName"`
+	Geohash    string  `json:"geohash"`
 	Multiplier float64 `json:"multiplier"`
 	RadiusKm   float64 `json:"radiusKm"`
 	IsActive   bool    `json:"isActive"`
