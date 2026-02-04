@@ -19265,8 +19265,6 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "Production-grade Go backend API",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
-	LeftDelim:        "{{",
-	RightDelim:       "}}",
 }
 
 func init() {
