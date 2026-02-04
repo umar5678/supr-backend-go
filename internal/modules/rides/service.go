@@ -1406,17 +1406,18 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	// logger.Info("ride PIN verified at completion", "rideID", rideID)
 
-	// ✅ VERIFY: Driver is within 150m of dropoff location
+	// ✅ VERIFY: Driver is within 100m of dropoff location
 	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
 	distanceKm := distanceToDropoff
-	const maxCompletionRadiusKm = 0.15 // 150 meters
+	const maxCompletionRadiusKm = 0.1 // 100 meters
+	const epsilon = 1e-6              // Floating-point tolerance
 
-	if distanceKm > maxCompletionRadiusKm {
+	if distanceKm > maxCompletionRadiusKm+epsilon {
 		logger.Warn("driver outside completion radius", "rideID", rideID, "distanceKm", distanceKm, "maxRadiusKm", maxCompletionRadiusKm)
-		return nil, response.BadRequest(fmt.Sprintf("You must be within 150 meters of the destination. Current distance: %.0f meters", distanceKm*1000))
+		return nil, response.BadRequest(fmt.Sprintf("You must be within 100 meters of the destination. Current distance: %.0f meters", distanceKm*1000))
 	}
 
-	logger.Info("driver verified within 150 meter radius", "rideID", rideID, "distanceKm", distanceKm)
+	logger.Info("driver verified within 100 meter radius", "rideID", rideID, "distanceKm", distanceKm)
 
 	// Calculate actual fare
 	actualFareReq := pricingdto.CalculateActualFareRequest{
