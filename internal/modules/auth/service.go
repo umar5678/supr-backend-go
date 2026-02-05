@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/umar5678/go-backend/internal/config"
@@ -16,7 +15,6 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/password"
 	"github.com/umar5678/go-backend/internal/utils/response"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -64,7 +62,7 @@ func (s *service) PhoneSignup(ctx context.Context, req authdto.PhoneSignupReques
 
 		if existingUser.Role == req.Role {
 			return s.PhoneLogin(ctx, authdto.PhoneLoginRequest{
-				Phone: req.Phone,
+				Phone: &req.Phone,
 			})
 		}
 		existingUser.Role = req.Role
@@ -137,29 +135,29 @@ func (s *service) PhoneLogin(ctx context.Context, req authdto.PhoneLoginRequest)
 		return nil, response.BadRequest(err.Error())
 	}
 
-	user, err := s.repo.FindByPhone(ctx, req.Phone)
+	user, err := s.repo.FindByPhone(ctx, *req.Phone)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-
 			return nil, response.NotFoundError("Phone number not registered. Please sign up first.")
 		}
 		return nil, response.InternalServerError("Failed to find user", err)
 	}
 
-
 	if user.Status != models.StatusActive {
 		return nil, response.ForbiddenError("Account is not active")
 	}
+	if req.Role != "" {
+		user.Role = req.Role
+	}
 
 	s.repo.UpdateLastLogin(ctx, user.ID)
-
 
 	authResp, err := s.generateAuthResponse(user)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Info("phone login successful", "userId", user.ID, "phone", req.Phone)
+	logger.Info("phone login successful", "userId", user.ID, "phone", *req.Phone, "role", user.Role)
 
 	return authResp, nil
 }
@@ -168,7 +166,6 @@ func (s *service) EmailSignup(ctx context.Context, req authdto.EmailSignupReques
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
-
 
 	existingByEmail, err := s.repo.FindByEmail(ctx, req.Email)
 	if err == nil && existingByEmail != nil {
@@ -203,13 +200,11 @@ func (s *service) EmailSignup(ctx context.Context, req authdto.EmailSignupReques
 		initialStatus = models.StatusPendingApproval
 	}
 
-
 	referralCode, err := codegen.GenerateReferralCode()
 	if err != nil {
 		logger.Error("failed to generate referral code", "error", err, "email", req.Email)
 		return nil, response.InternalServerError("Failed to generate referral code", err)
 	}
-
 
 	ridePIN, err := codegen.GenerateRidePIN()
 	if err != nil {
@@ -243,14 +238,11 @@ func (s *service) EmailSignup(ctx context.Context, req authdto.EmailSignupReques
 		}
 	}
 
-
 	if err := s.createUserWallet(ctx, user); err != nil {
 		logger.Error("failed to create wallet", "error", err, "userId", user.ID)
 	}
 
-
 	s.repo.UpdateLastLogin(ctx, user.ID)
-
 
 	authResp, err := s.generateAuthResponse(user)
 	if err != nil {
@@ -263,8 +255,6 @@ func (s *service) EmailSignup(ctx context.Context, req authdto.EmailSignupReques
 }
 
 func (s *service) EmailLogin(ctx context.Context, req authdto.EmailLoginRequest) (*authdto.AuthResponse, error) {
-	fmt.Println("=========================================================service  called")
-	logger.Debug("service fun for emial login, ============")
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
@@ -272,7 +262,7 @@ func (s *service) EmailLogin(ctx context.Context, req authdto.EmailLoginRequest)
 	user, err := s.repo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, response.UnauthorizedError("Invalid email or password , email or pas")
+			return nil, response.UnauthorizedError("Invalid email or password")
 		}
 		return nil, response.InternalServerError("Failed to find user", err)
 	}
@@ -282,21 +272,16 @@ func (s *service) EmailLogin(ctx context.Context, req authdto.EmailLoginRequest)
 	}
 
 	if !password.Verify(req.Password, *user.Password) {
-		fmt.Println("RAW stored hash: ", *user.Password)
-		logger.Debug("RAW stored hash: ", *user.Password)
-		fmt.Println("Hash length: ", len(*user.Password))
-		logger.Debug("Hash length: ", len(*user.Password))
-		fmt.Println("Hash starts with: ", (*user.Password)[:7])
-
-		err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(req.Password))
-		fmt.Println("bcrypt compare error: ", err)
-		logger.Debug("bcrypt error: ", err)
-
 		return nil, response.UnauthorizedError("Invalid credentials")
 	}
 
 	if user.Status != models.StatusActive {
 		return nil, response.ForbiddenError("Account is not active")
+	}
+
+	// If a specific role is requested, use it; otherwise use the user's current role
+	if req.Role != "" {
+		user.Role = req.Role
 	}
 
 	s.repo.UpdateLastLogin(ctx, user.ID)
@@ -305,6 +290,8 @@ func (s *service) EmailLogin(ctx context.Context, req authdto.EmailLoginRequest)
 	if err != nil {
 		return nil, err
 	}
+
+	logger.Info("email login successful", "userId", user.ID, "email", req.Email, "role", user.Role)
 
 	logger.Info("email login successful", "userId", user.ID, "email", req.Email)
 
@@ -363,14 +350,12 @@ func (s *service) Logout(ctx context.Context, userID, refreshToken string) error
 		cache.Set(ctx, "blacklist:"+refreshToken, "1", time.Duration(s.cfg.JWT.RefreshExpiry)*20)
 	}
 
-
 	cache.Delete(ctx, "user:profile:"+userID)
 
 	logger.Info("user logged out", "userId", userID)
 
 	return nil
 }
-
 
 func (s *service) GetProfile(ctx context.Context, userID string) (*authdto.UserResponse, error) {
 

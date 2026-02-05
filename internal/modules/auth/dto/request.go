@@ -36,14 +36,15 @@ func (r *PhoneSignupRequest) Validate() error {
 }
 
 type PhoneLoginRequest struct {
-	Phone string          `json:"phone" binding:"required"`
+	Phone *string         `json:"phone" binding:"required"`
+	Role  models.UserRole `json:"role" binding:"omitempty,oneof=rider driver service_provider handyman delivery_person admin"`
 }
 
 func (r *PhoneLoginRequest) Validate() error {
-	if r.Phone == "" {
+	if r.Phone == nil || *r.Phone == "" {
 		return errors.New("phone is required")
 	}
-	if !phoneRegex.MatchString(r.Phone) {
+	if !phoneRegex.MatchString(*r.Phone) {
 		return errors.New("invalid phone number format")
 	}
 	return nil
@@ -89,8 +90,9 @@ func (r *EmailSignupRequest) Validate() error {
 }
 
 type EmailLoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email    string          `json:"email" binding:"required,email"`
+	Password string          `json:"password" binding:"required"`
+	Role     models.UserRole `json:"role" binding:"omitempty,oneof=rider driver service_provider handyman delivery_person admin"`
 }
 
 func (r *EmailLoginRequest) Validate() error {
