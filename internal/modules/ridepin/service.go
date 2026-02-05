@@ -70,7 +70,6 @@ func (s *service) RegenerateRidePIN(ctx context.Context, userID string) (string,
 	return newPIN, nil
 }
 
-// Generate random 4-digit PIN
 func generateRidePIN() string {
 	n, _ := rand.Int(rand.Reader, big.NewInt(10000))
 	return fmt.Sprintf("%04d", n.Int64())

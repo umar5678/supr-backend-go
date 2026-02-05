@@ -116,7 +116,6 @@ func (s *service) ValidatePromoCode(ctx context.Context, userID string, req dto.
         }, nil
     }
 
-    // Check usage limits
     if promo.UsageLimit > 0 && promo.UsageCount >= promo.UsageLimit {
         return &dto.ValidatePromoCodeResponse{
             Valid:   false,
@@ -124,7 +123,6 @@ func (s *service) ValidatePromoCode(ctx context.Context, userID string, req dto.
         }, nil
     }
 
-    // Check per-user limit
     userUsageCount, _ := s.repo.CountUserUsage(ctx, promo.ID, userID)
     if userUsageCount >= int64(promo.PerUserLimit) {
         return &dto.ValidatePromoCodeResponse{
@@ -133,7 +131,6 @@ func (s *service) ValidatePromoCode(ctx context.Context, userID string, req dto.
         }, nil
     }
 
-    // Check minimum ride amount
     if req.RideAmount < promo.MinRideAmount {
         return &dto.ValidatePromoCodeResponse{
             Valid:   false,
@@ -141,7 +138,6 @@ func (s *service) ValidatePromoCode(ctx context.Context, userID string, req dto.
         }, nil
     }
 
-    // Calculate discount
     discount := s.calculateDiscount(promo, req.RideAmount)
     finalAmount := req.RideAmount - discount
 
@@ -154,7 +150,7 @@ func (s *service) ValidatePromoCode(ctx context.Context, userID string, req dto.
 }
 
 func (s *service) ApplyPromoCode(ctx context.Context, userID string, req dto.ApplyPromoCodeRequest) (*dto.ApplyPromoCodeResponse, error) {
-    // Validate first
+
     validateReq := dto.ValidatePromoCodeRequest{
         Code:       req.Code,
         RideAmount: req.RideAmount,
@@ -171,7 +167,6 @@ func (s *service) ApplyPromoCode(ctx context.Context, userID string, req dto.App
     code := strings.ToUpper(req.Code)
     promo, _ := s.repo.FindPromoCodeByCode(ctx, code)
 
-    // Create usage record
     usage := &models.PromoCodeUsage{
         PromoCodeID:    promo.ID,
         UserID:         userID,
@@ -183,7 +178,6 @@ func (s *service) ApplyPromoCode(ctx context.Context, userID string, req dto.App
         return nil, response.InternalServerError("Failed to apply promo code", err)
     }
 
-    // Increment usage count
     s.repo.IncrementUsageCount(ctx, promo.ID)
 
     logger.Info("promo code applied",

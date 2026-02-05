@@ -35,9 +35,8 @@ type RideResponse struct {
 	PromoDiscount  *float64 `json:"promoDiscount,omitempty"`
 	WaitTimeCharge *float64 `json:"waitTimeCharge,omitempty"`
 
-	// Driver and Rider Fares - Both see the same amount (with promo discount applied if used)
-	DriverFare *float64 `json:"driverFare,omitempty"` // What driver earns (with discount applied)
-	RiderFare  *float64 `json:"riderFare,omitempty"`  // What rider pays (with discount applied)
+	DriverFare *float64 `json:"driverFare,omitempty"`
+	RiderFare  *float64 `json:"riderFare,omitempty"` 
 
 	SurgeMultiplier    float64 `json:"surgeMultiplier"`
 	RiderNotes         string  `json:"riderNotes,omitempty"`
@@ -73,7 +72,6 @@ type RideListResponse struct {
 }
 
 func ToRideResponse(ride *models.Ride) *RideResponse {
-	// ✅ CRITICAL: Handle nil ride to prevent panic
 	if ride == nil {
 		return nil
 	}
@@ -145,41 +143,39 @@ type LocationDTO struct {
 	Longitude float64 `json:"longitude"`
 }
 
-// AvailableCarResponse represents a single available car
 type AvailableCarResponse struct {
-	ID                 string    `json:"id"`           // Car/Vehicle ID
-	DriverID           string    `json:"driverId"`     // Driver ID
-	DriverName         string    `json:"driverName"`   // Driver name
-	DriverRating       float64   `json:"driverRating"` // Driver rating (0-5)
+	ID                 string    `json:"id"`          
+	DriverID           string    `json:"driverId"`    
+	DriverName         string    `json:"driverName"`  
+	DriverRating       float64   `json:"driverRating"`
 	DriverImage        *string   `json:"driverImage,omitempty"`
 	VehicleTypeID      string    `json:"vehicleTypeId"`
-	VehicleType        string    `json:"vehicleType"` // e.g., "economy", "comfort", "premium", "xl"
+	VehicleType        string    `json:"vehicleType"`
 	VehicleDisplayName string    `json:"vehicleDisplayName"`
-	Make               string    `json:"make"`            // e.g., "Toyota"
-	Model              string    `json:"model"`           // e.g., "Corolla"
-	Color              string    `json:"color"`           // e.g., "Silver"
-	LicensePlate       string    `json:"licensePlate"`    // e.g., "DHA-1234"
-	Capacity           int       `json:"capacity"`        // Passenger capacity
-	CurrentLatitude    float64   `json:"currentLatitude"` // Current location
+	Make               string    `json:"make"`           
+	Model              string    `json:"model"`          
+	Color              string    `json:"color"`          
+	LicensePlate       string    `json:"licensePlate"`   
+	Capacity           int       `json:"capacity"`       
+	CurrentLatitude    float64   `json:"currentLatitude"`
 	CurrentLongitude   float64   `json:"currentLongitude"`
-	Heading            int       `json:"heading"`          // Direction (0-360)
-	DistanceKm         float64   `json:"distanceKm"`       // Distance from rider
-	ETASeconds         int       `json:"etaSeconds"`       // ETA in seconds
-	ETAMinutes         int       `json:"etaMinutes"`       // ETA in minutes
-	EstimatedFare      float64   `json:"estimatedFare"`    // Estimated ride fare
-	SurgeMultiplier    float64   `json:"surgeMultiplier"`  // Current surge pricing multiplier
-	AcceptanceRate     float64   `json:"acceptanceRate"`   // Driver acceptance rate
-	CancellationRate   float64   `json:"cancellationRate"` // Driver cancellation rate
-	TotalTrips         int       `json:"totalTrips"`       // Driver total trips
-	Status             string    `json:"status"`           // "online", "busy", etc.
+	Heading            int       `json:"heading"`          
+	DistanceKm         float64   `json:"distanceKm"`       
+	ETASeconds         int       `json:"etaSeconds"`       
+	ETAMinutes         int       `json:"etaMinutes"`       
+	EstimatedFare      float64   `json:"estimatedFare"`    
+	SurgeMultiplier    float64   `json:"surgeMultiplier"`  
+	AcceptanceRate     float64   `json:"acceptanceRate"`   
+	CancellationRate   float64   `json:"cancellationRate"` 
+	TotalTrips         int       `json:"totalTrips"`       
+	Status             string    `json:"status"`           
 	IsVerified         bool      `json:"isVerified"`
 	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
-// AvailableCarsListResponse represents a list of available cars
 type AvailableCarsListResponse struct {
-	TotalCount int                     `json:"totalCount"` // Total available cars found
-	CarsCount  int                     `json:"carsCount"`  // Number of cars in response
+	TotalCount int                     `json:"totalCount"` 
+	CarsCount  int                     `json:"carsCount"`  
 	RiderLat   float64                 `json:"riderLat"`
 	RiderLon   float64                 `json:"riderLon"`
 	RadiusKm   float64                 `json:"radiusKm"`
@@ -187,76 +183,64 @@ type AvailableCarsListResponse struct {
 	Timestamp  time.Time               `json:"timestamp"`
 }
 
-// WebSocketAvailableCarsMessage represents a WebSocket message for streaming available cars
 type WebSocketAvailableCarsMessage struct {
-	Type      string                     `json:"type"` // "cars_update", "error", "end"
+	Type      string                     `json:"type"`
 	Data      *AvailableCarsListResponse `json:"data,omitempty"`
 	Error     string                     `json:"error,omitempty"`
 	Timestamp time.Time                  `json:"timestamp"`
 }
 
-// VehicleWithDetailsResponse represents a vehicle with all pricing and availability details
 type VehicleWithDetailsResponse struct {
-	// Vehicle Information
-	ID               string  `json:"id"`           // Vehicle ID
-	DriverID         string  `json:"driverId"`     // Driver Profile ID
-	DriverName       string  `json:"driverName"`   // Driver name
-	DriverRating     float64 `json:"driverRating"` // Driver rating (0-5)
+	ID               string  `json:"id"`          
+	DriverID         string  `json:"driverId"`    
+	DriverName       string  `json:"driverName"`  
+	DriverRating     float64 `json:"driverRating"`
 	DriverImage      *string `json:"driverImage,omitempty"`
-	AcceptanceRate   float64 `json:"acceptanceRate"`   // Driver acceptance rate %
-	CancellationRate float64 `json:"cancellationRate"` // Driver cancellation rate %
-	TotalTrips       int     `json:"totalTrips"`       // Driver total trips
-	IsVerified       bool    `json:"isVerified"`       // Is driver verified
-	Status           string  `json:"status"`           // Driver status: online, busy
+	AcceptanceRate   float64 `json:"acceptanceRate"`   
+	CancellationRate float64 `json:"cancellationRate"` 
+	TotalTrips       int     `json:"totalTrips"`       
+	IsVerified       bool    `json:"isVerified"`       
+	Status           string  `json:"status"`           
 
-	// Vehicle Details
-	VehicleTypeID      string `json:"vehicleTypeId"`      // Vehicle type ID
-	VehicleType        string `json:"vehicleType"`        // e.g., "economy", "comfort"
-	VehicleDisplayName string `json:"vehicleDisplayName"` // e.g., "Economy"
-	Make               string `json:"make"`               // e.g., "Toyota"
-	Model              string `json:"model"`              // e.g., "Corolla"
-	Year               int    `json:"year"`               // Year of manufacture
-	Color              string `json:"color"`              // e.g., "Silver"
-	LicensePlate       string `json:"licensePlate"`       // e.g., "DHA-1234"
-	Capacity           int    `json:"capacity"`           // Passenger capacity
+	VehicleTypeID      string `json:"vehicleTypeId"`      
+	VehicleType        string `json:"vehicleType"`        
+	VehicleDisplayName string `json:"vehicleDisplayName"` 
+	Make               string `json:"make"`               
+	Model              string `json:"model"`              
+	Year               int    `json:"year"`               
+	Color              string `json:"color"`              
+	LicensePlate       string `json:"licensePlate"`       
+	Capacity           int    `json:"capacity"`           
 
-	// Location & Distance
-	CurrentLatitude  float64 `json:"currentLatitude"`  // Driver current latitude
-	CurrentLongitude float64 `json:"currentLongitude"` // Driver current longitude
-	Heading          int     `json:"heading"`          // Direction 0-360
-	DistanceKm       float64 `json:"distanceKm"`       // Distance from pickup
+	CurrentLatitude  float64 `json:"currentLatitude"` 
+	CurrentLongitude float64 `json:"currentLongitude"`
+	Heading          int     `json:"heading"`         
+	DistanceKm       float64 `json:"distanceKm"`      
 
-	// ETA Information
-	ETASeconds   int    `json:"etaSeconds"`   // ETA in seconds (to pickup)
-	ETAMinutes   int    `json:"etaMinutes"`   // ETA in minutes
-	ETAFormatted string `json:"etaFormatted"` // Formatted ETA string e.g., "4 min"
+	ETASeconds   int    `json:"etaSeconds"`  
+	ETAMinutes   int    `json:"etaMinutes"`  
+	ETAFormatted string `json:"etaFormatted"`
 
-	// Pricing Information
-	BaseFare              float64 `json:"baseFare"`              // Base fare for this vehicle type
-	PerKmRate             float64 `json:"perKmRate"`             // Rate per km
-	PerMinRate            float64 `json:"perMinRate"`            // Rate per minute
-	EstimatedFare         float64 `json:"estimatedFare"`         // Estimated fare for trip
-	EstimatedDistance     float64 `json:"estimatedDistance"`     // Estimated trip distance
-	EstimatedDuration     int     `json:"estimatedDuration"`     // Estimated trip duration in seconds
-	EstimatedDurationMins int     `json:"estimatedDurationMins"` // Estimated duration in minutes
+	BaseFare              float64 `json:"baseFare"`              
+	PerKmRate             float64 `json:"perKmRate"`             
+	PerMinRate            float64 `json:"perMinRate"`            
+	EstimatedFare         float64 `json:"estimatedFare"`         
+	EstimatedDistance     float64 `json:"estimatedDistance"`     
+	EstimatedDuration     int     `json:"estimatedDuration"`     
+	EstimatedDurationMins int     `json:"estimatedDurationMins"` 
 
-	// Surge Pricing
-	SurgeMultiplier float64 `json:"surgeMultiplier"` // Current surge multiplier
-	SurgeReason     string  `json:"surgeReason"`     // Why surge is active: "peak_hours", "high_demand", etc.
+	SurgeMultiplier float64 `json:"surgeMultiplier"` 
+	SurgeReason     string  `json:"surgeReason"`     
 
-	// Demand Information
-	PendingRequests  int    `json:"pendingRequests"`  // Pending ride requests in zone
-	AvailableDrivers int    `json:"availableDrivers"` // Available drivers in zone
-	Demand           string `json:"demand"`           // Demand level: "low", "normal", "high", "extreme"
+	PendingRequests  int    `json:"pendingRequests"` 
+	AvailableDrivers int    `json:"availableDrivers"`
+	Demand           string `json:"demand"`          
 
-	// Timestamps
-	UpdatedAt time.Time `json:"updatedAt"` // When driver info was last updated
-	Timestamp time.Time `json:"timestamp"` // Response timestamp
+	UpdatedAt time.Time `json:"updatedAt"` 
+	Timestamp time.Time `json:"timestamp"` 
 }
 
-// VehiclesWithDetailsListResponse represents response with multiple vehicles and pricing summary
 type VehiclesWithDetailsListResponse struct {
-	// Trip Information
 	PickupLat      float64 `json:"pickupLat"`
 	PickupLon      float64 `json:"pickupLon"`
 	PickupAddress  string  `json:"pickupAddress"`
@@ -265,16 +249,13 @@ type VehiclesWithDetailsListResponse struct {
 	DropoffAddress string  `json:"dropoffAddress"`
 	RadiusKm       float64 `json:"radiusKm"`
 
-	// Trip Estimates (applies to all vehicles)
-	TripDistance     float64 `json:"tripDistance"`     // Total trip distance in km
-	TripDuration     int     `json:"tripDuration"`     // Total trip duration in seconds
-	TripDurationMins int     `json:"tripDurationMins"` // Trip duration in minutes
+	TripDistance     float64 `json:"tripDistance"`     
+	TripDuration     int     `json:"tripDuration"`     
+	TripDurationMins int     `json:"tripDurationMins"` 
 
-	// Vehicles List
-	TotalCount int                           `json:"totalCount"` // Total vehicles found
-	CarsCount  int                           `json:"carsCount"`  // Number of vehicles in response
-	Vehicles   []*VehicleWithDetailsResponse `json:"vehicles"`   // List of vehicles
+	TotalCount int                           `json:"totalCount"`
+	CarsCount  int                           `json:"carsCount"` 
+	Vehicles   []*VehicleWithDetailsResponse `json:"vehicles"`  
 
-	// Metadata
 	Timestamp time.Time `json:"timestamp"`
 }

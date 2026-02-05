@@ -1,4 +1,3 @@
-// internal/modules/fraud/handler.go
 package fraud
 
 import (

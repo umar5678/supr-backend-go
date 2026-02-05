@@ -8,7 +8,6 @@ import (
 func RegisterRoutes(
 	router *gin.RouterGroup,
 	handler *Handler,
-	orderHandler *OrderHandler,
 	adminAuthMiddleware gin.HandlerFunc,
 ) {
 	// All routes require admin authentication
@@ -49,29 +48,29 @@ func RegisterRoutes(
 		orders := homeservices.Group("/orders")
 		{
 			// List and search
-			orders.GET("", orderHandler.GetOrders)
-			orders.GET("/:id", orderHandler.GetOrderByID)
-			orders.GET("/number/:orderNumber", orderHandler.GetOrderByNumber)
-			orders.GET("/:id/history", orderHandler.GetOrderHistory)
+			orders.GET("", handler.GetOrders)
+			orders.GET("/:id", handler.GetOrderByID)
+			orders.GET("/number/:orderNumber", handler.GetOrderByNumber)
+			orders.GET("/:id/history", handler.GetOrderHistory)
 
 			// Order actions
-			orders.PATCH("/:id/status", orderHandler.UpdateOrderStatus)
-			orders.POST("/:id/reassign", orderHandler.ReassignOrder)
-			orders.POST("/:id/cancel", orderHandler.CancelOrder)
+			orders.PATCH("/:id/status", handler.UpdateOrderStatus)
+			orders.POST("/:id/reassign", handler.ReassignOrder)
+			orders.POST("/:id/cancel", handler.CancelOrder)
 
 			// Bulk operations
-			orders.POST("/bulk/status", orderHandler.BulkUpdateStatus)
+			orders.POST("/bulk/status", handler.BulkUpdateStatus)
 		}
 
 		// ==================== Analytics ====================
 		analytics := homeservices.Group("/analytics")
 		{
-			analytics.GET("/overview", orderHandler.GetOverviewAnalytics)
-			analytics.GET("/providers", orderHandler.GetProviderAnalytics)
-			analytics.GET("/revenue", orderHandler.GetRevenueReport)
+			analytics.GET("/overview", handler.GetOverviewAnalytics)
+			analytics.GET("/providers", handler.GetProviderAnalytics)
+			analytics.GET("/revenue", handler.GetRevenueReport)
 		}
 
 		// ==================== Dashboard ====================
-		homeservices.GET("/dashboard", orderHandler.GetDashboard)
+		homeservices.GET("/dashboard", handler.GetDashboard)
 	}
 }

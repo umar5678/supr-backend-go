@@ -25,7 +25,7 @@ type Service interface {
 
 type service struct {
 	repo   Repository
-	userDB *gorm.DB // To fetch user emergency contacts
+	userDB *gorm.DB
 }
 
 func NewService(repo Repository, db *gorm.DB) Service {
@@ -40,7 +40,6 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Check if user already has an active SOS
 	existingAlert, err := s.repo.FindActiveByUserID(ctx, userID)
 	if err == nil && existingAlert.Status == "active" {
 		return nil, response.BadRequest("You already have an active SOS alert")
@@ -53,7 +52,7 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 		Latitude:    req.Latitude,
 		Longitude:   req.Longitude,
 		Status:      "active",
-		Severity:    "critical", // SOS alerts are always critical
+		Severity:    "critical",
 		TriggeredAt: time.Now(),
 	}
 
@@ -62,10 +61,8 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 		return nil, response.InternalServerError("Failed to trigger SOS", err)
 	}
 
-	// Fetch alert with user info
 	alert, _ = s.repo.FindByID(ctx, alert.ID)
 
-	// Send notifications asynchronously
 	go s.notifyEmergencyContacts(context.Background(), alert)
 	go s.notifySafetyTeam(context.Background(), alert)
 
@@ -85,7 +82,6 @@ func (s *service) GetSOS(ctx context.Context, userID, alertID string) (*dto.SOSA
 		return nil, response.NotFoundError("SOS alert")
 	}
 
-	// Users can only see their own alerts (admins see all)
 	if alert.UserID != userID {
 		return nil, response.ForbiddenError("Unauthorized")
 	}
@@ -172,7 +168,6 @@ func (s *service) CancelSOS(ctx context.Context, userID, alertID string) error {
 }
 
 func (s *service) notifyEmergencyContacts(ctx context.Context, alert *models.SOSAlert) {
-	// Fetch user emergency contact
 	var user models.User
 	if err := s.userDB.WithContext(ctx).Where("id = ?", alert.UserID).First(&user).Error; err != nil {
 		logger.Error("failed to fetch user for emergency contact", "error", err, "userID", alert.UserID)
@@ -185,17 +180,15 @@ func (s *service) notifyEmergencyContacts(ctx context.Context, alert *models.SOS
 	}
 
 	message := fmt.Sprintf(
-		"🚨 EMERGENCY ALERT: %s has triggered an SOS. Location: https://maps.google.com/?q=%f,%f",
+		"EMERGENCY ALERT: %s has triggered an SOS. Location: https://maps.google.com/?q=%f,%f",
 		user.Name, alert.Latitude, alert.Longitude,
 	)
 
-	// TODO: Send SMS via Twilio/SNS
 	logger.Info("emergency contact notification",
 		"phone", user.EmergencyContactPhone,
 		"message", message,
 	)
 
-	// Send via WebSocket to emergency contact if online
 	websocketutil.SendToUser(user.ID, websocket.TypeSOSAlert, map[string]interface{}{
 		"alertId":  alert.ID,
 		"userName": user.Name,
@@ -210,7 +203,6 @@ func (s *service) notifyEmergencyContacts(ctx context.Context, alert *models.SOS
 }
 
 func (s *service) notifySafetyTeam(ctx context.Context, alert *models.SOSAlert) {
-	// Send to safety monitoring dashboard via WebSocket to all connected users
 	websocketutil.BroadcastToRole("admin", websocket.TypeSOSAlert, map[string]interface{}{
 		"type":      "sos_alert",
 		"alertId":   alert.ID,
@@ -221,7 +213,6 @@ func (s *service) notifySafetyTeam(ctx context.Context, alert *models.SOSAlert) 
 		"timestamp": alert.CreatedAt,
 	})
 
-	// TODO: Trigger call to safety line
 	logger.Warn("SAFETY TEAM NOTIFIED - SOS ALERT BROADCAST",
 		"alertID", alert.ID,
 		"userID", alert.UserID,

@@ -3,38 +3,49 @@ package customer
 import (
 	"context"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/homeservices/customer/dto"
+	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
 )
 
-// Repository defines the interface for customer home services data access
 type Repository interface {
-	// Service operations
 	GetActiveServiceBySlug(ctx context.Context, slug string) (*models.ServiceNew, error)
 	ListActiveServices(ctx context.Context, query dto.ListServicesQuery) ([]*models.ServiceNew, int64, error)
 	GetActiveServicesByCategory(ctx context.Context, categorySlug string) ([]*models.ServiceNew, error)
 	CountActiveServicesByCategory(ctx context.Context, categorySlug string) (int64, error)
 	GetFrequentServices(ctx context.Context, limit int) ([]*models.ServiceNew, error)
 
-	// Addon operations
 	GetActiveAddonBySlug(ctx context.Context, slug string) (*models.Addon, error)
 	ListActiveAddons(ctx context.Context, query dto.ListAddonsQuery) ([]*models.Addon, int64, error)
 	GetActiveAddonsByCategory(ctx context.Context, categorySlug string) ([]*models.Addon, error)
 	CountActiveAddonsByCategory(ctx context.Context, categorySlug string) (int64, error)
 	GetDiscountedAddons(ctx context.Context, limit int) ([]*models.Addon, error)
 
-	// Category operations
 	GetAllActiveCategories(ctx context.Context) ([]CategoryInfo, error)
 
-	// Search operations
 	SearchServices(ctx context.Context, query string, categorySlug string, limit int) ([]*models.ServiceNew, error)
 	SearchAddons(ctx context.Context, query string, categorySlug string, limit int) ([]*models.Addon, error)
+
+	Create(ctx context.Context, order *models.ServiceOrderNew) error
+	GetByID(ctx context.Context, id string) (*models.ServiceOrderNew, error)
+	GetByOrderNumber(ctx context.Context, orderNumber string) (*models.ServiceOrderNew, error)
+	Update(ctx context.Context, order *models.ServiceOrderNew) error
+	Delete(ctx context.Context, orderID string) error
+
+	GetCustomerOrders(ctx context.Context, customerID string, query dto.ListOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
+	GetCustomerOrderByID(ctx context.Context, customerID, orderID string) (*models.ServiceOrderNew, error)
+	CountCustomerActiveOrders(ctx context.Context, customerID string) (int64, error)
+
+	UpdateStatus(ctx context.Context, orderID, status string) error
+
+	CreateStatusHistory(ctx context.Context, history *models.OrderStatusHistory) error
+	GetOrderStatusHistory(ctx context.Context, orderID string) ([]models.OrderStatusHistory, error)
 }
 
-// CategoryInfo holds category information with counts
 type CategoryInfo struct {
 	Slug         string
 	ServiceCount int64
@@ -45,12 +56,10 @@ type repository struct {
 	db *gorm.DB
 }
 
-// NewRepository creates a new customer repository instance
 func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-// ==================== Service Operations ====================
 
 func (r *repository) GetActiveServiceBySlug(ctx context.Context, slug string) (*models.ServiceNew, error) {
 	var service models.ServiceNew
@@ -70,7 +79,6 @@ func (r *repository) ListActiveServices(ctx context.Context, query dto.ListServi
 	db := r.db.WithContext(ctx).Model(&models.ServiceNew{}).
 		Where("is_active = true AND is_available = true")
 
-	// Apply filters
 	if query.CategorySlug != "" {
 		db = db.Where("category_slug = ?", query.CategorySlug)
 	}
@@ -92,16 +100,12 @@ func (r *repository) ListActiveServices(ctx context.Context, query dto.ListServi
 		db = db.Where("is_frequent = ?", *query.IsFrequent)
 	}
 
-	// Count total before pagination
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply sorting
 	orderClause := query.SortBy
 	if query.SortBy == "popularity" {
-		// For now, use sort_order as popularity proxy
-		// In future, could track views/bookings
 		orderClause = "sort_order"
 	}
 	if query.SortDesc {
@@ -111,7 +115,6 @@ func (r *repository) ListActiveServices(ctx context.Context, query dto.ListServi
 	}
 	db = db.Order(orderClause)
 
-	// Apply pagination
 	offset := query.PaginationParams.GetOffset()
 	if err := db.Offset(offset).Limit(query.Limit).Find(&services).Error; err != nil {
 		return nil, 0, err
@@ -148,8 +151,6 @@ func (r *repository) GetFrequentServices(ctx context.Context, limit int) ([]*mod
 	return services, err
 }
 
-// ==================== Addon Operations ====================
-
 func (r *repository) GetActiveAddonBySlug(ctx context.Context, slug string) (*models.Addon, error) {
 	var addon models.Addon
 	err := r.db.WithContext(ctx).
@@ -168,7 +169,6 @@ func (r *repository) ListActiveAddons(ctx context.Context, query dto.ListAddonsQ
 	db := r.db.WithContext(ctx).Model(&models.Addon{}).
 		Where("is_active = true AND is_available = true")
 
-	// Apply filters
 	if query.CategorySlug != "" {
 		db = db.Where("category_slug = ?", query.CategorySlug)
 	}
@@ -190,12 +190,10 @@ func (r *repository) ListActiveAddons(ctx context.Context, query dto.ListAddonsQ
 		db = db.Where("strikethrough_price IS NOT NULL AND strikethrough_price > price")
 	}
 
-	// Count total before pagination
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply sorting
 	orderClause := query.SortBy
 	if query.SortDesc {
 		orderClause += " DESC"
@@ -204,7 +202,6 @@ func (r *repository) ListActiveAddons(ctx context.Context, query dto.ListAddonsQ
 	}
 	db = db.Order(orderClause)
 
-	// Apply pagination
 	offset := query.PaginationParams.GetOffset()
 	if err := db.Offset(offset).Limit(query.Limit).Find(&addons).Error; err != nil {
 		return nil, 0, err
@@ -241,13 +238,9 @@ func (r *repository) GetDiscountedAddons(ctx context.Context, limit int) ([]*mod
 	return addons, err
 }
 
-// ==================== Category Operations ====================
-
 func (r *repository) GetAllActiveCategories(ctx context.Context) ([]CategoryInfo, error) {
-	// Get unique categories with their counts
 	var categoryInfos []CategoryInfo
 
-	// Get service counts by category
 	type categoryCount struct {
 		CategorySlug string
 		Count        int64
@@ -263,7 +256,6 @@ func (r *repository) GetAllActiveCategories(ctx context.Context) ([]CategoryInfo
 		return nil, err
 	}
 
-	// Get addon counts by category
 	var addonCounts []categoryCount
 	err = r.db.WithContext(ctx).
 		Model(&models.Addon{}).
@@ -275,7 +267,6 @@ func (r *repository) GetAllActiveCategories(ctx context.Context) ([]CategoryInfo
 		return nil, err
 	}
 
-	// Merge counts
 	categoryMap := make(map[string]*CategoryInfo)
 
 	for _, sc := range serviceCounts {
@@ -298,8 +289,6 @@ func (r *repository) GetAllActiveCategories(ctx context.Context) ([]CategoryInfo
 
 	return categoryInfos, nil
 }
-
-// ==================== Search Operations ====================
 
 func (r *repository) SearchServices(ctx context.Context, query string, categorySlug string, limit int) ([]*models.ServiceNew, error) {
 	var services []*models.ServiceNew
@@ -332,4 +321,129 @@ func (r *repository) SearchAddons(ctx context.Context, query string, categorySlu
 
 	err := db.Order("sort_order ASC").Limit(limit).Find(&addons).Error
 	return addons, err
+}
+
+func (r *repository) Create(ctx context.Context, order *models.ServiceOrderNew) error {
+	return r.db.WithContext(ctx).Create(order).Error
+}
+
+func (r *repository) GetByID(ctx context.Context, id string) (*models.ServiceOrderNew, error) {
+	var order models.ServiceOrderNew
+	err := r.db.WithContext(ctx).Where("id = ?", id).First(&order).Error
+	if err != nil {
+		return nil, err
+	}
+	return &order, nil
+}
+
+func (r *repository) GetByOrderNumber(ctx context.Context, orderNumber string) (*models.ServiceOrderNew, error) {
+	var order models.ServiceOrderNew
+	err := r.db.WithContext(ctx).Where("order_number = ?", orderNumber).First(&order).Error
+	if err != nil {
+		return nil, err
+	}
+	return &order, nil
+}
+
+func (r *repository) Update(ctx context.Context, order *models.ServiceOrderNew) error {
+	return r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).Where("id = ?", order.ID).Updates(order).Error
+}
+
+func (r *repository) GetCustomerOrders(ctx context.Context, customerID string, query dto.ListOrdersQuery) ([]*models.ServiceOrderNew, int64, error) {
+	var orders []*models.ServiceOrderNew
+	var total int64
+
+	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).
+		Where("customer_id = ?", customerID)
+
+	if query.Status != "" {
+		db = db.Where("status = ?", query.Status)
+	}
+
+	if query.FromDate != "" {
+		fromDate, _ := time.Parse("2006-01-02", query.FromDate)
+		db = db.Where("created_at >= ?", fromDate)
+	}
+
+	if query.ToDate != "" {
+		toDate, _ := time.Parse("2006-01-02", query.ToDate)
+		toDate = toDate.AddDate(0, 0, 1)
+		db = db.Where("created_at < ?", toDate)
+	}
+
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	orderClause := query.SortBy
+	if query.SortBy == "booking_date" {
+		orderClause = "booking_info->>'date'"
+	}
+	if query.SortDesc {
+		orderClause += " DESC"
+	} else {
+		orderClause += " ASC"
+	}
+	db = db.Order(orderClause)
+
+	offset := query.PaginationParams.GetOffset()
+	if err := db.Offset(offset).Limit(query.Limit).Find(&orders).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return orders, total, nil
+}
+
+func (r *repository) GetCustomerOrderByID(ctx context.Context, customerID, orderID string) (*models.ServiceOrderNew, error) {
+	var order models.ServiceOrderNew
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND customer_id = ?", orderID, customerID).
+		First(&order).Error
+	if err != nil {
+		return nil, err
+	}
+	return &order, nil
+}
+
+func (r *repository) CountCustomerActiveOrders(ctx context.Context, customerID string) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.ServiceOrderNew{}).
+		Where("customer_id = ? AND status IN ?", customerID, shared.ActiveOrderStatuses()).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *repository) UpdateStatus(ctx context.Context, orderID, status string) error {
+	updates := map[string]interface{}{
+		"status":     status,
+		"updated_at": time.Now(),
+	}
+
+	switch status {
+	case shared.OrderStatusCompleted:
+		updates["completed_at"] = time.Now()
+	}
+
+	return r.db.WithContext(ctx).
+		Model(&models.ServiceOrderNew{}).
+		Where("id = ?", orderID).
+		Updates(updates).Error
+}
+
+func (r *repository) CreateStatusHistory(ctx context.Context, history *models.OrderStatusHistory) error {
+	return r.db.WithContext(ctx).Create(history).Error
+}
+
+func (r *repository) GetOrderStatusHistory(ctx context.Context, orderID string) ([]models.OrderStatusHistory, error) {
+	var history []models.OrderStatusHistory
+	err := r.db.WithContext(ctx).
+		Where("order_id = ?", orderID).
+		Order("created_at ASC").
+		Find(&history).Error
+	return history, err
+}
+
+func (r *repository) Delete(ctx context.Context, orderID string) error {
+	return r.db.WithContext(ctx).Where("id = ?", orderID).Delete(&models.ServiceOrderNew{}).Error
 }

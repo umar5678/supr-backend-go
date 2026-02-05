@@ -6,18 +6,6 @@ import (
 	"github.com/umar5678/go-backend/internal/websocket"
 )
 
-// // SendToUser sends a message to a specific user by their user ID
-// func SendToUser(userID string, messageType string, payload interface{}) {
-// 	hub := websocket.GetHub()
-// 	if hub == nil {
-// 		logger.Error("websocket hub not initialized")
-// 		return
-// 	}
-
-// 	hub.SendToUser(userID, messageType, payload)
-// }
-
-// BroadcastToRole sends a message to all users with a specific role
 func BroadcastToRole(role string, messageType websocket.MessageType, payload interface{}) error {
 	if wsManager == nil {
 		logger.Warn("websocket manager not initialized")

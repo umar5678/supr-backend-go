@@ -1,4 +1,3 @@
-// internal/modules/fraud/dto/request.go
 package dto
 
 type ListFraudPatternsRequest struct {

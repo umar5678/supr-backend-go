@@ -13,7 +13,6 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// GenerateToken creates a new JWT token (used for both access and refresh)
 func GenerateToken(userID, role, secret string, expiry time.Duration) (string, error) {
 	claims := Claims{
 		UserID: userID,
@@ -29,7 +28,6 @@ func GenerateToken(userID, role, secret string, expiry time.Duration) (string, e
 	return token.SignedString([]byte(secret))
 }
 
-// ValidateToken validates and parses a JWT token
 func ValidateToken(tokenString, secret string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

@@ -1,6 +1,5 @@
 package websocket
 
-// websocket/manager.go
 import (
 	"context"
 	"sync"
@@ -9,7 +8,6 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// Manager coordinates all WebSocket operations
 type Manager struct {
 	hub               *Hub
 	config            *Config
@@ -22,7 +20,6 @@ type Manager struct {
 	wg                sync.WaitGroup
 }
 
-// Config holds WebSocket configuration
 type Config struct {
 	JWTSecret          string
 	MaxConnections     int
@@ -34,10 +31,8 @@ type Config struct {
 	PersistenceEnabled bool
 }
 
-// EventHandler processes specific message types
 type EventHandler func(client *Client, msg *Message) error
 
-// NewManager creates a new WebSocket manager
 func NewManager(cfg *Config) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -49,37 +44,31 @@ func NewManager(cfg *Config) *Manager {
 		cancel:        cancel,
 	}
 
-	// Initialize stores if persistence enabled
 	if cfg.PersistenceEnabled {
 		m.messageStore = NewRedisMessageStore()
 		m.notificationStore = NewRedisNotificationStore()
 	}
 
-	// Register default handlers
 	m.registerDefaultHandlers()
 
 	return m
 }
 
-// Start starts the WebSocket manager
 func (m *Manager) Start() error {
 	logger.Info("starting websocket manager")
 
-	// Start the hub
 	m.wg.Add(1)
 	go func() {
 		defer m.wg.Done()
 		m.hub.Run(m.ctx)
 	}()
 
-	// Start heartbeat monitor
 	m.wg.Add(1)
 	go func() {
 		defer m.wg.Done()
 		m.monitorHeartbeats()
 	}()
 
-	// Start metrics collector
 	m.wg.Add(1)
 	go func() {
 		defer m.wg.Done()
@@ -90,14 +79,11 @@ func (m *Manager) Start() error {
 	return nil
 }
 
-// Shutdown gracefully shuts down the manager
 func (m *Manager) Shutdown(timeout time.Duration) error {
 	logger.Info("shutting down websocket manager")
 
-	// Cancel context
 	m.cancel()
 
-	// Wait for goroutines with timeout
 	done := make(chan struct{})
 	go func() {
 		m.wg.Wait()
@@ -114,7 +100,6 @@ func (m *Manager) Shutdown(timeout time.Duration) error {
 	}
 }
 
-// RegisterHandler registers a custom event handler
 func (m *Manager) RegisterHandler(msgType MessageType, handler EventHandler) {
 	m.handlersMutex.Lock()
 	defer m.handlersMutex.Unlock()
@@ -122,7 +107,6 @@ func (m *Manager) RegisterHandler(msgType MessageType, handler EventHandler) {
 	logger.Info("registered websocket handler", "type", msgType)
 }
 
-// GetHandler retrieves a registered handler
 func (m *Manager) GetHandler(msgType MessageType) (EventHandler, bool) {
 	m.handlersMutex.RLock()
 	defer m.handlersMutex.RUnlock()
@@ -130,20 +114,16 @@ func (m *Manager) GetHandler(msgType MessageType) (EventHandler, bool) {
 	return handler, exists
 }
 
-// Hub returns the underlying hub
 func (m *Manager) Hub() *Hub {
 	return m.hub
 }
 
-// registerDefaultHandlers sets up built-in handlers
 func (m *Manager) registerDefaultHandlers() {
 	m.RegisterHandler(TypePing, m.handlePing)
 	m.RegisterHandler(TypeTyping, m.handleTyping)
 	m.RegisterHandler(TypeReadReceipt, m.handleReadReceipt)
 	m.RegisterHandler(TypePresence, m.handlePresenceRequest)
 }
-
-// Default handlers implementation
 
 func (m *Manager) handlePing(client *Client, msg *Message) error {
 	pong := NewMessage(TypePong, map[string]interface{}{
@@ -214,23 +194,19 @@ func (m *Manager) handlePresenceRequest(client *Client, msg *Message) error {
 	return nil
 }
 
-// monitorHeartbeats monitors client heartbeats
 func (m *Manager) monitorHeartbeats() {
 	ticker := time.NewTicker(m.config.HeartbeatInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-m.ctx.Done():
-			return
-		case <-ticker.C:
-			// Heartbeat monitoring logic
-			// This will be handled by individual client read/write pumps
+			case <-m.ctx.Done():
+				return
+			case <-ticker.C:
 		}
 	}
 }
 
-// collectMetrics periodically collects and logs metrics
 func (m *Manager) collectMetrics() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -250,7 +226,6 @@ func (m *Manager) collectMetrics() {
 	}
 }
 
-// Stats represents WebSocket statistics
 type Stats struct {
 	ConnectedUsers         int
 	TotalConnections       int
@@ -259,7 +234,6 @@ type Stats struct {
 	MessagesFailedLast1Min int64
 }
 
-// GetStats returns current WebSocket statistics
 func (m *Manager) GetStats() Stats {
 	users := m.hub.GetConnectedUsers()
 	conns := m.hub.GetTotalConnections()
@@ -276,31 +250,26 @@ func (m *Manager) GetStats() Stats {
 	}
 }
 
-// SendNotification sends a notification to a user
 func (m *Manager) SendNotification(userID string, notification interface{}) error {
 	msg := NewTargetedMessage(TypeNotification, userID, map[string]interface{}{
 		"notification": notification,
 	})
 
-	// Store notification if persistence enabled
 	if m.config.PersistenceEnabled && m.notificationStore != nil {
 		if err := m.notificationStore.Store(m.ctx, userID, notification); err != nil {
 			logger.Error("failed to store notification", "error", err, "userID", userID)
 		}
 	}
 
-	// Send via WebSocket if user is online
 	if m.hub.IsUserConnected(userID) {
 		m.hub.SendToUser(userID, msg)
 		return nil
 	}
 
-	// User is offline - notification stored for later delivery
 	logger.Debug("user offline, notification stored", "userID", userID)
 	return nil
 }
 
-// BroadcastNotification broadcasts notification to multiple users
 func (m *Manager) BroadcastNotification(userIDs []string, notification interface{}) error {
 	for _, userID := range userIDs {
 		if err := m.SendNotification(userID, notification); err != nil {

@@ -13,34 +13,11 @@ var (
 	wsManager *websocket.Manager
 )
 
-// Initialize sets up the WebSocket utility with the manager
 func Initialize(manager *websocket.Manager) {
 	wsManager = manager
 	logger.Info("websocket utility initialized")
 }
 
-// SendToUser sends a message to a specific user
-// func SendToUser(userID string, messageType websocket.MessageType, data map[string]interface{}) error {
-// 	if wsManager == nil {
-// 		logger.Warn("websocket manager not initialized")
-// 		return nil
-// 	}
-
-// 	if data == nil {
-// 		data = make(map[string]interface{})
-// 	}
-
-// 	msg := websocket.NewTargetedMessage(messageType, userID, data)
-// 	wsManager.Hub().SendToUser(userID, msg)
-
-// 	logger.Debug("websocket message sent to user",
-// 		"userID", userID,
-// 		"type", messageType,
-// 	)
-// 	return nil
-// }
-
-// BroadcastToAll sends a message to all connected users
 func BroadcastToAll(messageType websocket.MessageType, data map[string]interface{}) error {
 	if wsManager == nil {
 		logger.Warn("websocket manager not initialized")
@@ -60,7 +37,6 @@ func BroadcastToAll(messageType websocket.MessageType, data map[string]interface
 	return nil
 }
 
-// SendNotification sends a notification to a user
 func SendNotification(userID string, notification interface{}) error {
 	if wsManager == nil {
 		return nil
@@ -68,7 +44,6 @@ func SendNotification(userID string, notification interface{}) error {
 	return wsManager.SendNotification(userID, notification)
 }
 
-// IsUserOnline checks if a user is currently connected
 func IsUserOnline(userID string) bool {
 	if wsManager == nil {
 		return false
@@ -76,7 +51,6 @@ func IsUserOnline(userID string) bool {
 	return wsManager.Hub().IsUserConnected(userID)
 }
 
-// GetOnlineUsers returns statistics about connected users
 func GetOnlineUsers() (int, int) {
 	if wsManager == nil {
 		return 0, 0
@@ -85,41 +59,37 @@ func GetOnlineUsers() (int, int) {
 	return stats.ConnectedUsers, stats.TotalConnections
 }
 
-// Ride-specific helper functions
-
-// SendRideLocationUpdate sends location update to rider
 func SendRideLocationUpdate(riderID string, locationData map[string]interface{}) error {
-	logger.Info("🎯 SendRideLocationUpdate CALLED",
+	logger.Info("SendRideLocationUpdate CALLED",
 		"riderUserID", riderID,
 		"hasLocationData", locationData != nil,
 	)
 
 	if riderID == "" {
-		logger.Error("❌ SendRideLocationUpdate: empty riderID")
+		logger.Error("SendRideLocationUpdate: empty riderID")
 		return errors.New("empty riderID")
 	}
 
 	err := SendToUser(riderID, websocket.TypeRideLocation, locationData)
 
 	if err != nil {
-		logger.Error("❌ SendRideLocationUpdate FAILED", "error", err, "riderID", riderID)
+		logger.Error("SendRideLocationUpdate FAILED", "error", err, "riderID", riderID)
 	} else {
-		logger.Info("✅ SendRideLocationUpdate SUCCESS", "riderID", riderID)
+		logger.Info("SendRideLocationUpdate SUCCESS", "riderID", riderID)
 	}
 
 	return err
 }
 
-// SendToUser sends a message to a specific user
 func SendToUser(userID string, messageType websocket.MessageType, data map[string]interface{}) error {
-	logger.Info("📨 SendToUser CALLED",
+	logger.Info("SendToUser CALLED",
 		"userID", userID,
 		"messageType", messageType,
 		"wsManagerInitialized", wsManager != nil,
 	)
 
 	if wsManager == nil {
-		logger.Error("❌ websocket manager NOT INITIALIZED")
+		logger.Error("websocket manager NOT INITIALIZED")
 		return errors.New("websocket manager not initialized")
 	}
 
@@ -129,7 +99,7 @@ func SendToUser(userID string, messageType websocket.MessageType, data map[strin
 
 	msg := websocket.NewTargetedMessage(messageType, userID, data)
 
-	logger.Info("📤 Calling Hub().SendToUser",
+	logger.Info("Calling Hub().SendToUser",
 		"userID", userID,
 		"messageType", messageType,
 		"msgData", msg,
@@ -137,36 +107,26 @@ func SendToUser(userID string, messageType websocket.MessageType, data map[strin
 
 	wsManager.Hub().SendToUser(userID, msg)
 
-	logger.Info("✅ websocket message sent to user",
+	logger.Info("websocket message sent to user",
 		"userID", userID,
 		"type", messageType,
 	)
 	return nil
 }
 
-// SendRideRequest sends ride request to driver
 func SendRideRequest(driverID string, rideDetails map[string]interface{}) error {
 	return SendToUser(driverID, websocket.TypeRideRequest, rideDetails)
 }
 
-// SendRideAccepted notifies rider that driver accepted
 func SendRideAccepted(riderID string, rideDetails map[string]interface{}) error {
 	return SendToUser(riderID, websocket.TypeRideAccepted, rideDetails)
 }
 
-// // SendRideLocationUpdate sends location update to rider
-// func SendRideLocationUpdate(riderID string, locationData map[string]interface{}) error {
-// 	return SendToUser(riderID, websocket.TypeRideLocation, locationData)
-// }
-
-// SendRideStatusUpdate sends status update to both rider and driver
 func SendRideStatusUpdate(riderID, driverID string, statusData map[string]interface{}) error {
-	// Send to rider
 	if riderID != "" {
 		SendToUser(riderID, websocket.TypeRideStatusUpdate, statusData)
 	}
 
-	// Send to driver
 	if driverID != "" {
 		SendToUser(driverID, websocket.TypeRideStatusUpdate, statusData)
 	}
@@ -174,12 +134,10 @@ func SendRideStatusUpdate(riderID, driverID string, statusData map[string]interf
 	return nil
 }
 
-// SendPaymentUpdate sends payment status update
 func SendPaymentUpdate(userID string, paymentData map[string]interface{}) error {
 	return SendToUser(userID, websocket.TypePaymentCompleted, paymentData)
 }
 
-// SendSystemMessage sends system message to user
 func SendSystemMessage(userID, message string, data map[string]interface{}) error {
 	if data == nil {
 		data = make(map[string]interface{})
@@ -188,15 +146,10 @@ func SendSystemMessage(userID, message string, data map[string]interface{}) erro
 	return SendToUser(userID, websocket.TypeSystemMessage, data)
 }
 
-// Context-aware functions (for when you need context)
-
-// SendToUserWithContext sends message with context (for future use)
 func SendToUserWithContext(ctx context.Context, userID string, messageType websocket.MessageType, data map[string]interface{}) error {
-	// Currently just calls the regular function, but structure allows for future context usage
 	return SendToUser(userID, messageType, data)
 }
 
-// SendRideLocationUpdateWithContext sends location update with context
 func SendRideLocationUpdateWithContext(ctx context.Context, riderID string, locationData map[string]interface{}) error {
 	return SendRideLocationUpdate(riderID, locationData)
 }

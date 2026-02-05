@@ -1,4 +1,3 @@
-// internal/modules/promotions/dto/response.go
 package dto
 
 import (

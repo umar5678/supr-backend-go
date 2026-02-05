@@ -36,7 +36,6 @@ func (h *Handler) GetMessages(c *gin.Context) {
 		return
 	}
 
-	// Parse pagination
 	limit := 50
 	offset := 0
 	if l := c.Query("limit"); l != "" {
@@ -83,8 +82,7 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	// Determine sender type based on context (default to rider, could be extended)
-	senderType := "rider" // This could be determined from user role
+	senderType := "rider"
 	if val, exists := c.Get("userRole"); exists {
 		if role, ok := val.(string); ok && role == "driver" {
 			senderType = "driver"

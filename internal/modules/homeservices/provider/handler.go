@@ -8,37 +8,27 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
-// Handler handles HTTP requests for providers
 type Handler struct {
 	service Service
 }
 
-// NewHandler creates a new provider handler
 func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
-// getProviderIDFromContext extracts userID and converts it to providerID
-// Returns empty string if user is service_provider role but doesn't have profile yet (during registration)
 func (h *Handler) getProviderIDFromContext(c *gin.Context) (string, error) {
 	userID, _ := c.Get("userID")
 	userRole, _ := c.Get("userRole")
 
 	providerID, err := h.service.GetProviderIDByUserID(c.Request.Context(), userID.(string))
 	if err != nil {
-		// Check if user is a service provider (allow during registration process)
 		if userRole == string(models.RoleServiceProvider) {
-			// User is a service provider but doesn't have a profile yet
-			// This is OK during registration - return empty string to indicate "not yet registered"
 			return "", nil
 		}
-		// User is not a service provider, deny access
 		return "", response.UnauthorizedError("You must be a service provider to access this endpoint")
 	}
 	return providerID, nil
 }
-
-// ==================== Profile Handlers ====================
 
 // GetProfile godoc
 // @Summary Get provider profile
@@ -99,8 +89,6 @@ func (h *Handler) UpdateAvailability(c *gin.Context) {
 	response.Success(c, nil, "Availability updated successfully")
 }
 
-// ==================== Service Category Handlers ====================
-
 // GetServiceCategories godoc
 // @Summary Get service categories
 // @Description Get provider's registered service categories. Returns empty list if provider is still in registration process.
@@ -117,7 +105,6 @@ func (h *Handler) GetServiceCategories(c *gin.Context) {
 		return
 	}
 
-	// If providerID is empty, user is service provider but not yet registered
 	if providerID == "" {
 		response.Success(c, []dto.ServiceCategoryResponse{}, "No categories yet - user is in registration process")
 		return
@@ -159,10 +146,8 @@ func (h *Handler) AddServiceCategory(c *gin.Context) {
 		return
 	}
 
-	// If providerID is empty, create the provider profile first
 	if providerID == "" {
-		// Create provider profile on first category registration
-		// This is part of the registration flow
+
 		providerID = h.service.CreateProviderOnFirstCategory(c.Request.Context(), userID.(string))
 	}
 
@@ -239,8 +224,6 @@ func (h *Handler) DeleteServiceCategory(c *gin.Context) {
 	response.Success(c, nil, "Category deleted successfully")
 }
 
-// ==================== Available Orders Handlers ====================
-
 // GetAvailableOrders godoc
 // @Summary Get available orders
 // @Description Get orders available for the provider to accept
@@ -259,7 +242,6 @@ func (h *Handler) DeleteServiceCategory(c *gin.Context) {
 func (h *Handler) GetAvailableOrders(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	// Convert user ID to provider ID
 	providerID, err := h.service.GetProviderIDByUserID(c.Request.Context(), userID.(string))
 	if err != nil {
 		c.Error(err)
@@ -308,8 +290,6 @@ func (h *Handler) GetAvailableOrderDetail(c *gin.Context) {
 
 	response.Success(c, order, "Order retrieved successfully")
 }
-
-// ==================== My Orders Handlers ====================
 
 // GetMyOrders godoc
 // @Summary Get my orders
@@ -380,8 +360,6 @@ func (h *Handler) GetMyOrderDetail(c *gin.Context) {
 
 	response.Success(c, order, "Order retrieved successfully")
 }
-
-// ==================== Order Actions Handlers ====================
 
 // AcceptOrder godoc
 // @Summary Accept an order
@@ -500,7 +478,7 @@ func (h *Handler) CompleteOrder(c *gin.Context) {
 	orderID := c.Param("id")
 
 	var req dto.CompleteOrderRequest
-	c.ShouldBindJSON(&req) // Optional body
+	c.ShouldBindJSON(&req)
 
 	order, err := h.service.CompleteOrder(c.Request.Context(), providerID, orderID, req)
 	if err != nil {
@@ -547,8 +525,6 @@ func (h *Handler) RateCustomer(c *gin.Context) {
 
 	response.Success(c, order, "Rating submitted successfully")
 }
-
-// ==================== Statistics Handlers ====================
 
 // GetStatistics godoc
 // @Summary Get statistics

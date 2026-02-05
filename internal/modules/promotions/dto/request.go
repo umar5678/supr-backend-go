@@ -1,4 +1,3 @@
-// internal/modules/promotions/dto/request.go
 package dto
 
 import "errors"

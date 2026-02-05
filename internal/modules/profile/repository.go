@@ -8,10 +8,8 @@ import (
 )
 
 type Repository interface {
-	// Emergency contacts
 	UpdateEmergencyContact(ctx context.Context, userID, name, phone string) error
 
-	// Referrals
 	GenerateReferralCode(ctx context.Context, userID, code string) error
 	FindUserByReferralCode(ctx context.Context, code string) (*models.User, error)
 	FindUserByID(ctx context.Context, userID string) (*models.User, error)
@@ -20,12 +18,10 @@ type Repository interface {
 	HasUserAppliedAnyReferral(ctx context.Context, userID string) (bool, error)
 	GetReferralStats(ctx context.Context, userID string) (count int64, bonus float64, err error)
 
-	// KYC
 	CreateKYC(ctx context.Context, kyc *models.UserKYC) error
 	FindKYCByUserID(ctx context.Context, userID string) (*models.UserKYC, error)
 	UpdateKYCStatus(ctx context.Context, kycID, status, reason string) error
 
-	// Saved locations
 	CreateLocation(ctx context.Context, location *models.SavedLocation) error
 	FindLocationsByUserID(ctx context.Context, userID string) ([]*models.SavedLocation, error)
 	FindLocationByID(ctx context.Context, id string) (*models.SavedLocation, error)
@@ -107,23 +103,19 @@ func (r *repository) GetReferralStats(ctx context.Context, userID string) (count
 		return 0, 0, err
 	}
 
-	// Count referrals
 	r.db.WithContext(ctx).
 		Model(&models.User{}).
 		Where("referred_by = ?", user.ReferralCode).
 		Count(&count)
 
-	// Get actual wallet balance instead of calculating from count
 	var wallet models.Wallet
 	walletErr := r.db.WithContext(ctx).
 		Where("user_id = ? AND wallet_type = ?", userID, models.WalletTypeRider).
 		First(&wallet).Error
 
-	// If wallet exists, use its balance; otherwise calculate from count
 	if walletErr == nil {
 		bonus = wallet.Balance
 	} else {
-		// Fallback: calculate bonus ($5 per referral) if no wallet found
 		bonus = float64(count) * 5.0
 	}
 

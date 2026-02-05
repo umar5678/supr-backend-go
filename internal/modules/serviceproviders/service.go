@@ -58,7 +58,6 @@ func (s *service) UpdateProfile(ctx context.Context, userID string, updates map[
 		return nil, response.NotFoundError("Service provider profile")
 	}
 
-	// Apply updates (you can add validation here)
 	if businessName, ok := updates["businessName"].(string); ok {
 		profile.BusinessName = &businessName
 	}

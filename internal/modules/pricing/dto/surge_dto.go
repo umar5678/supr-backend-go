@@ -4,9 +4,6 @@ import (
 	"time"
 )
 
-// ===== SURGE PRICING RULES =====
-
-// CreateSurgePricingRuleRequest creates a new surge pricing rule
 type CreateSurgePricingRuleRequest struct {
 	Name                       string  `json:"name" binding:"required"`
 	Description                string  `json:"description"`
@@ -22,7 +19,6 @@ type CreateSurgePricingRuleRequest struct {
 	DemandMultiplierPerRequest float64 `json:"demandMultiplierPerRequest"`
 }
 
-// SurgePricingRuleResponse returns surge pricing rule info
 type SurgePricingRuleResponse struct {
 	ID                         string    `json:"id"`
 	Name                       string    `json:"name"`
@@ -42,9 +38,6 @@ type SurgePricingRuleResponse struct {
 	UpdatedAt                  time.Time `json:"updatedAt"`
 }
 
-// ===== DEMAND TRACKING =====
-
-// DemandTrackingResponse returns current demand info
 type DemandTrackingResponse struct {
 	ID                string    `json:"id"`
 	ZoneID            string    `json:"zoneId"`
@@ -58,9 +51,6 @@ type DemandTrackingResponse struct {
 	RecordedAt        time.Time `json:"recordedAt"`
 }
 
-// ===== ETA ESTIMATES =====
-
-// ETAEstimateRequest requests ETA calculation
 type ETAEstimateRequest struct {
 	PickupLat  float64 `json:"pickupLat" binding:"required"`
 	PickupLon  float64 `json:"pickupLon" binding:"required"`
@@ -68,7 +58,6 @@ type ETAEstimateRequest struct {
 	DropoffLon float64 `json:"dropoffLon" binding:"required"`
 }
 
-// ETAEstimateResponse returns ETA details
 type ETAEstimateResponse struct {
 	ID                  string    `json:"id"`
 	RideID              string    `json:"rideId,omitempty"`
@@ -82,9 +71,6 @@ type ETAEstimateResponse struct {
 	CreatedAt           time.Time `json:"createdAt"`
 }
 
-// ===== SURGE CALCULATION =====
-
-// SurgeCalculationRequest requests surge calculation for a location
 type SurgeCalculationRequest struct {
 	PickupLat     float64 `json:"pickupLat" binding:"required"`
 	PickupLon     float64 `json:"pickupLon" binding:"required"`
@@ -92,22 +78,20 @@ type SurgeCalculationRequest struct {
 	Geohash       string  `json:"geohash"`
 }
 
-// SurgeCalculationResponse returns surge details
 type SurgeCalculationResponse struct {
 	AppliedMultiplier     float64      `json:"appliedMultiplier"`
 	TimeBasedMultiplier   float64      `json:"timeBasedMultiplier"`
 	DemandBasedMultiplier float64      `json:"demandBasedMultiplier"`
-	Reason                string       `json:"reason"` // 'normal', 'time_based', 'demand_based', 'combined'
+	Reason                string       `json:"reason"`
 	BaseFare              float64      `json:"baseFare"`
 	SurgeAmount           float64      `json:"surgeAmount"`
 	TotalFare             float64      `json:"totalFare"`
 	Details               SurgeDetails `json:"details"`
 }
 
-// SurgeDetails provides breakdown of surge factors
 type SurgeDetails struct {
-	TimeOfDay         string  `json:"timeOfDay"` // "peak" or "off-peak"
-	DayType           string  `json:"dayType"`   // "weekday" or "weekend"
+	TimeOfDay         string  `json:"timeOfDay"`
+	DayType           string  `json:"dayType"`  
 	PendingRequests   int     `json:"pendingRequests"`
 	AvailableDrivers  int     `json:"availableDrivers"`
 	DemandSupplyRatio float64 `json:"demandSupplyRatio"`
@@ -115,9 +99,6 @@ type SurgeDetails struct {
 	ActivePricingRule string  `json:"activePricingRule,omitempty"`
 }
 
-// ===== SURGE HISTORY =====
-
-// SurgeHistoryResponse returns surge pricing history for audit
 type SurgeHistoryResponse struct {
 	ID                    string    `json:"id"`
 	RideID                string    `json:"rideId"`
@@ -132,12 +113,8 @@ type SurgeHistoryResponse struct {
 	CreatedAt             time.Time `json:"createdAt"`
 }
 
-// ===== FARE ESTIMATE WITH SURGE =====
-
-// EnhancedFareEstimateResponse returns detailed fare with all surges
 type EnhancedFareEstimateResponse struct {
 	*FareEstimateResponse
-	// Additional surge details
 	TimeBasedSurge   float64                  `json:"timeBasedSurge"`
 	DemandBasedSurge float64                  `json:"demandBasedSurge"`
 	SurgeReason      string                   `json:"surgeReason"`

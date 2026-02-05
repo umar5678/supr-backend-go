@@ -13,14 +13,12 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// Repository defines the interface for provider data access
 type Repository interface {
-	// Provider profile
+
 	GetProvider(ctx context.Context, providerID string) (*models.ServiceProviderProfile, error)
 	GetProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error)
 	CreateProvider(ctx context.Context, provider *models.ServiceProviderProfile) error
 
-	// Service categories
 	GetProviderCategories(ctx context.Context, providerID string) ([]*models.ProviderServiceCategory, error)
 	GetProviderCategory(ctx context.Context, providerID, categorySlug string) (*models.ProviderServiceCategory, error)
 	AddProviderCategory(ctx context.Context, category *models.ProviderServiceCategory) error
@@ -28,30 +26,24 @@ type Repository interface {
 	DeleteProviderCategory(ctx context.Context, providerID, categorySlug string) error
 	GetProviderCategorySlugs(ctx context.Context, providerID string) ([]string, error)
 
-	// Available orders
 	GetAvailableOrders(ctx context.Context, categorySlugs []string, query dto.ListAvailableOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
 	GetAvailableOrderByID(ctx context.Context, orderID string, categorySlugs []string) (*models.ServiceOrderNew, error)
 
-	// Provider orders
 	GetProviderOrders(ctx context.Context, providerID string, query dto.ListMyOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
 	GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error)
 	CountProviderActiveOrders(ctx context.Context, providerID string) (int64, error)
 
-	// Order operations
 	GetOrderByID(ctx context.Context, orderID string) (*models.ServiceOrderNew, error)
 	UpdateOrder(ctx context.Context, order *models.ServiceOrderNew) error
 	AssignOrderToProvider(ctx context.Context, orderID, providerID string) error
 
-	// Statistics
 	GetProviderStatistics(ctx context.Context, providerID string) (*ProviderStats, error)
 	GetProviderEarnings(ctx context.Context, providerID string, fromDate, toDate time.Time) (*EarningsData, error)
 	GetCategoryEarnings(ctx context.Context, providerID string, fromDate, toDate time.Time) ([]CategoryEarningsData, error)
 
-	// Status history
 	CreateStatusHistory(ctx context.Context, history *models.OrderStatusHistory) error
 }
 
-// ProviderStats holds provider statistics data
 type ProviderStats struct {
 	TotalCompletedJobs   int
 	TotalEarnings        float64
@@ -65,21 +57,18 @@ type ProviderStats struct {
 	TodayEarnings        float64
 }
 
-// EarningsData holds earnings data
 type EarningsData struct {
 	TotalEarnings  float64
 	TotalOrders    int
 	DailyBreakdown []DailyEarnings
 }
 
-// DailyEarnings holds daily earnings
 type DailyEarnings struct {
 	Date       string
 	Earnings   float64
 	OrderCount int
 }
 
-// CategoryEarningsData holds category earnings
 type CategoryEarningsData struct {
 	CategorySlug string
 	Earnings     float64
@@ -90,17 +79,13 @@ type repository struct {
 	db *gorm.DB
 }
 
-// NewRepository creates a new provider repository
 func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-// ==================== Provider Profile ====================
-
 func (r *repository) AssignOrderToProvider(ctx context.Context, orderID, providerID string) error {
 	now := time.Now()
 
-	// Try to update service_orders table
 	result := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("id = ?", orderID).
@@ -110,13 +95,11 @@ func (r *repository) AssignOrderToProvider(ctx context.Context, orderID, provide
 			"updated_at":           now,
 		})
 
-	// If service order was updated, we're done
 	if result.Error == nil && result.RowsAffected > 0 {
 		logger.Info("assigned service order to provider", "orderID", orderID, "providerID", providerID)
 		return nil
 	}
 
-	// Try to update laundry_orders table
 	result = r.db.WithContext(ctx).
 		Model(&models.LaundryOrder{}).
 		Where("id = ?", orderID).
@@ -162,8 +145,6 @@ func (r *repository) CreateProvider(ctx context.Context, provider *models.Servic
 	return r.db.WithContext(ctx).Create(provider).Error
 }
 
-// ==================== Service Categories ====================
-
 func (r *repository) GetProviderCategories(ctx context.Context, providerID string) ([]*models.ProviderServiceCategory, error) {
 	var categories []*models.ProviderServiceCategory
 	err := r.db.WithContext(ctx).
@@ -199,7 +180,6 @@ func (r *repository) DeleteProviderCategory(ctx context.Context, providerID, cat
 }
 
 func (r *repository) GetProviderCategorySlugs(ctx context.Context, providerID string) ([]string, error) {
-	// Method 1: Try to get from provider_service_categories table
 	var slugs []string
 	err := r.db.WithContext(ctx).
 		Model(&models.ProviderServiceCategory{}).
@@ -213,11 +193,9 @@ func (r *repository) GetProviderCategorySlugs(ctx context.Context, providerID st
 
 	logger.Info("queried provider_service_categories", "providerID", providerID, "foundCategories", slugs, "count", len(slugs))
 
-	// Method 2: If no categories found, derive from provider's qualified services
 	if len(slugs) == 0 {
 		logger.Info("no provider_service_categories found, deriving from qualified services", "providerID", providerID)
 
-		// First, log what services the provider is qualified for
 		var qualifiedServices []map[string]interface{}
 		r.db.WithContext(ctx).
 			Table("provider_qualified_services pqs").
@@ -245,8 +223,6 @@ func (r *repository) GetProviderCategorySlugs(ctx context.Context, providerID st
 	return slugs, nil
 }
 
-// ==================== Available Orders ====================
-
 func (r *repository) convertLaundryOrderToServiceOrder(ctx context.Context, orderID string) (*models.ServiceOrderNew, error) {
 	var laundryOrder models.LaundryOrder
 	err := r.db.WithContext(ctx).Where("id = ?", orderID).First(&laundryOrder).Error
@@ -254,7 +230,6 @@ func (r *repository) convertLaundryOrderToServiceOrder(ctx context.Context, orde
 		return nil, err
 	}
 
-	// Fetch customer details
 	var customer models.User
 	customerName := ""
 	if laundryOrder.UserID != nil {
@@ -263,11 +238,9 @@ func (r *repository) convertLaundryOrderToServiceOrder(ctx context.Context, orde
 		}
 	}
 
-	// Get items for this order
 	var items []*models.LaundryOrderItem
 	r.db.WithContext(ctx).Where("order_id = ?", laundryOrder.ID).Find(&items)
 
-	// Build selected services
 	selectedServices := make(models.SelectedServices, 0)
 	for _, item := range items {
 		selectedServices = append(selectedServices, models.SelectedServiceItem{
@@ -278,20 +251,16 @@ func (r *repository) convertLaundryOrderToServiceOrder(ctx context.Context, orde
 		})
 	}
 
-	// Format booking date safely
 	bookingDate := ""
 	if laundryOrder.ServiceDate != nil {
 		bookingDate = laundryOrder.ServiceDate.Format("2006-01-02")
 	}
 
-	// Get customer ID safely
 	customerID := ""
 	if laundryOrder.UserID != nil {
 		customerID = *laundryOrder.UserID
 	}
 
-	// Calculate pricing fields (for laundry, total is already calculated as total price)
-	// ServicesTotal is the base total, Subtotal = ServicesTotal, TotalPrice includes tip
 	totalPrice := laundryOrder.Total
 	if laundryOrder.Tip != nil && *laundryOrder.Tip > 0 {
 		totalPrice = laundryOrder.Total + *laundryOrder.Tip
@@ -302,28 +271,25 @@ func (r *repository) convertLaundryOrderToServiceOrder(ctx context.Context, orde
 		OrderNumber:        laundryOrder.OrderNumber,
 		CustomerID:         customerID,
 		CategorySlug:       laundryOrder.CategorySlug,
-		ServicesTotal:      laundryOrder.Total, // Base price (without tip)
-		Subtotal:           laundryOrder.Total, // No separate subtotal for laundry
-		TotalPrice:         totalPrice,         // Total including tip
-		PlatformCommission: 0,                  // Laundry doesn't track separately
-		AddonsTotal:        0,                  // No addons for laundry
+		ServicesTotal:      laundryOrder.Total, 
+		Subtotal:           laundryOrder.Total, 
+		TotalPrice:         totalPrice,         
+		PlatformCommission: 0,                  
+		AddonsTotal:        0,                  
 		Status:             laundryOrder.Status,
 		AssignedProviderID: laundryOrder.ProviderID,
 		CreatedAt:          laundryOrder.CreatedAt,
 		UpdatedAt:          laundryOrder.UpdatedAt,
-		// Populate customer info
 		CustomerInfo: models.CustomerInfo{
 			Name:    customerName,
 			Address: laundryOrder.Address,
 			Lat:     laundryOrder.Latitude,
 			Lng:     laundryOrder.Longitude,
 		},
-		// Populate booking info
 		BookingInfo: models.BookingInfo{
 			Date: bookingDate,
 			Time: "",
 		},
-		// Populate selected services
 		SelectedServices: selectedServices,
 	}
 
@@ -334,7 +300,6 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 	var allOrders []*models.ServiceOrderNew
 	var total int64
 
-	// Query ServiceOrderNew
 	var serviceOrders []*models.ServiceOrderNew
 	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).
 		Where("status IN ?", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider}).
@@ -344,20 +309,16 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 
 	logger.Info("GetAvailableOrders query filters", "categorySlugs", categorySlugs, "statusFilters", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider})
 
-	// Filter by specific category if provided
 	if query.CategorySlug != "" {
 		db = db.Where("category_slug = ?", query.CategorySlug)
 	}
 
-	// Filter by booking date
 	if query.Date != "" {
 		db = db.Where("booking_info->>'date' = ?", query.Date)
 	}
 
-	// Get service orders
 	if err := db.Order("created_at DESC").Find(&serviceOrders).Error; err != nil {
 		logger.Error("failed to fetch service orders", "error", err)
-		// Continue to query laundry orders even if this fails
 	}
 
 	// Query LaundryOrder
@@ -373,14 +334,12 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 
 	if err := laundryDb.Order("created_at DESC").Find(&laundryOrders).Error; err != nil {
 		logger.Error("failed to fetch laundry orders", "error", err)
-		// Continue - we have service orders at least
 	}
 
 	logger.Info("fetched orders from both tables", "serviceOrders", len(serviceOrders), "laundryOrders", len(laundryOrders))
 
-	// Convert laundry orders to ServiceOrderNew format for unified response
 	for _, laundryOrder := range laundryOrders {
-		// Fetch customer details to get the name
+
 		var customer models.User
 		customerName := ""
 		if laundryOrder.UserID != nil {
@@ -389,11 +348,9 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 			}
 		}
 
-		// Get items for this order to populate selected services
 		var items []*models.LaundryOrderItem
 		r.db.WithContext(ctx).Where("order_id = ?", laundryOrder.ID).Find(&items)
 
-		// Build selected services list from order items
 		selectedServices := make(models.SelectedServices, 0)
 		for _, item := range items {
 			selectedServices = append(selectedServices, models.SelectedServiceItem{
@@ -404,20 +361,16 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 			})
 		}
 
-		// Format booking date safely
 		bookingDate := ""
 		if laundryOrder.ServiceDate != nil {
 			bookingDate = laundryOrder.ServiceDate.Format("2006-01-02")
 		}
 
-		// Get customer ID safely
 		customerID := ""
 		if laundryOrder.UserID != nil {
 			customerID = *laundryOrder.UserID
 		}
 
-		// Calculate pricing fields (for laundry, total is already calculated as total price)
-		// ServicesTotal is the base total, Subtotal = ServicesTotal, TotalPrice includes tip
 		totalPrice := laundryOrder.Total
 		if laundryOrder.Tip != nil && *laundryOrder.Tip > 0 {
 			totalPrice = laundryOrder.Total + *laundryOrder.Tip
@@ -428,55 +381,43 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 			OrderNumber:        laundryOrder.OrderNumber,
 			CustomerID:         customerID,
 			CategorySlug:       laundryOrder.CategorySlug,
-			ServicesTotal:      laundryOrder.Total, // Base price (without tip)
-			Subtotal:           laundryOrder.Total, // No separate subtotal for laundry
-			TotalPrice:         totalPrice,         // Total including tip
-			PlatformCommission: 0,                  // Laundry doesn't track separately
-			AddonsTotal:        0,                  // No addons for laundry
+			ServicesTotal:      laundryOrder.Total,
+			Subtotal:           laundryOrder.Total,
+			TotalPrice:         totalPrice,        
+			PlatformCommission: 0,                 
+			AddonsTotal:        0,                 
 			Status:             laundryOrder.Status,
 			AssignedProviderID: laundryOrder.ProviderID,
 			CreatedAt:          laundryOrder.CreatedAt,
 			UpdatedAt:          laundryOrder.UpdatedAt,
-			// Populate customer info
 			CustomerInfo: models.CustomerInfo{
 				Name:    customerName,
 				Address: laundryOrder.Address,
 				Lat:     laundryOrder.Latitude,
 				Lng:     laundryOrder.Longitude,
 			},
-			// Populate booking info
 			BookingInfo: models.BookingInfo{
 				Date: bookingDate,
 				Time: "",
 			},
-			// Populate selected services
 			SelectedServices: selectedServices,
 		}
 
 		allOrders = append(allOrders, serviceOrder)
 	}
 
-	// Add service orders
 	allOrders = append(allOrders, serviceOrders...)
 
-	// Count total before pagination
 	total = int64(len(allOrders))
 
-	// Sort based on query
 	orderClause := query.SortBy
 	if orderClause == "booking_date" {
-		orderClause = "created_at" // Fallback since we're sorting in memory
-	} else if orderClause == "price" {
-		// We'll sort in memory
-	}
+		orderClause = "created_at" 
+	} else if orderClause == "price" {}
 
-	// Sort orders by created_at DESC (most recent first)
-	// In real scenario, you'd want more sophisticated sorting
 	if query.SortDesc {
-		// Already sorted DESC above
 	}
 
-	// Pagination
 	offset := query.PaginationParams.GetOffset()
 	limit := query.Limit
 
@@ -496,10 +437,7 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 	return paginatedOrders, total, nil
 }
 
-// ==================== Available Orders (Improved) ====================
-
 func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, categorySlugs []string) (*models.ServiceOrderNew, error) {
-	// Try ServiceOrderNew first
 	var order models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Where("id = ?", orderID).
@@ -514,7 +452,6 @@ func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, 
 		return &order, nil
 	}
 
-	// Try LaundryOrder if not found
 	if err == gorm.ErrRecordNotFound {
 		var laundryOrder models.LaundryOrder
 		err = r.db.WithContext(ctx).
@@ -534,118 +471,17 @@ func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, 
 	return nil, err
 }
 
-// func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, categorySlugs []string) (*models.ServiceOrderNew, error) {
-// 	var order models.ServiceOrderNew
-
-// 	// Try to find in ServiceOrderNew first
-// 	err := r.db.WithContext(ctx).
-// 		Where("id = ?", orderID).
-// 		Where("status IN ?", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider}).
-// 		Where("category_slug IN ?", categorySlugs).
-// 		Where("assigned_provider_id IS NULL").
-// 		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
-// 		First(&order).Error
-
-// 	if err == nil {
-// 		return &order, nil
-// 	}
-
-// 	// If not found in ServiceOrderNew, try LaundryOrder
-// 	var laundryOrder models.LaundryOrder
-// 	err = r.db.WithContext(ctx).
-// 		Where("id = ?", orderID).
-// 		Where("status IN ?", []string{"pending", "searching_provider"}).
-// 		Where("category_slug IN ?", categorySlugs).
-// 		Where("provider_id IS NULL").
-// 		First(&laundryOrder).Error
-
-// 	if err == nil {
-// 		// Convert laundry order to ServiceOrderNew format
-// 		// Fetch customer details
-// 		var customer models.User
-// 		customerName := ""
-// 		if laundryOrder.UserID != nil {
-// 			if err := r.db.WithContext(ctx).Where("id = ?", *laundryOrder.UserID).First(&customer).Error; err == nil {
-// 				customerName = customer.Name
-// 			}
-// 		}
-
-// 		// Get items for this order
-// 		var items []*models.LaundryOrderItem
-// 		r.db.WithContext(ctx).Where("order_id = ?", laundryOrder.ID).Find(&items)
-
-// 		// Build selected services
-// 		selectedServices := make(models.SelectedServices, 0)
-// 		for _, item := range items {
-// 			selectedServices = append(selectedServices, models.SelectedServiceItem{
-// 				ServiceSlug: item.ServiceSlug,
-// 				Title:       item.ItemType,
-// 				Price:       item.Price,
-// 				Quantity:    item.Quantity,
-// 			})
-// 		}
-
-// 		// Format booking date safely
-// 		bookingDate := ""
-// 		if laundryOrder.ServiceDate != nil {
-// 			bookingDate = laundryOrder.ServiceDate.Format("2006-01-02")
-// 		}
-
-// 		// Get customer ID safely
-// 		customerID := ""
-// 		if laundryOrder.UserID != nil {
-// 			customerID = *laundryOrder.UserID
-// 		}
-
-// 		order = models.ServiceOrderNew{
-// 			ID:                 laundryOrder.ID,
-// 			OrderNumber:        laundryOrder.OrderNumber,
-// 			CustomerID:         customerID,
-// 			CategorySlug:       laundryOrder.CategorySlug,
-// 			TotalPrice:         laundryOrder.Total,
-// 			Status:             laundryOrder.Status,
-// 			AssignedProviderID: laundryOrder.ProviderID,
-// 			CreatedAt:          laundryOrder.CreatedAt,
-// 			UpdatedAt:          laundryOrder.UpdatedAt,
-// 			// Populate customer info
-// 			CustomerInfo: models.CustomerInfo{
-// 				Name:    customerName,
-// 				Address: laundryOrder.Address,
-// 				Lat:     laundryOrder.Latitude,
-// 				Lng:     laundryOrder.Longitude,
-// 			},
-// 			// Populate booking info
-// 			BookingInfo: models.BookingInfo{
-// 				Date: bookingDate,
-// 				Time: "",
-// 			},
-// 			// Populate selected services
-// 			SelectedServices: selectedServices,
-// 		}
-
-// 		return &order, nil
-// 	}
-
-// 	return nil, err
-// }
-
-// ==================== Provider Orders ====================
-
 func (r *repository) GetProviderOrders(ctx context.Context, providerID string, query dto.ListMyOrdersQuery) ([]*models.ServiceOrderNew, int64, error) {
 	var allOrders []*models.ServiceOrderNew
 	var total int64
 
-	// Get service orders
 	var serviceOrders []*models.ServiceOrderNew
 	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).
 		Where("assigned_provider_id = ?", providerID)
-
-	// Filter by status
 	if query.Status != "" {
 		db = db.Where("status = ?", query.Status)
 	}
 
-	// Filter by date range
 	if query.FromDate != "" {
 		fromDate, _ := time.Parse("2006-01-02", query.FromDate)
 		db = db.Where("created_at >= ?", fromDate)
@@ -660,17 +496,14 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 		return nil, 0, err
 	}
 
-	// Get laundry orders
 	var laundryOrders []*models.LaundryOrder
 	laundryDB := r.db.WithContext(ctx).
 		Where("provider_id = ?", providerID)
 
-	// Filter by status
 	if query.Status != "" {
 		laundryDB = laundryDB.Where("status = ?", query.Status)
 	}
 
-	// Filter by date range
 	if query.FromDate != "" {
 		fromDate, _ := time.Parse("2006-01-02", query.FromDate)
 		laundryDB = laundryDB.Where("created_at >= ?", fromDate)
@@ -685,9 +518,7 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 		return nil, 0, err
 	}
 
-	// Convert laundry orders to ServiceOrderNew format
 	for _, laundryOrder := range laundryOrders {
-		// Fetch customer details
 		var customer models.User
 		customerName := ""
 		if laundryOrder.UserID != nil {
@@ -696,11 +527,9 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 			}
 		}
 
-		// Get items for this order
 		var items []*models.LaundryOrderItem
 		r.db.WithContext(ctx).Where("order_id = ?", laundryOrder.ID).Find(&items)
 
-		// Build selected services
 		selectedServices := make(models.SelectedServices, 0)
 		for _, item := range items {
 			selectedServices = append(selectedServices, models.SelectedServiceItem{
@@ -711,20 +540,16 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 			})
 		}
 
-		// Format booking date safely
 		bookingDate := ""
 		if laundryOrder.ServiceDate != nil {
 			bookingDate = laundryOrder.ServiceDate.Format("2006-01-02")
 		}
 
-		// Get customer ID safely
 		customerID := ""
 		if laundryOrder.UserID != nil {
 			customerID = *laundryOrder.UserID
 		}
 
-		// Calculate pricing fields (for laundry, total is already calculated as total price)
-		// ServicesTotal is the base total, Subtotal = ServicesTotal, TotalPrice includes tip
 		totalPrice := laundryOrder.Total
 		if laundryOrder.Tip != nil && *laundryOrder.Tip > 0 {
 			totalPrice = laundryOrder.Total + *laundryOrder.Tip
@@ -735,44 +560,38 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 			OrderNumber:        laundryOrder.OrderNumber,
 			CustomerID:         customerID,
 			CategorySlug:       laundryOrder.CategorySlug,
-			ServicesTotal:      laundryOrder.Total, // Base price (without tip)
-			Subtotal:           laundryOrder.Total, // No separate subtotal for laundry
-			TotalPrice:         totalPrice,         // Total including tip
-			PlatformCommission: 0,                  // Laundry doesn't track separately
-			AddonsTotal:        0,                  // No addons for laundry
+			ServicesTotal:      laundryOrder.Total, 
+			Subtotal:           laundryOrder.Total, 
+			TotalPrice:         totalPrice,         
+			PlatformCommission: 0,                  
+			AddonsTotal:        0,                  
 			Status:             laundryOrder.Status,
 			AssignedProviderID: laundryOrder.ProviderID,
 			CreatedAt:          laundryOrder.CreatedAt,
 			UpdatedAt:          laundryOrder.UpdatedAt,
-			// Populate customer info
 			CustomerInfo: models.CustomerInfo{
 				Name:    customerName,
 				Address: laundryOrder.Address,
 				Lat:     laundryOrder.Latitude,
 				Lng:     laundryOrder.Longitude,
 			},
-			// Populate booking info
+
 			BookingInfo: models.BookingInfo{
 				Date: bookingDate,
 				Time: "",
 			},
-			// Populate selected services
 			SelectedServices: selectedServices,
 		}
 
 		allOrders = append(allOrders, serviceOrder)
 	}
-
-	// Combine service and laundry orders
 	allOrders = append(allOrders, serviceOrders...)
 
-	// Sort combined orders
 	sortField := "created_at"
 	if query.SortBy == "booking_date" {
 		sortField = "booking_info.date"
 	}
 
-	// Manual sorting since we're combining from multiple tables
 	if query.SortDesc {
 		sort.Slice(allOrders, func(i, j int) bool {
 			if sortField == "created_at" {
@@ -789,10 +608,8 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 		})
 	}
 
-	// Count total before pagination
 	total = int64(len(allOrders))
 
-	// Pagination
 	offset := query.PaginationParams.GetOffset()
 	limit := query.Limit
 
@@ -809,7 +626,6 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 }
 
 func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error) {
-	// Try service_orders table first
 	var order models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND assigned_provider_id = ?", orderID, providerID).
@@ -819,7 +635,6 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 		return &order, nil
 	}
 
-	// Try laundry_orders table
 	if err == gorm.ErrRecordNotFound {
 		var laundryOrder models.LaundryOrder
 		err = r.db.WithContext(ctx).
@@ -834,22 +649,10 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 	return nil, err
 }
 
-// func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error) {
-// 	var order models.ServiceOrderNew
-// 	err := r.db.WithContext(ctx).
-// 		Where("id = ? AND assigned_provider_id = ?", orderID, providerID).
-// 		First(&order).Error
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return &order, nil
-// }
-
 func (r *repository) CountProviderActiveOrders(ctx context.Context, providerID string) (int64, error) {
 	var serviceOrderCount int64
 	var laundryOrderCount int64
 
-	// Count active service orders
 	err := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("assigned_provider_id = ?", providerID).
@@ -860,8 +663,6 @@ func (r *repository) CountProviderActiveOrders(ctx context.Context, providerID s
 		return 0, err
 	}
 
-	// Count active laundry orders
-	// Laundry orders are active when they have a provider assigned and are not completed
 	err = r.db.WithContext(ctx).
 		Model(&models.LaundryOrder{}).
 		Where("provider_id = ?", providerID).
@@ -878,45 +679,14 @@ func (r *repository) CountProviderActiveOrders(ctx context.Context, providerID s
 	return total, nil
 }
 
-// func (r *repository) CountProviderActiveOrders(ctx context.Context, providerID string) (int64, error) {
-// 	var serviceOrderCount int64
-// 	var laundryOrderCount int64
-
-// 	// Count active service orders
-// 	err := r.db.WithContext(ctx).
-// 		Model(&models.ServiceOrderNew{}).
-// 		Where("assigned_provider_id = ?", providerID).
-// 		Where("status IN ?", shared.ActiveOrderStatuses()).
-// 		Count(&serviceOrderCount).Error
-// 	if err != nil {
-// 		return 0, err
-// 	}
-
-// 	// Count active laundry orders
-// 	err = r.db.WithContext(ctx).
-// 		Model(&models.LaundryOrder{}).
-// 		Where("provider_id = ?", providerID).
-// 		Where("status IN ?", shared.ActiveOrderStatuses()).
-// 		Count(&laundryOrderCount).Error
-// 	if err != nil {
-// 		return 0, err
-// 	}
-
-// 	return serviceOrderCount + laundryOrderCount, nil
-// }
-
-// ==================== Order Operations ====================
-
 func (r *repository) GetOrderByID(ctx context.Context, orderID string) (*models.ServiceOrderNew, error) {
 	var order models.ServiceOrderNew
 
-	// Try service_orders table first
 	err := r.db.WithContext(ctx).Where("id = ?", orderID).First(&order).Error
 	if err == nil {
 		return &order, nil
 	}
 
-	// If not found, try laundry_orders table
 	if err == gorm.ErrRecordNotFound {
 		return r.convertLaundryOrderToServiceOrder(ctx, orderID)
 	}
@@ -925,19 +695,14 @@ func (r *repository) GetOrderByID(ctx context.Context, orderID string) (*models.
 }
 
 func (r *repository) UpdateOrder(ctx context.Context, order *models.ServiceOrderNew) error {
-	// Check if this is a laundry order
 	var laundryOrder models.LaundryOrder
 	err := r.db.WithContext(ctx).Where("id = ?", order.ID).First(&laundryOrder).Error
 
 	if err == nil {
-		// This is a laundry order - update laundry_orders table
-		// Map ServiceOrderNew fields to LaundryOrder fields
 		updates := map[string]interface{}{
 			"status":     order.Status,
 			"updated_at": time.Now(),
 		}
-
-		// Update provider_id if being assigned
 		if order.AssignedProviderID != nil {
 			updates["provider_id"] = *order.AssignedProviderID
 		}
@@ -954,69 +719,15 @@ func (r *repository) UpdateOrder(ctx context.Context, order *models.ServiceOrder
 
 		return nil
 	} else if err == gorm.ErrRecordNotFound {
-		// This is a service order - update service_orders table
 		return r.db.WithContext(ctx).Save(order).Error
 	}
 
 	return err
 }
 
-// func (r *repository) GetOrderByID(ctx context.Context, orderID string) (*models.ServiceOrderNew, error) {
-// 	var order models.ServiceOrderNew
-// 	err := r.db.WithContext(ctx).Where("id = ?", orderID).First(&order).Error
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return &order, nil
-// }
-
-// func (r *repository) UpdateOrder(ctx context.Context, order *models.ServiceOrderNew) error {
-// 	// Check if this is a laundry order (exists in laundry_orders table)
-// 	var laundryOrder models.LaundryOrder
-// 	err := r.db.WithContext(ctx).Where("id = ?", order.ID).First(&laundryOrder).Error
-
-// 	if err == nil {
-// 		// This is a laundry order, update the laundry_orders table
-// 		updates := map[string]interface{}{
-// 			"status":     order.Status,
-// 			"updated_at": time.Now(),
-// 		}
-
-// 		// Only update provider_id if it's being assigned
-// 		if order.AssignedProviderID != nil {
-// 			updates["provider_id"] = *order.AssignedProviderID
-// 		}
-
-// 		return r.db.WithContext(ctx).
-// 			Model(&models.LaundryOrder{}).
-// 			Where("id = ?", order.ID).
-// 			Updates(updates).Error
-// 	} else if err == gorm.ErrRecordNotFound {
-// 		// This is a service order, update the service_orders table
-// 		return r.db.WithContext(ctx).Save(order).Error
-// 	}
-
-// 	return err
-// }
-
-// func (r *repository) AssignOrderToProvider(ctx context.Context, orderID, providerID string) error {
-// 	now := time.Now()
-// 	return r.db.WithContext(ctx).
-// 		Model(&models.ServiceOrderNew{}).
-// 		Where("id = ?", orderID).
-// 		Updates(map[string]interface{}{
-// 			"assigned_provider_id": providerID,
-// 			"status":               shared.OrderStatusAssigned,
-// 			"updated_at":           now,
-// 		}).Error
-// }
-
-// ==================== Statistics ====================
-
 func (r *repository) GetProviderStatistics(ctx context.Context, providerID string) (*ProviderStats, error) {
 	stats := &ProviderStats{}
 
-	// Get completed jobs and earnings from service orders
 	var serviceCompletedCount int64
 	var serviceEarnings float64
 	err := r.db.WithContext(ctx).
@@ -1028,7 +739,6 @@ func (r *repository) GetProviderStatistics(ctx context.Context, providerID strin
 		return nil, err
 	}
 
-	// Get completed jobs and earnings from laundry orders
 	var laundryCompletedCount int64
 	var laundryEarnings float64
 	err = r.db.WithContext(ctx).
@@ -1040,11 +750,9 @@ func (r *repository) GetProviderStatistics(ctx context.Context, providerID strin
 		return nil, err
 	}
 
-	// Combine results
 	stats.TotalCompletedJobs = int(serviceCompletedCount + laundryCompletedCount)
 	stats.TotalEarnings = serviceEarnings + laundryEarnings
 
-	// Get ratings (only from service orders, as laundry orders don't have rating fields yet)
 	err = r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("assigned_provider_id = ? AND customer_rating IS NOT NULL", providerID).
@@ -1054,14 +762,12 @@ func (r *repository) GetProviderStatistics(ctx context.Context, providerID strin
 		return nil, err
 	}
 
-	// Get active orders count
 	activeCount, err := r.CountProviderActiveOrders(ctx, providerID)
 	if err != nil {
 		return nil, err
 	}
 	stats.ActiveOrders = int(activeCount)
 
-	// Get today's stats from service orders
 	today := time.Now().Truncate(24 * time.Hour)
 	var todayServiceCompleted int64
 	var todayServiceEarnings float64
@@ -1075,7 +781,6 @@ func (r *repository) GetProviderStatistics(ctx context.Context, providerID strin
 		return nil, err
 	}
 
-	// Get today's stats from laundry orders
 	var todayLaundryCompleted int64
 	var todayLaundryEarnings float64
 	err = r.db.WithContext(ctx).
@@ -1088,7 +793,6 @@ func (r *repository) GetProviderStatistics(ctx context.Context, providerID strin
 		return nil, err
 	}
 
-	// Combine today's results
 	stats.TodayCompletedOrders = int(todayServiceCompleted + todayLaundryCompleted)
 	stats.TodayEarnings = todayServiceEarnings + todayLaundryEarnings
 
@@ -1098,7 +802,6 @@ func (r *repository) GetProviderStatistics(ctx context.Context, providerID strin
 func (r *repository) GetProviderEarnings(ctx context.Context, providerID string, fromDate, toDate time.Time) (*EarningsData, error) {
 	earnings := &EarningsData{}
 
-	// Get totals
 	err := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("assigned_provider_id = ? AND status = ?", providerID, shared.OrderStatusCompleted).
@@ -1109,7 +812,6 @@ func (r *repository) GetProviderEarnings(ctx context.Context, providerID string,
 		return nil, err
 	}
 
-	// Get daily breakdown
 	rows, err := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("assigned_provider_id = ? AND status = ?", providerID, shared.OrderStatusCompleted).

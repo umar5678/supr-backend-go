@@ -132,7 +132,7 @@ func (s *service) ProcessBatch(ctx context.Context, batchID string) (*dto.BatchM
 	// Get pickup centroid for driver search
 	centroid := calculateCentroid(requests)
 
-	// ✅ FIXED: Find nearby drivers using tracking service
+	// Find nearby drivers using tracking service
 	// Search at expanding radii: 3km, 5km, 8km
 	radii := []float64{3.0, 5.0, 8.0} // kilometers
 	var nearbyDriverIDs []string

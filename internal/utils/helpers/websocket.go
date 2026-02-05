@@ -8,9 +8,6 @@ import (
 	"github.com/umar5678/go-backend/internal/websocket"
 )
 
-// Notification Helpers
-
-// SendNotification sends notification to a single user (all devices)
 func SendNotification(userID string, notification interface{}) error {
 	msg := websocket.NewTargetedMessage(
 		websocket.TypeNotification,
@@ -32,7 +29,6 @@ func SendNotification(userID string, notification interface{}) error {
 	return nil
 }
 
-// SendNotificationToMultiple sends notification to multiple users
 func SendNotificationToMultiple(userIDs []string, notification interface{}) error {
 	for _, userID := range userIDs {
 		if err := SendNotification(userID, notification); err != nil {
@@ -45,7 +41,6 @@ func SendNotificationToMultiple(userIDs []string, notification interface{}) erro
 	return nil
 }
 
-// BroadcastNotification sends notification to all connected users
 func BroadcastNotification(notification interface{}) error {
 	msg := websocket.NewMessage(
 		websocket.TypeNotification,
@@ -58,9 +53,6 @@ func BroadcastNotification(notification interface{}) error {
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// Chat Helpers
-
-// SendChatMessage sends chat message to receiver
 func SendChatMessage(receiverID string, message interface{}) error {
 	msg := websocket.NewTargetedMessage(
 		websocket.TypeChatMessage,
@@ -82,7 +74,6 @@ func SendChatMessage(receiverID string, message interface{}) error {
 	return nil
 }
 
-// SendChatMessageSent sends confirmation to sender
 func SendChatMessageSent(senderID string, message interface{}) error {
 	msg := websocket.NewTargetedMessage(
 		websocket.TypeChatMessageSent,
@@ -96,7 +87,6 @@ func SendChatMessageSent(senderID string, message interface{}) error {
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// SendTypingIndicator sends typing indicator to receiver
 func SendTypingIndicator(receiverID, senderID string, isTyping bool) error {
 	msg := websocket.NewTargetedMessage(
 		websocket.TypeTyping,
@@ -111,7 +101,6 @@ func SendTypingIndicator(receiverID, senderID string, isTyping bool) error {
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// SendReadReceipt sends read receipt to sender
 func SendReadReceipt(senderID, receiverID string, messageIDs []string) error {
 	msg := websocket.NewTargetedMessage(
 		websocket.TypeReadReceipt,
@@ -126,7 +115,6 @@ func SendReadReceipt(senderID, receiverID string, messageIDs []string) error {
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// SendMessageEdited notifies both users about message edit
 func SendMessageEdited(senderID, receiverID string, message interface{}) error {
 	msg := websocket.NewMessage(
 		websocket.TypeChatEdit,
@@ -139,7 +127,6 @@ func SendMessageEdited(senderID, receiverID string, message interface{}) error {
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// SendMessageDeleted notifies both users about message deletion
 func SendMessageDeleted(senderID, receiverID, messageID string) error {
 	msg := websocket.NewMessage(
 		websocket.TypeChatDelete,
@@ -154,9 +141,6 @@ func SendMessageDeleted(senderID, receiverID, messageID string) error {
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// Presence Helpers
-
-// SendPresenceUpdate broadcasts user online/offline status
 func SendPresenceUpdate(userID string, isOnline bool) error {
 	msgType := websocket.TypeUserOnline
 	if !isOnline {
@@ -172,9 +156,6 @@ func SendPresenceUpdate(userID string, isOnline bool) error {
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// System Helpers
-
-// SendSystemMessage broadcasts system message to all users
 func SendSystemMessage(message string, data map[string]interface{}) error {
 	if data == nil {
 		data = make(map[string]interface{})
@@ -190,7 +171,6 @@ func SendSystemMessage(message string, data map[string]interface{}) error {
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// SendSystemMessageToUser sends system message to specific user
 func SendSystemMessageToUser(userID, message string, data map[string]interface{}) error {
 	if data == nil {
 		data = make(map[string]interface{})
@@ -207,15 +187,11 @@ func SendSystemMessageToUser(userID, message string, data map[string]interface{}
 	return cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
 
-// Utility Helpers
-
-// IsUserOnline checks if user is currently online
 func IsUserOnline(userID string) (bool, error) {
 	ctx := context.Background()
 	return cache.IsOnline(ctx, userID)
 }
 
-// GetUserDeviceCount returns number of active devices for user
 func GetUserDeviceCount(userID string) (int64, error) {
 	ctx := context.Background()
 	return cache.GetDeviceCount(ctx, userID)

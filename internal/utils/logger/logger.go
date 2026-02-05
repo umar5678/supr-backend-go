@@ -8,7 +8,6 @@ import (
 
 var log *zap.Logger
 
-// Initialize sets up the logger
 func Initialize(cfg *config.LoggerConfig) error {
 	var zapConfig zap.Config
 
@@ -18,14 +17,12 @@ func Initialize(cfg *config.LoggerConfig) error {
 		zapConfig = zap.NewDevelopmentConfig()
 	}
 
-	// Set log level
 	level, err := zapcore.ParseLevel(cfg.Level)
 	if err != nil {
 		level = zapcore.InfoLevel
 	}
 	zapConfig.Level = zap.NewAtomicLevelAt(level)
 
-	// Configure output
 	if cfg.Output == "file" && cfg.FilePath != "" {
 		zapConfig.OutputPaths = []string{cfg.FilePath}
 		zapConfig.ErrorOutputPaths = []string{cfg.FilePath}
@@ -43,16 +40,13 @@ func Initialize(cfg *config.LoggerConfig) error {
 	return nil
 }
 
-// Get returns the logger instance
 func Get() *zap.Logger {
 	if log == nil {
-		// Fallback logger
 		log, _ = zap.NewProduction()
 	}
 	return log
 }
 
-// Helper functions for common log levels
 func Debug(msg string, fields ...interface{}) {
 	Get().Sugar().Debugw(msg, fields...)
 }
@@ -73,7 +67,6 @@ func Fatal(msg string, fields ...interface{}) {
 	Get().Sugar().Fatalw(msg, fields...)
 }
 
-// Sync flushes any buffered log entries
 func Sync() {
 	if log != nil {
 		log.Sync()

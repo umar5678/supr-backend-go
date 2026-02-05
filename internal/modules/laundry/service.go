@@ -15,33 +15,27 @@ import (
 )
 
 type Service interface {
-	// Catalog
 	GetServiceCatalog(ctx context.Context) ([]*models.LaundryServiceCatalog, error)
 	GetServicesWithProducts(ctx context.Context) ([]*dto.LaundryServiceDTO, error)
 	GetServiceProducts(ctx context.Context, serviceSlug string) ([]*models.LaundryServiceProduct, error)
 
-	// Orders
 	CreateOrder(ctx context.Context, customerID string, req *dto.CreateLaundryOrderRequest) (*models.LaundryOrder, error)
 	GetOrder(ctx context.Context, orderID string) (*dto.LaundryOrderResponse, error)
 	GetOrderWithDetails(ctx context.Context, orderID string) (*models.LaundryOrder, error)
 	GetAvailableOrders(ctx context.Context, providerID string) ([]*models.LaundryOrder, error)
 
-	// Pickups
 	InitiatePickup(ctx context.Context, orderID string, providerID string) (*models.LaundryPickup, error)
 	CompletePickup(ctx context.Context, orderID string, req *dto.CompletePickupRequest) error
 	GetProviderPickups(ctx context.Context, providerID string) ([]*models.LaundryPickup, error)
 
-	// Items
 	AddItems(ctx context.Context, orderID string, req *dto.AddLaundryItemsRequest) ([]*models.LaundryOrderItem, error)
 	UpdateItemStatus(ctx context.Context, qrCode, status string) (*models.LaundryOrderItem, error)
 	GetOrderItems(ctx context.Context, orderID string) ([]*models.LaundryOrderItem, error)
 
-	// Deliveries
 	InitiateDelivery(ctx context.Context, orderID string, providerID string) (*models.LaundryDelivery, error)
 	CompleteDelivery(ctx context.Context, orderID string, req *dto.CompleteDeliveryRequest) error
 	GetProviderDeliveries(ctx context.Context, providerID string) ([]*models.LaundryDelivery, error)
 
-	// Issues
 	ReportIssue(ctx context.Context, orderID, customerID, providerID string, req *dto.ReportIssueRequest) (*models.LaundryIssue, error)
 	GetProviderIssues(ctx context.Context, providerID string) ([]*models.LaundryIssue, error)
 	ResolveIssue(ctx context.Context, issueID string, resolution string, refundAmount *float64) error
@@ -56,10 +50,6 @@ func NewService(repo Repository, db *gorm.DB) Service {
 	return &service{repo: repo, db: db}
 }
 
-// =====================================================
-// Catalog
-// =====================================================
-
 func (s *service) GetServiceCatalog(ctx context.Context) ([]*models.LaundryServiceCatalog, error) {
 	return s.repo.GetServiceCatalog(ctx)
 }
@@ -71,7 +61,6 @@ func (s *service) GetServicesWithProducts(ctx context.Context) ([]*dto.LaundrySe
 		return nil, fmt.Errorf("failed to fetch services: %w", err)
 	}
 
-	// Convert to DTO
 	result := make([]*dto.LaundryServiceDTO, 0, len(services))
 	for _, service := range services {
 		serviceDTO := &dto.LaundryServiceDTO{
@@ -118,18 +107,13 @@ func (s *service) GetServiceProducts(ctx context.Context, serviceSlug string) ([
 	return s.repo.GetServiceProducts(ctx, serviceSlug)
 }
 
-// =====================================================
-// Orders
-// =====================================================
-
 func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.CreateLaundryOrderRequest) (*models.LaundryOrder, error) {
-	// Validate request
+
 	if req == nil {
 		logger.Error("CreateOrder: request is nil", "customerID", customerID)
 		return nil, errors.New("request is required")
 	}
 
-	// Validate all required fields
 	if err := req.Validate(); err != nil {
 		logger.Error("CreateOrder: request validation failed",
 			"error", err,
@@ -139,7 +123,6 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Get service catalog to verify service exists
 	service, err := s.repo.GetServiceBySlug(ctx, req.ServiceSlug)
 	if err != nil {
 		logger.Error("CreateOrder: service not found",
@@ -149,11 +132,9 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		return nil, fmt.Errorf("service not found: %w", err)
 	}
 
-	// Calculate total price from products
 	totalPrice := 0.0
 
 	for _, item := range req.Items {
-		// Get product details
 		product, err := s.repo.GetProductBySlug(ctx, req.ServiceSlug, item.ProductSlug)
 		if err != nil {
 			logger.Error("CreateOrder: product not found",
@@ -163,24 +144,20 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 			return nil, fmt.Errorf("product '%s' not found", item.ProductSlug)
 		}
 
-		// Calculate price based on pricing unit
 		itemPrice := 0.0
 
 		if service.PricingUnit == "kg" {
-			// For weight-based services, only use product price (no base price per kg)
 			if product.Price != nil {
 				itemPrice = *product.Price * float64(item.Quantity)
 			}
 		} else {
-			// Item-based pricing: base_price + product_price per item
 			price := service.BasePrice
 			if product.Price != nil {
-				price += *product.Price // Add product price to base price
+				price += *product.Price
 			}
 			itemPrice = price * float64(item.Quantity)
 		}
 
-		// Add special care fee if required
 		if product.RequiresSpecialCare {
 			itemPrice += product.SpecialCareFee * float64(item.Quantity)
 		}
@@ -188,12 +165,10 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		totalPrice += itemPrice
 	}
 
-	// Add express fee if requested
 	if req.IsExpress {
 		totalPrice += service.ExpressFee
 	}
 
-	// Add tip if provided
 	if req.Tip != nil && *req.Tip > 0 {
 		totalPrice += *req.Tip
 	}
@@ -204,14 +179,12 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		"isExpress", req.IsExpress,
 	)
 
-	// In a real system, this could be based on availability, location, ratings, etc.
 	logger.Info("CreateOrder: preparing order creation",
 		"customerID", customerID,
 		"serviceSlug", req.ServiceSlug,
 		"totalPrice", totalPrice,
 	)
 
-	// Create service order
 	orderID := uuid.New().String()
 	now := time.Now()
 	order := &models.LaundryOrder{
@@ -223,11 +196,11 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		Address:      req.Address,
 		Latitude:     req.Lat,
 		Longitude:    req.Lng,
-		ServiceDate:  nil, // Will be set when pickup is created
+		ServiceDate:  nil, 
 		Total:        totalPrice,
-		Tip:          req.Tip,       // Store the tip
-		IsExpress:    req.IsExpress, // Store the express flag
-		ProviderID:   nil,           // Will be assigned when provider accepts
+		Tip:          req.Tip,       
+		IsExpress:    req.IsExpress, 
+		ProviderID:   nil,           
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
@@ -248,20 +221,18 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		"totalPrice", totalPrice,
 	)
 
-	// Create order items with pricing
 	items := make([]*models.LaundryOrderItem, len(req.Items))
 	for i, item := range req.Items {
 		product, _ := s.repo.GetProductBySlug(ctx, req.ServiceSlug, item.ProductSlug)
 
-		// Calculate item price (use same logic as total calculation)
 		itemPrice := 0.0
 		if service.PricingUnit == "kg" {
-			// For weight-based services, only use product price (no base price per kg)
+
 			if product.Price != nil {
 				itemPrice = *product.Price * float64(item.Quantity)
 			}
 		} else {
-			// Item-based pricing: base_price + product_price per item
+
 			price := service.BasePrice
 			if product.Price != nil {
 				price += *product.Price
@@ -277,7 +248,7 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 			OrderID:     orderID,
 			ServiceSlug: req.ServiceSlug,
 			ProductSlug: item.ProductSlug,
-			ItemType:    item.ProductSlug, // Use product slug as item type
+			ItemType:    item.ProductSlug,
 			Quantity:    item.Quantity,
 			Weight:      item.Weight,
 			Status:      "pending",
@@ -301,19 +272,14 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		"itemCount", len(items),
 	)
 
-	// Create pickup event - will be assigned to provider when they accept
-	// Parse pickup time - handle format "11:00 AM - 12:00 PM" by extracting just the start time
 	startTime := req.PickupTime
 	if strings.Contains(startTime, "-") {
-		// Extract the start time from the range
 		parts := strings.Split(startTime, "-")
 		startTime = strings.TrimSpace(parts[0])
 	}
 
-	// Parse the date and time
 	pickupDateTime, err := time.Parse("2006-01-02 3:04 PM", fmt.Sprintf("%s %s", req.PickupDate, startTime))
 	if err != nil {
-		// Try alternative format without spaces
 		pickupDateTime, err = time.Parse("2006-01-0215:04", fmt.Sprintf("%s%s", req.PickupDate, startTime))
 		if err != nil {
 			logger.Info("CreateOrder: failed to parse pickup datetime, using default",
@@ -321,15 +287,13 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 				"providedDate", req.PickupDate,
 				"providedTime", req.PickupTime,
 			)
-			// Fallback to current time + 2 hours
 			pickupDateTime = time.Now().Add(2 * time.Hour)
 		}
 	}
 
-	// For now, create pickup without provider assignment - will be assigned when provider accepts
 	pickup := &models.LaundryPickup{
 		OrderID:     orderID,
-		ProviderID:  nil, // Will be assigned when provider accepts
+		ProviderID:  nil,
 		ScheduledAt: pickupDateTime,
 		Status:      "scheduled",
 		Notes:       req.SpecialNotes,
@@ -351,7 +315,6 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		"pickupDateTime", pickupDateTime,
 	)
 
-	// Create delivery event (scheduled for turnaround time after pickup)
 	turnaroundHours := service.TurnaroundHours
 	if req.IsExpress {
 		turnaroundHours = service.ExpressHours
@@ -362,7 +325,7 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 
 	delivery := &models.LaundryDelivery{
 		OrderID:     orderID,
-		ProviderID:  nil, // Will be assigned when provider accepts
+		ProviderID:  nil,
 		ScheduledAt: deliveryDateTime,
 		Status:      "scheduled",
 		CreatedAt:   time.Now(),
@@ -428,7 +391,6 @@ func (s *service) GetOrder(ctx context.Context, orderID string) (*dto.LaundryOrd
 		itemDTOs = append(itemDTOs, itemDTO)
 	}
 
-	// Convert pickup to DTO
 	var pickupDTO *dto.LaundryPickupDTO
 	if pickup != nil {
 		pickupDTO = &dto.LaundryPickupDTO{
@@ -446,7 +408,6 @@ func (s *service) GetOrder(ctx context.Context, orderID string) (*dto.LaundryOrd
 		}
 	}
 
-	// Convert delivery to DTO
 	var deliveryDTO *dto.LaundryDeliveryDTO
 	if delivery != nil {
 		deliveryDTO = &dto.LaundryDeliveryDTO{
@@ -510,10 +471,7 @@ func (s *service) GetOrderWithDetails(ctx context.Context, orderID string) (*mod
 	return &order, nil
 }
 
-// GetAvailableOrders gets all available laundry orders for a provider to accept
-// Available orders are those that match provider's category and are not yet assigned
 func (s *service) GetAvailableOrders(ctx context.Context, providerID string) ([]*models.LaundryOrder, error) {
-	// Get provider's service category
 	provider, err := s.repo.GetProviderByID(ctx, providerID)
 	if err != nil {
 		logger.Error("GetAvailableOrders: failed to get provider",
@@ -530,7 +488,6 @@ func (s *service) GetAvailableOrders(ctx context.Context, providerID string) ([]
 		return nil, errors.New("provider not registered with a service category")
 	}
 
-	// Get all active services for this category
 	serviceSlugs, err := s.repo.GetProviderServices(ctx, providerID)
 	if err != nil {
 		logger.Error("GetAvailableOrders: failed to get provider services",
@@ -549,7 +506,6 @@ func (s *service) GetAvailableOrders(ctx context.Context, providerID string) ([]
 		return []*models.LaundryOrder{}, nil
 	}
 
-	// Get available orders matching provider's category
 	orders, err := s.repo.GetAvailableOrdersByCategory(ctx, provider.ServiceCategory, serviceSlugs)
 	if err != nil {
 		logger.Error("GetAvailableOrders: failed to get available orders",
@@ -569,10 +525,6 @@ func (s *service) GetAvailableOrders(ctx context.Context, providerID string) ([]
 	return orders, nil
 }
 
-// =====================================================
-// Pickups
-// =====================================================
-
 func (s *service) InitiatePickup(ctx context.Context, orderID string, providerID string) (*models.LaundryPickup, error) {
 	pickup, err := s.repo.GetPickupByOrder(ctx, orderID)
 	if err != nil {
@@ -582,11 +534,9 @@ func (s *service) InitiatePickup(ctx context.Context, orderID string, providerID
 		return nil, errors.New("pickup not found for this order")
 	}
 
-	// If pickup is not yet assigned, assign it to this provider
 	if pickup.ProviderID == nil {
 		pickup.ProviderID = &providerID
 	} else if *pickup.ProviderID != providerID {
-		// If already assigned to someone else, deny access
 		return nil, errors.New("unauthorized: you are not assigned to this pickup")
 	}
 
@@ -609,7 +559,6 @@ func (s *service) CompletePickup(ctx context.Context, orderID string, req *dto.C
 		return fmt.Errorf("failed to complete pickup: %w", err)
 	}
 
-	// Update order status to "pickup_completed"
 	if err := s.db.WithContext(ctx).
 		Model(&models.LaundryOrder{}).
 		Where("id = ?", orderID).
@@ -624,20 +573,13 @@ func (s *service) CompletePickup(ctx context.Context, orderID string, req *dto.C
 }
 
 func (s *service) GetProviderPickups(ctx context.Context, providerID string) ([]*models.LaundryPickup, error) {
-	// Get pickups that are scheduled or in_route (not yet completed)
 	return s.repo.GetPickupsByProvider(ctx, providerID, []string{"scheduled", "en_route", "arrived"})
 }
-
-// =====================================================
-// Items
-// =====================================================
 
 func (s *service) AddItems(ctx context.Context, orderID string, req *dto.AddLaundryItemsRequest) ([]*models.LaundryOrderItem, error) {
 	if req == nil || len(req.Items) == 0 {
 		return nil, errors.New("at least one item is required")
 	}
-
-	// Verify order exists
 	_, err := s.GetOrderWithDetails(ctx, orderID)
 	if err != nil {
 		return nil, err
@@ -661,8 +603,6 @@ func (s *service) AddItems(ctx context.Context, orderID string, req *dto.AddLaun
 			CreatedAt:   now,
 			UpdatedAt:   now,
 		}
-
-		// QR code will be auto-generated by BeforeCreate hook
 		items[i] = item
 	}
 
@@ -670,7 +610,6 @@ func (s *service) AddItems(ctx context.Context, orderID string, req *dto.AddLaun
 		return nil, fmt.Errorf("failed to create items: %w", err)
 	}
 
-	// Update order status to "processing"
 	s.db.WithContext(ctx).
 		Model(&models.LaundryOrder{}).
 		Where("id = ?", orderID).
@@ -683,8 +622,6 @@ func (s *service) UpdateItemStatus(ctx context.Context, qrCode, status string) (
 	if qrCode == "" || status == "" {
 		return nil, errors.New("qr_code and status are required")
 	}
-
-	// Validate status
 	validStatuses := map[string]bool{
 		"pending":   true,
 		"received":  true,
@@ -715,10 +652,6 @@ func (s *service) GetOrderItems(ctx context.Context, orderID string) ([]*models.
 	return s.repo.GetOrderItems(ctx, orderID)
 }
 
-// =====================================================
-// Deliveries
-// =====================================================
-
 func (s *service) InitiateDelivery(ctx context.Context, orderID string, providerID string) (*models.LaundryDelivery, error) {
 	delivery, err := s.repo.GetDeliveryByOrder(ctx, orderID)
 	if err != nil {
@@ -728,11 +661,9 @@ func (s *service) InitiateDelivery(ctx context.Context, orderID string, provider
 		return nil, errors.New("delivery not found for this order")
 	}
 
-	// If delivery is not yet assigned, assign it to this provider
 	if delivery.ProviderID == nil {
 		delivery.ProviderID = &providerID
 	} else if *delivery.ProviderID != providerID {
-		// If already assigned to someone else, deny access
 		return nil, errors.New("unauthorized: you are not assigned to this delivery")
 	}
 
@@ -755,7 +686,6 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 		return fmt.Errorf("failed to complete delivery: %w", err)
 	}
 
-	// Update all items to "delivered"
 	s.db.WithContext(ctx).
 		Model(&models.LaundryOrderItem{}).
 		Where("order_id = ?", orderID).
@@ -765,7 +695,6 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 			"updated_at":   now,
 		})
 
-	// Update order status to "completed"
 	if err := s.db.WithContext(ctx).
 		Model(&models.LaundryOrder{}).
 		Where("id = ?", orderID).
@@ -780,20 +709,14 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 }
 
 func (s *service) GetProviderDeliveries(ctx context.Context, providerID string) ([]*models.LaundryDelivery, error) {
-	// Get deliveries that are scheduled or in_route (not yet completed)
 	return s.repo.GetDeliveriesByProvider(ctx, providerID, []string{"scheduled", "en_route", "arrived"})
 }
-
-// =====================================================
-// Issues
-// =====================================================
 
 func (s *service) ReportIssue(ctx context.Context, orderID, userID, providerID string, req *dto.ReportIssueRequest) (*models.LaundryIssue, error) {
 	if req == nil {
 		return nil, errors.New("request is required")
 	}
 
-	// Verify order exists and customer owns it
 	order, err := s.GetOrderWithDetails(ctx, orderID)
 	if err != nil {
 		return nil, err
@@ -803,7 +726,6 @@ func (s *service) ReportIssue(ctx context.Context, orderID, userID, providerID s
 		return nil, errors.New("unauthorized: this order does not belong to you")
 	}
 
-	// Get provider ID from order if not provided
 	if providerID == "" && order.ProviderID != nil {
 		providerID = *order.ProviderID
 	}
@@ -834,7 +756,6 @@ func (s *service) ReportIssue(ctx context.Context, orderID, userID, providerID s
 }
 
 func (s *service) GetProviderIssues(ctx context.Context, providerID string) ([]*models.LaundryIssue, error) {
-	// Get all open issues for provider
 	return s.repo.GetIssuesByProvider(ctx, providerID, []string{})
 }
 
@@ -843,7 +764,6 @@ func (s *service) ResolveIssue(ctx context.Context, issueID string, resolution s
 		return errors.New("issue_id is required")
 	}
 
-	// Update issue status
 	now := time.Now()
 	updates := map[string]interface{}{
 		"status":      "resolved",
@@ -862,7 +782,3 @@ func (s *service) ResolveIssue(ctx context.Context, issueID string, resolution s
 
 	return nil
 }
-
-// =====================================================
-// Helpers
-// =====================================================

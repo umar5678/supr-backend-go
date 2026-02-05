@@ -359,7 +359,7 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 		logger.Warn("failed to get surge multiplier", "error", err, "lat", req.PickupLat, "lon", req.PickupLon)
 		surgeMultiplier = 1.0
 	}
-	
+
 	logger.Info("surge multiplier retrieved for fare breakdown",
 		"lat", req.PickupLat,
 		"lon", req.PickupLon,

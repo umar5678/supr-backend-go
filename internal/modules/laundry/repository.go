@@ -9,16 +9,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// =====================================================
-// Repository Interface
-// =====================================================
-
 type Repository interface {
-	// Catalog
 	GetServiceCatalog(ctx context.Context) ([]*models.LaundryServiceCatalog, error)
 	GetServiceBySlug(ctx context.Context, slug string) (*models.LaundryServiceCatalog, error)
 
-	// Provider Management
 	FindProviderByUserIDAndCategory(ctx context.Context, userID, category string) (*models.ServiceProviderProfile, error)
 	GetProviderByID(ctx context.Context, providerID string) (*models.ServiceProviderProfile, error)
 	CreateProvider(ctx context.Context, provider *models.ServiceProviderProfile) error
@@ -26,7 +20,6 @@ type Repository interface {
 	GetProviderServices(ctx context.Context, providerID string) ([]string, error)
 	GetAvailableOrdersByCategory(ctx context.Context, category string, serviceSlugs []string) ([]*models.LaundryOrder, error)
 
-	// Pickups & Deliveries (handled by provider)
 	CreatePickup(ctx context.Context, pickup *models.LaundryPickup) error
 	GetPickupByOrder(ctx context.Context, orderID string) (*models.LaundryPickup, error)
 	UpdatePickupStatus(ctx context.Context, orderID, status string, pickedUpAt *time.Time) error
@@ -37,35 +30,25 @@ type Repository interface {
 	UpdateDeliveryStatus(ctx context.Context, orderID, status string, deliveredAt *time.Time) error
 	GetDeliveriesByProvider(ctx context.Context, providerID string, statuses []string) ([]*models.LaundryDelivery, error)
 
-	// Items
 	CreateItems(ctx context.Context, items []*models.LaundryOrderItem) error
 	GetOrderItems(ctx context.Context, orderID string) ([]*models.LaundryOrderItem, error)
 	UpdateItemStatus(ctx context.Context, qrCode, status string) error
 	GetItemByQRCode(ctx context.Context, qrCode string) (*models.LaundryOrderItem, error)
 
-	// Issues
 	CreateIssue(ctx context.Context, issue *models.LaundryIssue) error
 	GetIssuesByProvider(ctx context.Context, providerID string, statuses []string) ([]*models.LaundryIssue, error)
 	GetIssuesByOrder(ctx context.Context, orderID string) ([]*models.LaundryIssue, error)
 	UpdateIssueStatus(ctx context.Context, issueID, status string, resolution *string, refundAmount *float64) error
 
-	// Services & Products
 	GetServicesWithProducts(ctx context.Context) ([]*models.LaundryServiceCatalog, error)
 	GetServiceProducts(ctx context.Context, serviceSlug string) ([]*models.LaundryServiceProduct, error)
 	GetProductBySlug(ctx context.Context, serviceSlug, productSlug string) (*models.LaundryServiceProduct, error)
 }
 
-// =====================================================
-// Repository Implementation
-// =====================================================
 
 type repository struct {
 	db *gorm.DB
 }
-
-// =====================================================
-// Services with Products Methods
-// =====================================================
 
 func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
@@ -95,29 +78,22 @@ func (r *repository) GetServiceProducts(ctx context.Context, serviceSlug string)
 func (r *repository) GetProductBySlug(ctx context.Context, serviceSlug, productSlug string) (*models.LaundryServiceProduct, error) {
 	var product models.LaundryServiceProduct
 
-	// First try to find by slug
 	err := r.db.WithContext(ctx).
 		Where("service_slug = ? AND slug = ? AND is_active = ?", serviceSlug, productSlug, true).
 		First(&product).Error
 
-	// If not found by slug, try by ID (UUID)
 	if err != nil {
 		err = r.db.WithContext(ctx).
 			Where("id = ? AND service_slug = ? AND is_active = ?", productSlug, serviceSlug, true).
 			First(&product).Error
 	}
 
-	// If product ID is empty, it means not found
 	if product.ID == "" {
 		return nil, gorm.ErrRecordNotFound
 	}
 
 	return &product, err
 }
-
-// =====================================================
-// Catalog Methods
-// =====================================================
 
 func (r *repository) GetServiceCatalog(ctx context.Context) ([]*models.LaundryServiceCatalog, error) {
 	var services []*models.LaundryServiceCatalog
@@ -138,10 +114,6 @@ func (r *repository) GetServiceBySlug(ctx context.Context, slug string) (*models
 	}
 	return &service, err
 }
-
-// =====================================================
-// Pickup Methods
-// =====================================================
 
 func (r *repository) CreatePickup(ctx context.Context, pickup *models.LaundryPickup) error {
 	return r.db.WithContext(ctx).Create(pickup).Error
@@ -185,10 +157,6 @@ func (r *repository) GetPickupsByProvider(ctx context.Context, providerID string
 	return pickups, err
 }
 
-// =====================================================
-// Delivery Methods
-// =====================================================
-
 func (r *repository) CreateDelivery(ctx context.Context, delivery *models.LaundryDelivery) error {
 	return r.db.WithContext(ctx).Create(delivery).Error
 }
@@ -231,10 +199,6 @@ func (r *repository) GetDeliveriesByProvider(ctx context.Context, providerID str
 	return deliveries, err
 }
 
-// =====================================================
-// Item Methods
-// =====================================================
-
 func (r *repository) CreateItems(ctx context.Context, items []*models.LaundryOrderItem) error {
 	return r.db.WithContext(ctx).Create(&items).Error
 }
@@ -251,7 +215,6 @@ func (r *repository) GetOrderItems(ctx context.Context, orderID string) ([]*mode
 func (r *repository) UpdateItemStatus(ctx context.Context, qrCode, status string) error {
 	updates := map[string]interface{}{"status": status}
 
-	// Set timestamps based on status
 	now := time.Now()
 	switch status {
 	case "received":
@@ -278,10 +241,6 @@ func (r *repository) GetItemByQRCode(ctx context.Context, qrCode string) (*model
 	}
 	return &item, err
 }
-
-// =====================================================
-// Issue Methods
-// =====================================================
 
 func (r *repository) CreateIssue(ctx context.Context, issue *models.LaundryIssue) error {
 	return r.db.WithContext(ctx).Create(issue).Error
@@ -328,10 +287,6 @@ func (r *repository) UpdateIssueStatus(ctx context.Context, issueID, status stri
 		Updates(updates).Error
 }
 
-// =====================================================
-// Provider Management Methods
-// =====================================================
-
 func (r *repository) FindProviderByUserIDAndCategory(ctx context.Context, userID, category string) (*models.ServiceProviderProfile, error) {
 	var provider *models.ServiceProviderProfile
 	err := r.db.WithContext(ctx).
@@ -356,15 +311,10 @@ func (r *repository) CreateProvider(ctx context.Context, provider *models.Servic
 }
 
 func (r *repository) AddProviderService(ctx context.Context, providerID, serviceSlug string) error {
-	// Store the provider-service relationship
-	// Using a JSON array in the ServiceType or a separate table would be ideal
-	// For now, we'll just return nil as the service slug is inherent to orders filtered by category
 	return nil
 }
 
 func (r *repository) GetProviderServices(ctx context.Context, providerID string) ([]string, error) {
-	// For laundry, we don't explicitly assign services. Instead, we return ALL services
-	// in the laundry category, so the provider automatically gets all current and future services
 	var slugs []string
 	err := r.db.WithContext(ctx).
 		Model(&models.LaundryServiceCatalog{}).
@@ -376,7 +326,6 @@ func (r *repository) GetProviderServices(ctx context.Context, providerID string)
 			"error", err,
 			"providerID", providerID,
 		)
-		// Return empty slice on error (provider would get no orders)
 		return []string{}, nil
 	}
 
@@ -391,7 +340,6 @@ func (r *repository) GetProviderServices(ctx context.Context, providerID string)
 
 func (r *repository) GetAvailableOrdersByCategory(ctx context.Context, category string, serviceSlugs []string) ([]*models.LaundryOrder, error) {
 	var orders []*models.LaundryOrder
-	// Get unassigned orders in the laundry category with pending or ready status
 	err := r.db.WithContext(ctx).
 		Where("category_slug = ? AND provider_id IS NULL AND status IN ?", category, []string{"pending", "ready"}).
 		Order("created_at ASC").

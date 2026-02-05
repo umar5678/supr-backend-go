@@ -1,4 +1,3 @@
-// internal/modules/fraud/service.go
 package fraud
 
 import (

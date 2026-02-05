@@ -1,4 +1,3 @@
-// internal/modules/promotions/repository.go
 package promotions
 
 import (
@@ -10,7 +9,6 @@ import (
 )
 
 type Repository interface {
-	// Promo codes
 	CreatePromoCode(ctx context.Context, promo *models.PromoCode) error
 	FindPromoCodeByCode(ctx context.Context, code string) (*models.PromoCode, error)
 	FindPromoCodeByID(ctx context.Context, id string) (*models.PromoCode, error)
@@ -19,11 +17,9 @@ type Repository interface {
 	IncrementUsageCount(ctx context.Context, promoID string) error
 	DeactivatePromoCode(ctx context.Context, promoID string) error
 
-	// Usage tracking
 	CreatePromoUsage(ctx context.Context, usage *models.PromoCodeUsage) error
 	CountUserUsage(ctx context.Context, promoID, userID string) (int64, error)
 
-	// Free ride credits
 	GetFreeRideCredits(ctx context.Context, userID string) (float64, error)
 	DeductFreeRideCredits(ctx context.Context, userID string, amount float64) error
 	AddFreeRideCredits(ctx context.Context, userID string, amount float64) error

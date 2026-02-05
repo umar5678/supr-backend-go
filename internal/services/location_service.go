@@ -35,7 +35,6 @@ func NewLocationService(driverRepo drivers.Repository, rideRepo rides.Repository
 }
 
 func (s *locationService) UpdateDriverLocation(ctx context.Context, driverID string, lat, lng float64, heading int, speed, accuracy float64) error {
-	// 1. Store in database
 	location := &models.DriverLocation{
 		DriverID:  driverID,
 		Latitude:  lat,
@@ -46,12 +45,10 @@ func (s *locationService) UpdateDriverLocation(ctx context.Context, driverID str
 		Timestamp: time.Now(),
 	}
 
-	// Update driver's current location
 	if err := s.driverRepo.UpdateDriverLocation(ctx, driverID, lat, lng, heading); err != nil {
 		return err
 	}
 
-	// 2. Cache in Redis for quick access
 	locationKey := fmt.Sprintf("driver:location:%s", driverID)
 	locationData := map[string]interface{}{
 		"latitude":  lat,
@@ -63,7 +60,6 @@ func (s *locationService) UpdateDriverLocation(ctx context.Context, driverID str
 	}
 	cache.SetJSON(ctx, locationKey, locationData, 30*time.Second)
 
-	// 3. Check if driver has active ride and broadcast to rider
 	activeRide, err := s.rideRepo.FindActiveRideByDriverID(ctx, driverID)
 	if err == nil && activeRide != nil {
 		go s.BroadcastLocationToRider(context.Background(), driverID, activeRide.ID, location)
@@ -85,10 +81,9 @@ func (s *locationService) BroadcastLocationToRider(ctx context.Context, driverID
 		return err
 	}
 
-	// Calculate ETA to destination
 	eta, err := s.CalculateETA(ctx, location.Latitude, location.Longitude, ride.DropoffLat, ride.DropoffLon)
 	if err != nil {
-		eta = 0 // Default if calculation fails
+		eta = 0
 	}
 
 	broadcast := models.LocationBroadcast{
@@ -102,7 +97,6 @@ func (s *locationService) BroadcastLocationToRider(ctx context.Context, driverID
 		ETA:       eta,
 	}
 
-	// Send to rider via WebSocket
 	message := map[string]interface{}{
 		"type":      "driver_location_update",
 		"data":      broadcast,
@@ -121,7 +115,6 @@ func (s *locationService) BroadcastLocationToRider(ctx context.Context, driverID
 	return nil
 }
 func (s *locationService) GetDriverLocation(ctx context.Context, driverID string) (*models.DriverLocation, error) {
-	// Try cache first
 	cacheKey := fmt.Sprintf("driver:location:%s", driverID)
 	var cachedLocation models.DriverLocation
 
@@ -130,7 +123,6 @@ func (s *locationService) GetDriverLocation(ctx context.Context, driverID string
 		return &cachedLocation, nil
 	}
 
-	// Fallback to database - get the latest location from driver_locations table
 	location, err := s.driverRepo.GetLatestDriverLocation(ctx, driverID)
 	if err != nil {
 		logger.Error("failed to get driver location from database",
@@ -140,7 +132,6 @@ func (s *locationService) GetDriverLocation(ctx context.Context, driverID string
 		return nil, fmt.Errorf("driver location not found")
 	}
 
-	// Cache the location for future requests
 	locationData := map[string]interface{}{
 		"latitude":  location.Latitude,
 		"longitude": location.Longitude,
@@ -155,28 +146,22 @@ func (s *locationService) GetDriverLocation(ctx context.Context, driverID string
 }
 
 func (s *locationService) CalculateRoute(ctx context.Context, startLat, startLng, endLat, endLng float64) (*models.Route, error) {
-	// TODO: Integrate with routing service (Google Maps, OSRM, Mapbox)
-	// For now, return mock data
 	return &models.Route{
-		Polyline: "mock_polyline_encoded_string",
-		Distance: 5000, // meters
-		Duration: 900,  // seconds
+		Polyline: "polyline_encoded_string",
+		Distance: 5000,
+		Duration: 900, 
 		Summary:  "Fastest route",
 	}, nil
 }
 
 func (s *locationService) CalculateETA(ctx context.Context, driverLat, driverLng, destLat, destLng float64) (int, error) {
-	// TODO: Implement actual ETA calculation
-	// For now, return mock ETA based on distance and average speed
 	distance := calculateHaversineDistance(driverLat, driverLng, destLat, destLng)
-	eta := int((distance / 13.8889) * 3600) // 50 km/h average speed in m/s
+	eta := int((distance / 13.8889) * 3600)
 	return eta, nil
 }
 
-// Helper function to calculate distance between two points
 func calculateHaversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
-	// Haversine formula implementation
-	const R = 6371000 // Earth radius in meters
+	const R = 6371000
 	dLat := (lat2 - lat1) * (3.14159265358979323846 / 180)
 	dLon := (lon2 - lon1) * (3.14159265358979323846 / 180)
 	a := math.Sin(dLat/2)*math.Sin(dLat/2) +

@@ -27,7 +27,6 @@ func (r *FareEstimateRequest) Validate() error {
 		return errors.New("vehicle type is required")
 	}
 
-	// Check if pickup and dropoff are different
 	if r.PickupLat == r.DropoffLat && r.PickupLon == r.DropoffLon {
 		return errors.New("pickup and dropoff locations must be different")
 	}
@@ -44,7 +43,7 @@ type CalculateActualFareRequest struct {
 
 type CalculateWaitTimeRequest struct {
 	RideID    string `json:"rideId" binding:"required,uuid"`
-	ArrivedAt string `json:"arrivedAt" binding:"required"` // ISO 8601 timestamp
+	ArrivedAt string `json:"arrivedAt" binding:"required"`
 }
 
 type ChangeDestinationRequest struct {
@@ -72,7 +71,6 @@ type GetFareBreakdownRequest struct {
 	VehicleTypeID string  `form:"vehicleTypeId" binding:"required,uuid"`
 }
 
-// CreateSurgeZoneRequest creates a new surge pricing zone
 type CreateSurgeZoneRequest struct {
 	AreaName    string  `json:"areaName" binding:"required,max=255"`
 	AreaGeohash string  `json:"areaGeohash" binding:"required,max=12"`
@@ -80,8 +78,8 @@ type CreateSurgeZoneRequest struct {
 	CenterLon   float64 `json:"centerLon" binding:"required,min=-180,max=180"`
 	RadiusKm    float64 `json:"radiusKm" binding:"required,min=0.1,max=100"`
 	Multiplier  float64 `json:"multiplier" binding:"required,min=1.0,max=5.0"`
-	ActiveFrom  string  `json:"activeFrom" binding:"required"`  // ISO 8601 timestamp
-	ActiveUntil string  `json:"activeUntil" binding:"required"` // ISO 8601 timestamp
+	ActiveFrom  string  `json:"activeFrom" binding:"required"` 
+	ActiveUntil string  `json:"activeUntil" binding:"required"`
 	IsActive    bool    `json:"isActive" binding:"omitempty"`
 }
 

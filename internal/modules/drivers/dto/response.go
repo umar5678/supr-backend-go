@@ -108,7 +108,6 @@ func ToDriverProfileResponse(driver *models.DriverProfile) *DriverProfileRespons
 	return resp
 }
 
-// ✅ WalletTopUpResponse - Response after successful wallet top-up
 type WalletTopUpResponse struct {
 	TransactionID     string    `json:"transactionId"`
 	Amount            float64   `json:"amount"`
@@ -120,7 +119,7 @@ type WalletTopUpResponse struct {
 	Timestamp         time.Time `json:"timestamp"`
 }
 
-// ✅ WalletStatusResponse - Detailed wallet and account status
+
 type WalletStatusResponse struct {
 	Balance             float64    `json:"balance"`
 	HeldBalance         float64    `json:"heldBalance"`

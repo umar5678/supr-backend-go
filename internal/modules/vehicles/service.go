@@ -26,7 +26,6 @@ func NewService(repo Repository) Service {
 }
 
 func (s *service) GetAllVehicleTypes(ctx context.Context) ([]*dto.VehicleTypeResponse, error) {
-	// Try cache first
 	cacheKey := "vehicle:types:all"
 	var cached []*dto.VehicleTypeResponse
 
@@ -36,27 +35,24 @@ func (s *service) GetAllVehicleTypes(ctx context.Context) ([]*dto.VehicleTypeRes
 		return cached, nil
 	}
 
-	// Get from database
 	vehicleTypes, err := s.repo.FindAll(ctx)
 	if err != nil {
 		logger.Error("failed to fetch vehicle types", "error", err)
 		return nil, response.InternalServerError("Failed to fetch vehicle types", err)
 	}
 
-	// Convert to response
 	result := make([]*dto.VehicleTypeResponse, len(vehicleTypes))
 	for i, vt := range vehicleTypes {
 		result[i] = dto.ToVehicleTypeResponse(vt)
 	}
 
-	// Cache for 10 minutes
 	cache.SetJSON(ctx, cacheKey, result, 10*time.Minute)
 
 	return result, nil
 }
 
 func (s *service) GetActiveVehicleTypes(ctx context.Context) ([]*dto.VehicleTypeResponse, error) {
-	// Try cache first
+
 	cacheKey := "vehicle:types:active"
 	var cached []*dto.VehicleTypeResponse
 
@@ -66,20 +62,17 @@ func (s *service) GetActiveVehicleTypes(ctx context.Context) ([]*dto.VehicleType
 		return cached, nil
 	}
 
-	// Get from database
 	vehicleTypes, err := s.repo.FindActive(ctx)
 	if err != nil {
 		logger.Error("failed to fetch active vehicle types", "error", err)
 		return nil, response.InternalServerError("Failed to fetch vehicle types", err)
 	}
 
-	// Convert to response
 	result := make([]*dto.VehicleTypeResponse, len(vehicleTypes))
 	for i, vt := range vehicleTypes {
 		result[i] = dto.ToVehicleTypeResponse(vt)
 	}
 
-	// Cache for 10 minutes
 	cache.SetJSON(ctx, cacheKey, result, 10*time.Minute)
 
 	logger.Info("active vehicle types retrieved", "count", len(result))
@@ -88,7 +81,6 @@ func (s *service) GetActiveVehicleTypes(ctx context.Context) ([]*dto.VehicleType
 }
 
 func (s *service) GetVehicleTypeByID(ctx context.Context, id string) (*dto.VehicleTypeResponse, error) {
-	// Try cache first
 	cacheKey := fmt.Sprintf("vehicle:type:%s", id)
 	var cached dto.VehicleTypeResponse
 
@@ -97,7 +89,6 @@ func (s *service) GetVehicleTypeByID(ctx context.Context, id string) (*dto.Vehic
 		return &cached, nil
 	}
 
-	// Get from database
 	vehicleType, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, response.NotFoundError("Vehicle type")
@@ -105,7 +96,6 @@ func (s *service) GetVehicleTypeByID(ctx context.Context, id string) (*dto.Vehic
 
 	result := dto.ToVehicleTypeResponse(vehicleType)
 
-	// Cache for 10 minutes
 	cache.SetJSON(ctx, cacheKey, result, 10*time.Minute)
 
 	return result, nil

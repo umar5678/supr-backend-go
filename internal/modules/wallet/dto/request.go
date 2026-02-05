@@ -49,7 +49,6 @@ func (r *TransferFundsRequest) Validate() error {
 	return nil
 }
 
-// HoldFundsRequest - Create virtual hold for ride (cash tracking)
 type HoldFundsRequest struct {
     Amount        float64 `json:"amount" binding:"required,min=0.5"`
     ReferenceType string  `json:"referenceType" binding:"required"`
@@ -107,7 +106,6 @@ func (r *ListTransactionsRequest) SetDefaults() {
 	}
 }
 
-// CashCollectionRequest - Driver records cash received from rider
 type CashCollectionRequest struct {
     RideID string  `json:"rideId" binding:"required,uuid"`
     Amount float64 `json:"amount" binding:"required,min=0.5"`
@@ -120,7 +118,6 @@ func (r *CashCollectionRequest) Validate() error {
     return nil
 }
 
-// CashPaymentRequest - Driver pays cash to company (settlement)
 type CashPaymentRequest struct {
     Amount       float64 `json:"amount" binding:"required,min=1"`
     SettlementID string  `json:"settlementId" binding:"required"`

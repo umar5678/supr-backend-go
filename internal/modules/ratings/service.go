@@ -38,7 +38,6 @@ func NewService(repo Repository, db *gorm.DB, homeServicesRepo homeservices.Repo
 }
 
 func (s *service) CreateRating(ctx context.Context, userID string, req dto.CreateRatingRequest) (*dto.RatingResponse, error) {
-	// 1. Verify order exists and belongs to user
 	order, err := s.homeServicesRepo.GetOrderByID(ctx, req.OrderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -51,23 +50,19 @@ func (s *service) CreateRating(ctx context.Context, userID string, req dto.Creat
 		return nil, response.ForbiddenError("You don't have access to this order")
 	}
 
-	// 2. Verify order is completed
 	if order.Status != "completed" {
 		return nil, response.BadRequest("Can only rate completed orders")
 	}
 
-	// 3. Verify provider is assigned
 	if order.ProviderID == nil {
 		return nil, response.BadRequest("No provider assigned to this order")
 	}
 
-	// 4. Check if rating already exists
 	_, err = s.repo.FindByOrderID(ctx, req.OrderID)
 	if err == nil {
 		return nil, response.ConflictError("Order already rated")
 	}
 
-	// 5. Create rating
 	rating := &models.Rating{
 		ID:         uuid.New().String(),
 		OrderID:    req.OrderID,
@@ -82,7 +77,6 @@ func (s *service) CreateRating(ctx context.Context, userID string, req dto.Creat
 		return nil, response.InternalServerError("Failed to create rating", err)
 	}
 
-	// 6. Update provider's average rating
 	newAverage, err := s.repo.GetProviderAverageRating(ctx, *order.ProviderID)
 	if err == nil {
 		s.repo.UpdateProviderRating(ctx, *order.ProviderID, newAverage)
@@ -98,7 +92,6 @@ func (s *service) RateDriver(ctx context.Context, riderID string, req dto.RateDr
 		return response.BadRequest(err.Error())
 	}
 
-	// Verify ride belongs to rider and is completed
 	var ride models.Ride
 	if err := s.db.WithContext(ctx).Where("id = ?", req.RideID).First(&ride).Error; err != nil {
 		return response.NotFoundError("Ride")
@@ -120,13 +113,11 @@ func (s *service) RateDriver(ctx context.Context, riderID string, req dto.RateDr
 		return response.BadRequest("No driver assigned to this ride")
 	}
 
-	// Rate driver
 	if err := s.repo.RateDriver(ctx, req.RideID, req.Rating, req.Comment); err != nil {
 		logger.Error("failed to rate driver", "error", err, "rideID", req.RideID)
 		return response.InternalServerError("Failed to rate driver", err)
 	}
 
-	// Update driver's average rating
 	go s.repo.UpdateDriverRating(context.Background(), *ride.DriverID)
 
 	logger.Info("driver rated",
@@ -143,7 +134,6 @@ func (s *service) RateRider(ctx context.Context, driverID string, req dto.RateRi
 		return response.BadRequest(err.Error())
 	}
 
-	// Verify ride belongs to driver and is completed
 	var ride models.Ride
 	if err := s.db.WithContext(ctx).Where("id = ?", req.RideID).First(&ride).Error; err != nil {
 		return response.NotFoundError("Ride")
@@ -161,13 +151,11 @@ func (s *service) RateRider(ctx context.Context, driverID string, req dto.RateRi
 		return response.BadRequest("You have already rated this rider")
 	}
 
-	// Rate rider
 	if err := s.repo.RateRider(ctx, req.RideID, req.Rating, req.Comment); err != nil {
 		logger.Error("failed to rate rider", "error", err, "rideID", req.RideID)
 		return response.InternalServerError("Failed to rate rider", err)
 	}
 
-	// Update rider's average rating
 	go s.repo.UpdateRiderRating(context.Background(), ride.RiderID)
 
 	logger.Info("rider rated",
@@ -191,7 +179,6 @@ func (s *service) GetDriverRatingStats(ctx context.Context, driverID string) (*d
 func (s *service) GetRiderRatingStats(ctx context.Context, riderID string) (*dto.RatingStatsResponse, error) {
 	profile, err := s.repo.GetRiderProfile(ctx, riderID)
 	if err != nil {
-		// Create profile if doesn't exist
 		rating, _ := s.repo.GetRiderRating(ctx, riderID)
 		profile = &models.RiderProfile{
 			UserID: riderID,

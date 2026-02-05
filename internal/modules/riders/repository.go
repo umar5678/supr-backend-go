@@ -14,7 +14,6 @@ type Repository interface {
 	Update(ctx context.Context, profile *models.RiderProfile) error
 	Delete(ctx context.Context, id string) error
 
-	// Statistics
 	IncrementTotalRides(ctx context.Context, userID string) error
 	UpdateRating(ctx context.Context, userID string, newRating float64) error
 }

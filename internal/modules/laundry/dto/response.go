@@ -6,7 +6,6 @@ import (
 	"github.com/umar5678/go-backend/internal/models"
 )
 
-// LaundryOrderResponse represents the complete order response
 type LaundryOrderResponse struct {
 	ID          string                `json:"id"`
 	OrderNumber string                `json:"orderNumber"`
@@ -27,7 +26,6 @@ type LaundryOrderResponse struct {
 	UpdatedAt   time.Time             `json:"updatedAt"`
 }
 
-// LaundryOrderItemDTO represents an order item
 type LaundryOrderItemDTO struct {
 	ID               string     `json:"id"`
 	OrderID          string     `json:"orderId"`
@@ -46,7 +44,6 @@ type LaundryOrderItemDTO struct {
 	CreatedAt        time.Time  `json:"createdAt"`
 }
 
-// LaundryPickupDTO represents pickup information
 type LaundryPickupDTO struct {
 	ID          string     `json:"id"`
 	OrderID     string     `json:"orderId"`
@@ -61,7 +58,6 @@ type LaundryPickupDTO struct {
 	CreatedAt   time.Time  `json:"createdAt"`
 }
 
-// LaundryDeliveryDTO represents delivery information
 type LaundryDeliveryDTO struct {
 	ID                 string     `json:"id"`
 	OrderID            string     `json:"orderId"`
@@ -78,7 +74,6 @@ type LaundryDeliveryDTO struct {
 	CreatedAt          time.Time  `json:"createdAt"`
 }
 
-// LaundryIssueDTO represents an issue/complaint
 type LaundryIssueDTO struct {
 	ID               string     `json:"id"`
 	OrderID          string     `json:"orderId"`
@@ -96,7 +91,6 @@ type LaundryIssueDTO struct {
 	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
-// LaundryServiceDTO represents a service in catalog
 type LaundryServiceDTO struct {
 	ID              string            `json:"id"`
 	Slug            string            `json:"slug"`
@@ -114,7 +108,6 @@ type LaundryServiceDTO struct {
 	Products        []ProductResponse `json:"products"`
 }
 
-// OrderStatusSummary represents order status summary
 type OrderStatusSummary struct {
 	OrderID           string  `json:"orderId"`
 	TotalItems        int     `json:"totalItems"`
@@ -129,7 +122,6 @@ type OrderStatusSummary struct {
 	CompletionPercent float64 `json:"completionPercent"`
 }
 
-// PriceEstimateResponse represents price calculation
 type PriceEstimateResponse struct {
 	ServiceSlug    string               `json:"serviceSlug"`
 	Items          []ItemPriceBreakdown `json:"items"`
@@ -149,7 +141,6 @@ type ItemPriceBreakdown struct {
 	ItemTotal   float64 `json:"itemTotal"`
 }
 
-// StandardResponse is a generic API response
 type StandardResponse struct {
 	Success bool        `json:"success"`
 	Message string      `json:"message,omitempty"`
@@ -157,7 +148,6 @@ type StandardResponse struct {
 	Error   string      `json:"error,omitempty"`
 }
 
-// PaginatedResponse represents paginated results
 type PaginatedResponse struct {
 	Success    bool        `json:"success"`
 	Data       interface{} `json:"data"`
@@ -167,7 +157,6 @@ type PaginatedResponse struct {
 	TotalPages int         `json:"totalPages"`
 }
 
-// ProviderOrdersResponse represents provider's order list
 type ProviderOrdersResponse struct {
 	TodayOrders    []LaundryOrderResponse `json:"todayOrders"`
 	ActiveOrders   []LaundryOrderResponse `json:"activeOrders"`
@@ -177,7 +166,6 @@ type ProviderOrdersResponse struct {
 	ReadyToDeliver int                    `json:"readyToDeliver"`
 }
 
-// GetServicesWithProductsResponse - API response for services with products
 type GetServicesWithProductsResponse struct {
 	ID              string            `json:"id"`
 	Slug            string            `json:"slug"`
@@ -208,7 +196,6 @@ type ProductResponse struct {
 	CategorySlug        string   `json:"categorySlug"`
 }
 
-// LaundryPickupResponse represents a pickup event response
 type LaundryPickupResponse struct {
 	ID          string     `json:"id"`
 	OrderID     string     `json:"orderId"`
@@ -223,7 +210,6 @@ type LaundryPickupResponse struct {
 	UpdatedAt   time.Time  `json:"updatedAt"`
 }
 
-// LaundryDeliveryResponse represents a delivery event response
 type LaundryDeliveryResponse struct {
 	ID                 string     `json:"id"`
 	OrderID            string     `json:"orderId"`
@@ -239,7 +225,6 @@ type LaundryDeliveryResponse struct {
 	UpdatedAt          time.Time  `json:"updatedAt"`
 }
 
-// LaundryOrderItemResponse represents an item in a laundry order
 type LaundryOrderItemResponse struct {
 	ID          string    `json:"id"`
 	OrderID     string    `json:"orderId"`
@@ -254,7 +239,6 @@ type LaundryOrderItemResponse struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
-// LaundryIssueResponse represents an issue reported on an order
 type LaundryIssueResponse struct {
 	ID           string     `json:"id"`
 	OrderID      string     `json:"orderId"`
@@ -269,7 +253,6 @@ type LaundryIssueResponse struct {
 	UpdatedAt    time.Time  `json:"updatedAt"`
 }
 
-// LaundryServiceResponse represents a service in the catalog
 type LaundryServiceResponse struct {
 	ID              string  `json:"id"`
 	Slug            string  `json:"slug"`
@@ -284,7 +267,6 @@ type LaundryServiceResponse struct {
 	CategorySlug    string  `json:"categorySlug"`
 }
 
-// ToLaundryOrderResponse converts a LaundryOrder model to response DTO
 func ToLaundryOrderResponse(order *models.LaundryOrder) *LaundryOrderResponse {
 	return &LaundryOrderResponse{
 		ID:          order.ID,
@@ -295,7 +277,6 @@ func ToLaundryOrderResponse(order *models.LaundryOrder) *LaundryOrderResponse {
 	}
 }
 
-// ToLaundryPickupResponse converts a LaundryPickup model to response DTO
 func ToLaundryPickupResponse(pickup *models.LaundryPickup) *LaundryPickupResponse {
 	return &LaundryPickupResponse{
 		ID:          pickup.ID,
@@ -312,7 +293,6 @@ func ToLaundryPickupResponse(pickup *models.LaundryPickup) *LaundryPickupRespons
 	}
 }
 
-// ToLaundryDeliveryResponse converts a LaundryDelivery model to response DTO
 func ToLaundryDeliveryResponse(delivery *models.LaundryDelivery) *LaundryDeliveryResponse {
 	var recipientName string
 	if delivery.RecipientName != nil {
@@ -335,7 +315,6 @@ func ToLaundryDeliveryResponse(delivery *models.LaundryDelivery) *LaundryDeliver
 	}
 }
 
-// ToLaundryOrderItemResponse converts a LaundryOrderItem model to response DTO
 func ToLaundryOrderItemResponse(item *models.LaundryOrderItem) *LaundryOrderItemResponse {
 	return &LaundryOrderItemResponse{
 		ID:          item.ID,
@@ -352,7 +331,6 @@ func ToLaundryOrderItemResponse(item *models.LaundryOrderItem) *LaundryOrderItem
 	}
 }
 
-// ToLaundryIssueResponse converts a LaundryIssue model to response DTO
 func ToLaundryIssueResponse(issue *models.LaundryIssue) *LaundryIssueResponse {
 	return &LaundryIssueResponse{
 		ID:           issue.ID,
@@ -369,7 +347,6 @@ func ToLaundryIssueResponse(issue *models.LaundryIssue) *LaundryIssueResponse {
 	}
 }
 
-// ToLaundryServiceResponse converts a LaundryServiceCatalog model to response DTO
 func ToLaundryServiceResponse(service *models.LaundryServiceCatalog) *LaundryServiceResponse {
 	return &LaundryServiceResponse{
 		ID:              service.ID,
@@ -386,7 +363,6 @@ func ToLaundryServiceResponse(service *models.LaundryServiceCatalog) *LaundrySer
 	}
 }
 
-// ToLaundryServiceResponses converts multiple LaundryServiceCatalog models to response DTOs
 func ToLaundryServiceResponses(services []*models.LaundryServiceCatalog) []*LaundryServiceResponse {
 	responses := make([]*LaundryServiceResponse, len(services))
 	for i, service := range services {
@@ -395,7 +371,6 @@ func ToLaundryServiceResponses(services []*models.LaundryServiceCatalog) []*Laun
 	return responses
 }
 
-// ToLaundryOrderItemResponses converts multiple LaundryOrderItem models to response DTOs
 func ToLaundryOrderItemResponses(items []*models.LaundryOrderItem) []*LaundryOrderItemResponse {
 	responses := make([]*LaundryOrderItemResponse, len(items))
 	for i, item := range items {
@@ -404,7 +379,6 @@ func ToLaundryOrderItemResponses(items []*models.LaundryOrderItem) []*LaundryOrd
 	return responses
 }
 
-// ToLaundryPickupResponses converts multiple LaundryPickup models to response DTOs
 func ToLaundryPickupResponses(pickups []*models.LaundryPickup) []*LaundryPickupResponse {
 	responses := make([]*LaundryPickupResponse, len(pickups))
 	for i, pickup := range pickups {
@@ -413,7 +387,6 @@ func ToLaundryPickupResponses(pickups []*models.LaundryPickup) []*LaundryPickupR
 	return responses
 }
 
-// ToLaundryDeliveryResponses converts multiple LaundryDelivery models to response DTOs
 func ToLaundryDeliveryResponses(deliveries []*models.LaundryDelivery) []*LaundryDeliveryResponse {
 	responses := make([]*LaundryDeliveryResponse, len(deliveries))
 	for i, delivery := range deliveries {
@@ -422,7 +395,6 @@ func ToLaundryDeliveryResponses(deliveries []*models.LaundryDelivery) []*Laundry
 	return responses
 }
 
-// ToLaundryIssueResponses converts multiple LaundryIssue models to response DTOs
 func ToLaundryIssueResponses(issues []*models.LaundryIssue) []*LaundryIssueResponse {
 	responses := make([]*LaundryIssueResponse, len(issues))
 	for i, issue := range issues {

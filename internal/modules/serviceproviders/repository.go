@@ -56,15 +56,12 @@ func (r *repository) List(ctx context.Context, filters map[string]interface{}, p
 
 	query := r.db.WithContext(ctx).Model(&models.ServiceProviderProfile{}).Preload("User")
 
-	// Apply filters
 	for key, value := range filters {
 		query = query.Where(key+" = ?", value)
 	}
 
-	// Count total
 	query.Count(&total)
 
-	// Paginate
 	offset := (page - 1) * limit
 	err := query.Offset(offset).Limit(limit).Find(&profiles).Error
 

@@ -12,7 +12,6 @@ import (
 )
 
 type Repository interface {
-	// Service Categories & Tabs
 	ListCategories(ctx context.Context) ([]models.ServiceCategory, error)
 	GetCategoryByID(ctx context.Context, id uint) (*models.ServiceCategory, error)
 	GetCategoryWithTabs(ctx context.Context, id uint) (*models.ServiceCategory, error)
@@ -29,13 +28,11 @@ type Repository interface {
 	GetTabByID(ctx context.Context, id uint) (*models.ServiceTab, error)
 	CreateTab(ctx context.Context, tab *models.ServiceTab) error
 
-	// Add-ons
 	ListAddOns(ctx context.Context, categoryID uint) ([]models.AddOnService, error)
 	GetAddOnByID(ctx context.Context, id uint) (*models.AddOnService, error)
 	GetAddOnsByIDs(ctx context.Context, ids []uint) ([]*models.AddOnService, error)
 	CreateAddOn(ctx context.Context, addon *models.AddOnService) error
 
-	// Orders
 	CreateOrder(ctx context.Context, order *models.ServiceOrder) error
 	GetOrderByID(ctx context.Context, id string) (*models.ServiceOrder, error)
 	GetOrderByIDWithDetails(ctx context.Context, id string) (*models.ServiceOrder, error)
@@ -45,22 +42,18 @@ type Repository interface {
 	UpdateOrderStatus(ctx context.Context, orderID, status string) error
 	AssignProviderToOrder(ctx context.Context, providerID, orderID string) error
 
-	// Provider Registeration
 	FindProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error)
 
-	// Provider Matching
 	FindNearestAvailableProviders(ctx context.Context, serviceIDs []uint, lat, lon float64, radiusMeters int) ([]models.ServiceProvider, error)
 	GetProviderByID(ctx context.Context, providerID string) (*models.ServiceProviderProfile, error)
 	UpdateProviderStatus(ctx context.Context, providerID, status string) error
 	UpdateProviderLocation(ctx context.Context, providerID string, lat, lon float64) error
 
-	// Admin - Service Management
 	CreateService(ctx context.Context, service *models.Service) error
 	UpdateService(ctx context.Context, service *models.Service) error
 	CreateServiceOption(ctx context.Context, option *models.ServiceOption) error
 	CreateOptionChoice(ctx context.Context, choice *models.ServiceOptionChoice) error
 
-	// Provider Management
 	CreateProvider(ctx context.Context, provider *models.ServiceProviderProfile) error
 	AssignServiceToProvider(ctx context.Context, providerID string, serviceID string) error
 	RemoveServiceFromProvider(ctx context.Context, providerID string, serviceID string) error
@@ -75,8 +68,6 @@ type repository struct {
 func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
-
-// ==================== CATEGORIES & TABS ====================
 
 func (r *repository) ListCategories(ctx context.Context) ([]models.ServiceCategory, error) {
 	var categories []models.ServiceCategory
@@ -112,8 +103,6 @@ func (r *repository) CreateCategory(ctx context.Context, category *models.Servic
 func (r *repository) GetAllCategorySlugs(ctx context.Context) ([]string, error) {
 	var slugs []string
 
-	// Get distinct category slugs from all sources (ServiceNew, services, laundry products, etc.)
-	// Using UNION to combine results from multiple tables
 	err := r.db.WithContext(ctx).
 		Raw(`
 			SELECT DISTINCT category_slug FROM (
@@ -155,15 +144,12 @@ func (r *repository) CreateTab(ctx context.Context, tab *models.ServiceTab) erro
 	return r.db.WithContext(ctx).Create(tab).Error
 }
 
-// ==================== SERVICES ====================
-
 func (r *repository) ListServices(ctx context.Context, query homeServiceDto.ListServicesQuery) ([]*models.Service, int64, error) {
 	var services []*models.Service
 	var total int64
 
 	db := r.db.WithContext(ctx).Model(&models.Service{})
 
-	// Apply filters
 	if query.CategoryID != nil {
 		db = db.Where("category_id = ?", *query.CategoryID)
 	}
@@ -195,12 +181,10 @@ func (r *repository) ListServices(ctx context.Context, query homeServiceDto.List
 		db = db.Where("is_featured = ?", *query.IsFeatured)
 	}
 
-	// Count total
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Fetch with pagination
 	err := db.Offset(query.GetOffset()).
 		Limit(query.Limit).
 		Preload("Category").
@@ -260,8 +244,6 @@ func (r *repository) GetServiceNewByID(ctx context.Context, id string) (*models.
 	return &service, err
 }
 
-// ==================== ADD-ONS ====================
-
 func (r *repository) ListAddOns(ctx context.Context, categoryID uint) ([]models.AddOnService, error) {
 	var addOns []models.AddOnService
 	err := r.db.WithContext(ctx).
@@ -289,16 +271,12 @@ func (r *repository) CreateAddOn(ctx context.Context, addon *models.AddOnService
 	return r.db.WithContext(ctx).Create(addon).Error
 }
 
-// ==================== ORDER METHODS ====================
-
 func (r *repository) CreateOrder(ctx context.Context, order *models.ServiceOrder) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Create order
 		if err := tx.Create(order).Error; err != nil {
 			return err
 		}
 
-		// Create order items
 		if len(order.Items) > 0 {
 			for i := range order.Items {
 				order.Items[i].OrderID = order.ID
@@ -308,7 +286,6 @@ func (r *repository) CreateOrder(ctx context.Context, order *models.ServiceOrder
 			}
 		}
 
-		// Create order add-ons
 		if len(order.AddOns) > 0 {
 			for i := range order.AddOns {
 				order.AddOns[i].OrderID = order.ID
@@ -323,14 +300,12 @@ func (r *repository) CreateOrder(ctx context.Context, order *models.ServiceOrder
 }
 
 func (r *repository) GetOrderByID(ctx context.Context, id string) (*models.ServiceOrder, error) {
-	// Query new schema directly (actual database uses ServiceOrderNew)
 	var orderNew models.ServiceOrderNew
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&orderNew).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert to ServiceOrder for API compatibility
 	conv := convertServiceOrderNewToServiceOrder(&orderNew)
 	if conv == nil {
 		return nil, gorm.ErrRecordNotFound
@@ -340,7 +315,6 @@ func (r *repository) GetOrderByID(ctx context.Context, id string) (*models.Servi
 }
 
 func (r *repository) GetOrderByIDWithDetails(ctx context.Context, id string) (*models.ServiceOrder, error) {
-	// Query new schema directly (actual database uses ServiceOrderNew)
 	var orderNew models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Where("id = ?", id).
@@ -350,7 +324,6 @@ func (r *repository) GetOrderByIDWithDetails(ctx context.Context, id string) (*m
 		return nil, err
 	}
 
-	// Convert to ServiceOrder for API compatibility
 	conv := convertServiceOrderNewToServiceOrder(&orderNew)
 	if conv == nil {
 		return nil, gorm.ErrRecordNotFound
@@ -359,7 +332,6 @@ func (r *repository) GetOrderByIDWithDetails(ctx context.Context, id string) (*m
 	return conv, nil
 }
 
-// GetServiceOrderNewByID fetches order directly from ServiceOrderNew schema
 func (r *repository) GetServiceOrderNewByID(ctx context.Context, id string) (*models.ServiceOrderNew, error) {
 	var orderNew models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
@@ -374,19 +346,16 @@ func (r *repository) ListUserOrders(ctx context.Context, userID string, query ho
 	var ordersNew []*models.ServiceOrderNew
 	var total int64
 
-	// Query ServiceOrderNew which has customer_id field
 	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).Where("customer_id = ?", userID)
 
 	if query.Status != nil {
 		db = db.Where("status = ?", *query.Status)
 	}
 
-	// Count total
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Fetch with pagination
 	err := db.Order("created_at DESC").
 		Offset(query.GetOffset()).
 		Limit(query.Limit).
@@ -396,7 +365,6 @@ func (r *repository) ListUserOrders(ctx context.Context, userID string, query ho
 		return nil, 0, err
 	}
 
-	// Convert ServiceOrderNew to ServiceOrder for API compatibility
 	orders := make([]*models.ServiceOrder, len(ordersNew))
 	for i, orderNew := range ordersNew {
 		orders[i] = convertServiceOrderNewToServiceOrder(orderNew)
@@ -409,19 +377,16 @@ func (r *repository) ListProviderOrders(ctx context.Context, providerID string, 
 	var ordersNew []*models.ServiceOrderNew
 	var total int64
 
-	// Query ServiceOrderNew which has assigned_provider_id field
 	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).Where("assigned_provider_id = ?", providerID)
 
 	if query.Status != nil {
 		db = db.Where("status = ?", *query.Status)
 	}
 
-	// Count total
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Fetch with pagination
 	err := db.Order("created_at ASC").
 		Offset(query.GetOffset()).
 		Limit(query.Limit).
@@ -431,7 +396,6 @@ func (r *repository) ListProviderOrders(ctx context.Context, providerID string, 
 		return nil, 0, err
 	}
 
-	// Convert ServiceOrderNew to ServiceOrder for API compatibility
 	orders := make([]*models.ServiceOrder, len(ordersNew))
 	for i, orderNew := range ordersNew {
 		orders[i] = convertServiceOrderNewToServiceOrder(orderNew)
@@ -445,7 +409,6 @@ func (r *repository) UpdateOrderStatus(ctx context.Context, orderID, status stri
 		"status": status,
 	}
 
-	// Set timestamp based on status using ServiceOrderNew field names
 	switch status {
 	case "accepted":
 		updates["provider_accepted_at"] = gorm.Expr("NOW()")
@@ -474,14 +437,9 @@ func (r *repository) AssignProviderToOrder(ctx context.Context, providerID, orde
 		}).Error
 }
 
-// ==================== PROVIDER MATCHING ====================
-
 func (r *repository) FindNearestAvailableProviders(ctx context.Context, serviceIDs []uint, lat, lon float64, radiusMeters int) ([]models.ServiceProvider, error) {
 	var providers []models.ServiceProvider
 
-	// Query to find providers by their service category
-	// Providers are matched based on their registered service category, not explicit service assignments
-	// This way, providers automatically get access to all services in their category, including future ones
 	err := r.db.WithContext(ctx).
 		Table("service_providers").
 		Select("DISTINCT service_providers.*").
@@ -493,7 +451,7 @@ func (r *repository) FindNearestAvailableProviders(ctx context.Context, serviceI
 			lon, lat, radiusMeters).
 		Group("service_providers.id").
 		Order(fmt.Sprintf("ST_Distance(service_providers.location::geography, ST_SetSRID(ST_MakePoint(%f, %f), 4326)::geography)", lon, lat)).
-		Limit(10). // Top 10 nearest
+		Limit(10).
 		Scan(&providers).Error
 
 	return providers, err
@@ -523,16 +481,6 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*models.Us
 	return &user, err
 }
 
-// func (r *repository) GetProviderByID(ctx context.Context, providerID string) (*models.ServiceProvider, error) {
-// 	var provider models.ServiceProvider
-// 	err := r.db.WithContext(ctx).
-// 		Preload("User").
-// 		Where("id = ?", providerID).
-// 		First(&provider).Error
-// 	return &provider, err
-// }
-
-// Find provider by user ID
 func (r *repository) FindProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error) {
 	var provider models.ServiceProviderProfile
 	err := r.db.WithContext(ctx).
@@ -560,8 +508,6 @@ func (r *repository) UpdateProviderLocation(ctx context.Context, providerID stri
     `, lon, lat, providerID).Error
 }
 
-// --- Admin - Service Management ---
-
 func (r *repository) CreateServiceOption(ctx context.Context, option *models.ServiceOption) error {
 	return r.db.WithContext(ctx).Create(option).Error
 }
@@ -569,8 +515,6 @@ func (r *repository) CreateServiceOption(ctx context.Context, option *models.Ser
 func (r *repository) CreateOptionChoice(ctx context.Context, choice *models.ServiceOptionChoice) error {
 	return r.db.WithContext(ctx).Create(choice).Error
 }
-
-// --- Provider Management ---
 
 func (r *repository) CreateProvider(ctx context.Context, provider *models.ServiceProviderProfile) error {
 	return r.db.WithContext(ctx).Create(provider).Error
@@ -621,17 +565,13 @@ func (r *repository) GetProviderCategory(ctx context.Context, providerID string,
 	return &category, nil
 }
 
-// convertServiceOrderNewToServiceOrder converts ServiceOrderNew to ServiceOrder for API compatibility
 func convertServiceOrderNewToServiceOrder(orderNew *models.ServiceOrderNew) *models.ServiceOrder {
 	if orderNew == nil {
 		return nil
 	}
-
-	// Initialize empty slices instead of nil to avoid panics in response building
 	items := make([]models.OrderItem, 0)
 	addOns := make([]models.OrderAddOn, 0)
 
-	// Safely extract customer info - handle zero struct case
 	address := ""
 	lat := 0.0
 	lng := 0.0
@@ -658,8 +598,8 @@ func convertServiceOrderNewToServiceOrder(orderNew *models.ServiceOrderNew) *mod
 		AcceptedAt:   orderNew.ProviderAcceptedAt,
 		StartedAt:    orderNew.ProviderStartedAt,
 		CompletedAt:  orderNew.ProviderCompletedAt,
-		CancelledAt:  orderNew.CompletedAt, // Map completed time as fallback
-		Items:        items,                // Empty slice to avoid nil panics
-		AddOns:       addOns,               // Empty slice to avoid nil panics
+		CancelledAt:  orderNew.CompletedAt,
+		Items:        items,               
+		AddOns:       addOns,              
 	}
 }

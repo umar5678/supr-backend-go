@@ -10,15 +10,12 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// Global Redis clients
 var (
-	// MainClient    *redis.Client // DB 0 - General purpose
-	CacheClient   *redis.Client // DB 3 - Cache operations
-	SessionClient *redis.Client // DB 4 - Sessions & presence
-	PubSubClient  *redis.Client // DB 1 - WebSocket Pub/Sub
+	CacheClient   *redis.Client 
+	SessionClient *redis.Client 
+	PubSubClient  *redis.Client 
 )
 
-// ConnectRedis initializes all Redis clients
 func ConnectRedis(cfg *config.RedisConfig) error {
 	baseOpts := &redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
@@ -31,27 +28,22 @@ func ConnectRedis(cfg *config.RedisConfig) error {
 		WriteTimeout: 3 * time.Second,
 	}
 
-	// Main client (DB 0)
 	mainOpts := *baseOpts
 	mainOpts.DB = cfg.MainDB
 	MainClient = redis.NewClient(&mainOpts)
 
-	// Cache client (DB 3)
 	cacheOpts := *baseOpts
 	cacheOpts.DB = cfg.CacheDB
 	CacheClient = redis.NewClient(&cacheOpts)
 
-	// Session client (DB 4)
 	sessionOpts := *baseOpts
 	sessionOpts.DB = cfg.SessionDB
 	SessionClient = redis.NewClient(&sessionOpts)
 
-	// PubSub client (DB 1)
 	pubsubOpts := *baseOpts
 	pubsubOpts.DB = cfg.PubSubDB
 	PubSubClient = redis.NewClient(&pubsubOpts)
 
-	// Test main connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -68,7 +60,6 @@ func ConnectRedis(cfg *config.RedisConfig) error {
 	return nil
 }
 
-// CloseRedis closes all Redis connections gracefully
 func CloseRedis() error {
 	var errs []error
 
@@ -93,7 +84,6 @@ func CloseRedis() error {
 	return nil
 }
 
-// HealthCheck checks if Redis is healthy
 func HealthCheck(ctx context.Context) error {
 	if err := MainClient.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("main client unhealthy: %w", err)

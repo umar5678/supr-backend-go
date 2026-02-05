@@ -8,9 +8,105 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
 )
 
+type AddonResponse struct {
+	ID                 string    `json:"id"`
+	Title              string    `json:"title"`
+	AddonSlug          string    `json:"addonSlug"`
+	CategorySlug       string    `json:"categorySlug"`
+	Description        string    `json:"description"`
+	WhatsIncluded      []string  `json:"whatsIncluded"`
+	Notes              []string  `json:"notes"`
+	Image              string    `json:"image"`
+	Price              float64   `json:"price"`
+	StrikethroughPrice *float64  `json:"strikethroughPrice"`
+	DiscountPercentage float64   `json:"discountPercentage"`
+	IsActive           bool      `json:"isActive"`
+	IsAvailable        bool      `json:"isAvailable"`
+	SortOrder          int       `json:"sortOrder"`
+	CreatedAt          time.Time `json:"createdAt"`
+	UpdatedAt          time.Time `json:"updatedAt"`
+}
+
+type AddonListResponse struct {
+	ID                 string   `json:"id"`
+	Title              string   `json:"title"`
+	AddonSlug          string   `json:"addonSlug"`
+	CategorySlug       string   `json:"categorySlug"`
+	Image              string   `json:"image"`
+	Price              float64  `json:"price"`
+	StrikethroughPrice *float64 `json:"strikethroughPrice"`
+	DiscountPercentage float64  `json:"discountPercentage"`
+	IsActive           bool     `json:"isActive"`
+	IsAvailable        bool     `json:"isAvailable"`
+	SortOrder          int      `json:"sortOrder"`
+}
+
+func ToAddonResponse(addon *models.Addon) *AddonResponse {
+	if addon == nil {
+		return nil
+	}
+
+	// Convert pq.StringArray to []string
+	whatsIncluded := make([]string, len(addon.WhatsIncluded))
+	copy(whatsIncluded, addon.WhatsIncluded)
+
+	notes := make([]string, len(addon.Notes))
+	copy(notes, addon.Notes)
+
+	return &AddonResponse{
+		ID:                 addon.ID,
+		Title:              addon.Title,
+		AddonSlug:          addon.AddonSlug,
+		CategorySlug:       addon.CategorySlug,
+		Description:        addon.Description,
+		WhatsIncluded:      whatsIncluded,
+		Notes:              notes,
+		Image:              addon.Image,
+		Price:              addon.Price,
+		StrikethroughPrice: addon.StrikethroughPrice,
+		DiscountPercentage: addon.DiscountPercentage(),
+		IsActive:           addon.IsActive,
+		IsAvailable:        addon.IsAvailable,
+		SortOrder:          addon.SortOrder,
+		CreatedAt:          addon.CreatedAt,
+		UpdatedAt:          addon.UpdatedAt,
+	}
+}
+
+func ToAddonListResponse(addon *models.Addon) *AddonListResponse {
+	if addon == nil {
+		return nil
+	}
+
+	return &AddonListResponse{
+		ID:                 addon.ID,
+		Title:              addon.Title,
+		AddonSlug:          addon.AddonSlug,
+		CategorySlug:       addon.CategorySlug,
+		Image:              addon.Image,
+		Price:              addon.Price,
+		StrikethroughPrice: addon.StrikethroughPrice,
+		DiscountPercentage: addon.DiscountPercentage(),
+		IsActive:           addon.IsActive,
+		IsAvailable:        addon.IsAvailable,
+		SortOrder:          addon.SortOrder,
+	}
+}
+
+func ToAddonListResponses(addons []*models.Addon) []*AddonListResponse {
+	if addons == nil {
+		return []*AddonListResponse{}
+	}
+
+	responses := make([]*AddonListResponse, len(addons))
+	for i, addon := range addons {
+		responses[i] = ToAddonListResponse(addon)
+	}
+	return responses
+}
+
 // ==================== Order Responses ====================
 
-// AdminOrderListResponse represents an order in admin list view
 type AdminOrderListResponse struct {
 	ID             string     `json:"id"`
 	OrderNumber    string     `json:"orderNumber"`
@@ -32,7 +128,6 @@ type AdminOrderListResponse struct {
 	CompletedAt    *time.Time `json:"completedAt,omitempty"`
 }
 
-// AdminOrderDetailResponse represents full order details for admin
 type AdminOrderDetailResponse struct {
 	ID          string `json:"id"`
 	OrderNumber string `json:"orderNumber"`
@@ -81,7 +176,6 @@ type AdminOrderDetailResponse struct {
 	AvailableActions []string `json:"availableActions"`
 }
 
-// OrderPartyInfo represents customer or provider info
 type OrderPartyInfo struct {
 	ID      string  `json:"id"`
 	Name    string  `json:"name"`
@@ -94,7 +188,6 @@ type OrderPartyInfo struct {
 	Photo   string  `json:"photo,omitempty"`
 }
 
-// AdminBookingInfo represents booking info for admin
 type AdminBookingInfo struct {
 	Day           string `json:"day"`
 	Date          string `json:"date"`
@@ -106,7 +199,6 @@ type AdminBookingInfo struct {
 	IsToday       bool   `json:"isToday"`
 }
 
-// AdminOrderServiceItem represents a service item
 type AdminOrderServiceItem struct {
 	ServiceSlug string  `json:"serviceSlug"`
 	Title       string  `json:"title"`
@@ -115,7 +207,6 @@ type AdminOrderServiceItem struct {
 	Subtotal    float64 `json:"subtotal"`
 }
 
-// AdminOrderAddonItem represents an addon item
 type AdminOrderAddonItem struct {
 	AddonSlug string  `json:"addonSlug"`
 	Title     string  `json:"title"`
@@ -124,7 +215,6 @@ type AdminOrderAddonItem struct {
 	Subtotal  float64 `json:"subtotal"`
 }
 
-// AdminOrderPricing represents pricing breakdown
 type AdminOrderPricing struct {
 	ServicesTotal      float64 `json:"servicesTotal"`
 	AddonsTotal        float64 `json:"addonsTotal"`
@@ -136,7 +226,6 @@ type AdminOrderPricing struct {
 	FormattedTotal     string  `json:"formattedTotal"`
 }
 
-// AdminPaymentInfo represents payment info
 type AdminPaymentInfo struct {
 	Method        string  `json:"method"`
 	Status        string  `json:"status"`
@@ -147,7 +236,6 @@ type AdminPaymentInfo struct {
 	WalletHoldID  string  `json:"walletHoldId,omitempty"`
 }
 
-// AdminOrderStatus represents order status info
 type AdminOrderStatus struct {
 	Current            string     `json:"current"`
 	DisplayStatus      string     `json:"displayStatus"`
@@ -158,7 +246,6 @@ type AdminOrderStatus struct {
 	IsExpired          bool       `json:"isExpired"`
 }
 
-// AdminCancellationInfo represents cancellation info
 type AdminCancellationInfo struct {
 	CancelledBy     string    `json:"cancelledBy"`
 	CancelledAt     time.Time `json:"cancelledAt"`
@@ -167,7 +254,6 @@ type AdminCancellationInfo struct {
 	RefundAmount    float64   `json:"refundAmount"`
 }
 
-// AdminRatingsInfo represents ratings info
 type AdminRatingsInfo struct {
 	CustomerRating  *int       `json:"customerRating,omitempty"`
 	CustomerReview  string     `json:"customerReview,omitempty"`
@@ -177,7 +263,6 @@ type AdminRatingsInfo struct {
 	ProviderRatedAt *time.Time `json:"providerRatedAt,omitempty"`
 }
 
-// StatusHistoryItem represents a status change in history
 type StatusHistoryItem struct {
 	ID            string                 `json:"id"`
 	FromStatus    string                 `json:"fromStatus"`
@@ -191,7 +276,6 @@ type StatusHistoryItem struct {
 
 // ==================== Analytics Responses ====================
 
-// OverviewAnalyticsResponse represents overview analytics
 type OverviewAnalyticsResponse struct {
 	Period           AnalyticsPeriod    `json:"period"`
 	Summary          AnalyticsSummary   `json:"summary"`
@@ -201,14 +285,12 @@ type OverviewAnalyticsResponse struct {
 	Trends           AnalyticsTrends    `json:"trends"`
 }
 
-// AnalyticsPeriod represents the analytics period
 type AnalyticsPeriod struct {
 	FromDate string `json:"fromDate"`
 	ToDate   string `json:"toDate"`
 	GroupBy  string `json:"groupBy"`
 }
 
-// AnalyticsSummary represents summary statistics
 type AnalyticsSummary struct {
 	TotalOrders          int     `json:"totalOrders"`
 	CompletedOrders      int     `json:"completedOrders"`
@@ -223,7 +305,6 @@ type AnalyticsSummary struct {
 	AverageRating        float64 `json:"averageRating"`
 }
 
-// StatusCount represents count by status
 type StatusCount struct {
 	Status      string  `json:"status"`
 	DisplayName string  `json:"displayName"`
@@ -231,7 +312,6 @@ type StatusCount struct {
 	Percentage  float64 `json:"percentage"`
 }
 
-// CategoryCount represents count by category
 type CategoryCount struct {
 	CategorySlug  string  `json:"categorySlug"`
 	CategoryTitle string  `json:"categoryTitle"`
@@ -240,7 +320,6 @@ type CategoryCount struct {
 	Percentage    float64 `json:"percentage"`
 }
 
-// RevenueBreakdown represents revenue over time
 type RevenueBreakdown struct {
 	Period            string  `json:"period"` // Date, week, or month
 	OrderCount        int     `json:"orderCount"`
@@ -250,14 +329,12 @@ type RevenueBreakdown struct {
 	AverageOrderValue float64 `json:"averageOrderValue"`
 }
 
-// AnalyticsTrends represents trend comparisons
 type AnalyticsTrends struct {
 	OrdersChange     TrendChange `json:"ordersChange"`
 	RevenueChange    TrendChange `json:"revenueChange"`
 	CompletionChange TrendChange `json:"completionChange"`
 }
 
-// TrendChange represents a trend comparison
 type TrendChange struct {
 	CurrentValue  float64 `json:"currentValue"`
 	PreviousValue float64 `json:"previousValue"`
@@ -266,14 +343,12 @@ type TrendChange struct {
 	Trend         string  `json:"trend"`         // "up", "down", "stable"
 }
 
-// ProviderAnalyticsResponse represents provider analytics
 type ProviderAnalyticsResponse struct {
 	Period    AnalyticsPeriod         `json:"period"`
 	Providers []ProviderAnalyticsItem `json:"providers"`
 	Total     int                     `json:"total"`
 }
 
-// ProviderAnalyticsItem represents analytics for a single provider
 type ProviderAnalyticsItem struct {
 	ProviderID      string   `json:"providerId"`
 	ProviderName    string   `json:"providerName"`
@@ -287,7 +362,6 @@ type ProviderAnalyticsItem struct {
 	Categories      []string `json:"categories"`
 }
 
-// RevenueReportResponse represents revenue report
 type RevenueReportResponse struct {
 	Period           AnalyticsPeriod      `json:"period"`
 	TotalRevenue     float64              `json:"totalRevenue"`
@@ -301,7 +375,6 @@ type RevenueReportResponse struct {
 	ByPaymentMethod  []PaymentMethodStats `json:"byPaymentMethod"`
 }
 
-// CategoryRevenue represents revenue by category
 type CategoryRevenue struct {
 	CategorySlug  string  `json:"categorySlug"`
 	CategoryTitle string  `json:"categoryTitle"`
@@ -311,7 +384,6 @@ type CategoryRevenue struct {
 	Percentage    float64 `json:"percentage"`
 }
 
-// PaymentMethodStats represents stats by payment method
 type PaymentMethodStats struct {
 	Method      string  `json:"method"`
 	OrderCount  int     `json:"orderCount"`
@@ -321,7 +393,6 @@ type PaymentMethodStats struct {
 
 // ==================== Dashboard Responses ====================
 
-// DashboardResponse represents admin dashboard data
 type DashboardResponse struct {
 	// Today's stats
 	Today TodayStats `json:"today"`
@@ -336,7 +407,6 @@ type DashboardResponse struct {
 	WeeklyStats WeeklyStats `json:"weeklyStats"`
 }
 
-// TodayStats represents today's statistics
 type TodayStats struct {
 	TotalOrders      int     `json:"totalOrders"`
 	CompletedOrders  int     `json:"completedOrders"`
@@ -348,7 +418,6 @@ type TodayStats struct {
 	ActiveProviders  int     `json:"activeProviders"`
 }
 
-// PendingActions represents items needing attention
 type PendingActions struct {
 	OrdersNeedingProvider int `json:"ordersNeedingProvider"`
 	ExpiredOrders         int `json:"expiredOrders"`
@@ -356,7 +425,6 @@ type PendingActions struct {
 	UnratedOrders         int `json:"unratedOrders"`
 }
 
-// WeeklyStats represents last 7 days stats
 type WeeklyStats struct {
 	TotalOrders     int          `json:"totalOrders"`
 	CompletedOrders int          `json:"completedOrders"`
@@ -365,7 +433,6 @@ type WeeklyStats struct {
 	DailyBreakdown  []DailyStats `json:"dailyBreakdown"`
 }
 
-// DailyStats represents stats for a single day
 type DailyStats struct {
 	Date       string  `json:"date"`
 	DayName    string  `json:"dayName"`
@@ -375,7 +442,6 @@ type DailyStats struct {
 
 // ==================== Conversion Functions ====================
 
-// GetCategoryTitle returns category title from slug
 func GetCategoryTitle(slug string) string {
 	titles := map[string]string{
 		"pest-control": "Pest Control",
@@ -390,7 +456,6 @@ func GetCategoryTitle(slug string) string {
 	return slug
 }
 
-// GetDisplayStatus returns human-readable status
 func GetDisplayStatus(status string) string {
 	statuses := map[string]string{
 		"pending":            "Pending",
@@ -408,12 +473,10 @@ func GetDisplayStatus(status string) string {
 	return status
 }
 
-// FormatPrice formats price for display
 func FormatPrice(price float64) string {
 	return fmt.Sprintf("$%.2f", price)
 }
 
-// FormatDate formats date for display
 func FormatDate(dateStr string) string {
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
@@ -422,7 +485,6 @@ func FormatDate(dateStr string) string {
 	return date.Format("January 2, 2006")
 }
 
-// FormatTime formats time for display
 func FormatTime(timeStr string) string {
 	t, err := time.Parse("15:04", timeStr)
 	if err != nil {
@@ -431,12 +493,10 @@ func FormatTime(timeStr string) string {
 	return t.Format("3:04 PM")
 }
 
-// CalculateProviderPayout calculates provider payout (90%)
 func CalculateProviderPayout(totalPrice float64) float64 {
 	return shared.RoundToTwoDecimals(totalPrice * (1 - shared.PlatformCommissionRate))
 }
 
-// GetAvailableActions returns available admin actions for an order
 func GetAvailableActions(status string) []string {
 	actions := []string{"view", "view_history"}
 
@@ -458,7 +518,6 @@ func GetAvailableActions(status string) []string {
 	return actions
 }
 
-// ToAdminOrderListResponse converts order to list response
 func ToAdminOrderListResponse(order *models.ServiceOrderNew) AdminOrderListResponse {
 	providerPayout := CalculateProviderPayout(order.TotalPrice)
 	commission := order.TotalPrice - providerPayout
@@ -486,7 +545,6 @@ func ToAdminOrderListResponse(order *models.ServiceOrderNew) AdminOrderListRespo
 		response.PaymentStatus = order.PaymentInfo.Status
 	}
 
-	// TODO: Load provider name from user table
 	if order.AssignedProviderID != nil {
 		response.ProviderName = "Provider" // Placeholder
 	}
@@ -494,7 +552,6 @@ func ToAdminOrderListResponse(order *models.ServiceOrderNew) AdminOrderListRespo
 	return response
 }
 
-// ToAdminOrderListResponses converts multiple orders
 func ToAdminOrderListResponses(orders []*models.ServiceOrderNew) []AdminOrderListResponse {
 	responses := make([]AdminOrderListResponse, len(orders))
 	for i, order := range orders {
@@ -503,7 +560,6 @@ func ToAdminOrderListResponses(orders []*models.ServiceOrderNew) []AdminOrderLis
 	return responses
 }
 
-// ToAdminOrderDetailResponse converts order to detail response
 func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.OrderStatusHistory) *AdminOrderDetailResponse {
 	providerPayout := CalculateProviderPayout(order.TotalPrice)
 
@@ -538,9 +594,9 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 	bookingDate, _ := time.Parse("2006-01-02", order.BookingInfo.Date)
 	today := time.Now().Truncate(24 * time.Hour)
 	bookingInfo := AdminBookingInfo{
-		Day:           order.BookingInfo.Day,
-		Date:          order.BookingInfo.Date,
-		Time:          order.BookingInfo.Time,
+		Day:  order.BookingInfo.Day,
+		Date: order.BookingInfo.Date,
+		Time: order.BookingInfo.Time,
 		PreferredTime: func() string {
 			if order.BookingInfo.PreferredTime.IsZero() {
 				return ""
@@ -662,4 +718,157 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 	}
 
 	return response
+}
+
+// ServiceResponse represents a full service response
+type ServiceResponse struct {
+	ID                 string    `json:"id"`
+	Title              string    `json:"title"`
+	LongTitle          string    `json:"longTitle"`
+	ServiceSlug        string    `json:"serviceSlug"`
+	CategorySlug       string    `json:"categorySlug"`
+	Description        string    `json:"description"`
+	LongDescription    string    `json:"longDescription"`
+	Highlights         string    `json:"highlights"`
+	WhatsIncluded      []string  `json:"whatsIncluded"`
+	TermsAndConditions []string  `json:"termsAndConditions"`
+	BannerImage        string    `json:"bannerImage"`
+	Thumbnail          string    `json:"thumbnail"`
+	Duration           *int      `json:"duration"`
+	IsFrequent         bool      `json:"isFrequent"`
+	Frequency          string    `json:"frequency"`
+	SortOrder          int       `json:"sortOrder"`
+	IsActive           bool      `json:"isActive"`
+	IsAvailable        bool      `json:"isAvailable"`
+	BasePrice          *float64  `json:"basePrice"`
+	CreatedAt          time.Time `json:"createdAt"`
+	UpdatedAt          time.Time `json:"updatedAt"`
+}
+
+// // HomeCleaningServiceResponse represents a home cleaning service response
+// type HomeCleaningServiceResponse struct {
+// 	ID          string    `json:"id"`
+// 	Title       string    `json:"title"`
+// 	ServiceSlug string    `json:"serviceSlug"`
+// 	BasePrice   float64   `json:"basePrice"`
+// 	CreatedAt   time.Time `json:"createdAt"`
+// }
+
+// // ToHomeCleaningServiceResponse converts model to response
+// func ToHomeCleaningServiceResponse(service *models.HomeCleaningService) *HomeCleaningServiceResponse {
+// 	if service == nil {
+// 		return nil
+// 	}
+// 	return &HomeCleaningServiceResponse{
+// 		ID:          service.ID,
+// 		Title:       service.Title,
+// 		ServiceSlug: service.ServiceSlug,
+// 		BasePrice:   service.BasePrice,
+// 		CreatedAt:   service.CreatedAt,
+// 	}
+// }
+
+// // HomeCleaningServiceAddonResponse represents an addon in service response
+// type HomeCleaningServiceAddonResponse struct {
+// 	CategorySlug string               `json:"categorySlug"`
+// 	Addons       []*AddonListResponse `json:"addons"`
+// 	TotalCount   int                  `json:"totalCount"`
+// }
+
+// ServiceListResponse represents a service in list view (lighter)
+type ServiceListResponse struct {
+	ID           string    `json:"id"`
+	Title        string    `json:"title"`
+	ServiceSlug  string    `json:"serviceSlug"`
+	CategorySlug string    `json:"categorySlug"`
+	Thumbnail    string    `json:"thumbnail"`
+	Duration     *int      `json:"duration"`
+	IsActive     bool      `json:"isActive"`
+	IsAvailable  bool      `json:"isAvailable"`
+	BasePrice    *float64  `json:"basePrice"`
+	SortOrder    int       `json:"sortOrder"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
+// ToServiceResponse converts model to full response
+func ToServiceResponse(service *models.ServiceNew) *ServiceResponse {
+	if service == nil {
+		return nil
+	}
+
+	// // Convert pq.StringArray to []string
+	// highlights := make([]string, len(service.Highlights))
+	// copy(highlights, service.Highlights)
+
+	whatsIncluded := make([]string, len(service.WhatsIncluded))
+	copy(whatsIncluded, service.WhatsIncluded)
+
+	termsAndConditions := make([]string, len(service.TermsAndConditions))
+	copy(termsAndConditions, service.TermsAndConditions)
+
+	return &ServiceResponse{
+		ID:                 service.ID,
+		Title:              service.Title,
+		LongTitle:          service.LongTitle,
+		ServiceSlug:        service.ServiceSlug,
+		CategorySlug:       service.CategorySlug,
+		Description:        service.Description,
+		LongDescription:    service.LongDescription,
+		Highlights:         service.Highlights,
+		WhatsIncluded:      whatsIncluded,
+		TermsAndConditions: termsAndConditions,
+		BannerImage:        service.BannerImage,
+		Thumbnail:          service.Thumbnail,
+		Duration:           service.Duration,
+		IsFrequent:         service.IsFrequent,
+		Frequency:          service.Frequency,
+		SortOrder:          service.SortOrder,
+		IsActive:           service.IsActive,
+		IsAvailable:        service.IsAvailable,
+		BasePrice:          service.BasePrice,
+		CreatedAt:          service.CreatedAt,
+		UpdatedAt:          service.UpdatedAt,
+	}
+}
+
+// ToServiceListResponse converts model to list response
+func ToServiceListResponse(service *models.ServiceNew) *ServiceListResponse {
+	if service == nil {
+		return nil
+	}
+
+	return &ServiceListResponse{
+		ID:           service.ID,
+		Title:        service.Title,
+		ServiceSlug:  service.ServiceSlug,
+		CategorySlug: service.CategorySlug,
+		Thumbnail:    service.Thumbnail,
+		Duration:     service.Duration,
+		IsActive:     service.IsActive,
+		IsAvailable:  service.IsAvailable,
+		BasePrice:    service.BasePrice,
+		SortOrder:    service.SortOrder,
+		CreatedAt:    service.CreatedAt,
+	}
+}
+
+// ToServiceListResponses converts multiple models to list responses
+func ToServiceListResponses(services []*models.ServiceNew) []*ServiceListResponse {
+	if services == nil {
+		return []*ServiceListResponse{}
+	}
+
+	responses := make([]*ServiceListResponse, len(services))
+	for i, service := range services {
+		responses[i] = ToServiceListResponse(service)
+	}
+	return responses
+}
+
+// CategoryServicesResponse represents services grouped by category
+type CategoryServicesResponse struct {
+	CategorySlug string                 `json:"categorySlug"`
+	Services     []*ServiceListResponse `json:"services"`
+	Addons       []*AddonListResponse   `json:"addons"`
+	TotalCount   int                    `json:"totalCount"`
 }

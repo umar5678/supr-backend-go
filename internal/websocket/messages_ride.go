@@ -1,28 +1,22 @@
-// internal/websocket/messages_ride.go
 package websocket
 
 import "time"
 
-// Ride-specific message types
 const (
-	// Ride Management
-	// TypeRideRequested MessageType = "ride_requested"
+
 	TypeRideAccepted MessageType = "ride_accepted"
 	TypeRideRejected MessageType = "ride_rejected"
 	TypeRideLocation MessageType = "ride_location"
 
-	// Driver Management
 	TypeDriverAvailable   MessageType = "driver_available"
 	TypeDriverUnavailable MessageType = "driver_unavailable"
 	TypeDriverLocation    MessageType = "driver_location"
 
-	// Payment
 	TypePaymentInitiated MessageType = "payment_initiated"
 	TypePaymentCompleted MessageType = "payment_completed"
 	TypePaymentFailed    MessageType = "payment_failed"
 )
 
-// NewRideMessage creates a ride-specific message
 func NewRideMessage(msgType MessageType, rideID string, data map[string]interface{}) *Message {
 	if data == nil {
 		data = make(map[string]interface{})
@@ -31,7 +25,6 @@ func NewRideMessage(msgType MessageType, rideID string, data map[string]interfac
 	return NewMessage(msgType, data)
 }
 
-// NewRideLocationMessage creates a ride location update message
 func NewRideLocationMessage(rideID string, location map[string]interface{}) *Message {
 	return NewRideMessage(TypeRideLocation, rideID, map[string]interface{}{
 		"location":  location,
@@ -39,7 +32,6 @@ func NewRideLocationMessage(rideID string, location map[string]interface{}) *Mes
 	})
 }
 
-// NewRideStatusMessage creates a ride status update message
 func NewRideStatusMessage(rideID, status string, additionalData map[string]interface{}) *Message {
 	data := map[string]interface{}{
 		"status": status,

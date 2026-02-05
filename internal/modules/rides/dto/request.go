@@ -18,7 +18,6 @@ type CreateRideRequest struct {
 	RiderNotes      string  `json:"riderNotes" binding:"omitempty,max=500"`
 	PromoCode       string  `json:"promoCode" binding:"omitempty,min=3,max=50"`
 	IsScheduled     bool    `json:"isScheduled" binding:"omitempty"`
-	// Optional RFC3339 scheduled time for later rides. Example: 2026-01-11T15:04:05Z
 	ScheduledAt string `json:"scheduledAt" binding:"omitempty"`
 }
 
@@ -32,7 +31,7 @@ func (r *CreateRideRequest) Validate() error {
 	if r.DropoffAddress == "" {
 		return errors.New("dropoff address is required")
 	}
-	// If scheduled time provided, ensure it's parsable and in the future
+
 	if r.ScheduledAt != "" {
 		t, err := time.Parse(time.RFC3339, r.ScheduledAt)
 		if err != nil {
@@ -59,7 +58,7 @@ type CancelRideRequest struct {
 }
 
 type StartRideRequest struct {
-	RiderPIN string `json:"riderPin" binding:"required,len=4"` // NEW: 4-digit PIN
+	RiderPIN string `json:"riderPin" binding:"required,len=4"`
 }
 
 type CompleteRideRequest struct {
@@ -87,10 +86,9 @@ func (r *ListRidesRequest) SetDefaults() {
 type AvailableCarRequest struct {
 	Latitude  float64 `json:"latitude" binding:"required,latitude"`
 	Longitude float64 `json:"longitude" binding:"required,longitude"`
-	RadiusKm  float64 `json:"radiusKm" binding:"required,min=0.1,max=50"` // Default 5 km, Max 50 km
+	RadiusKm  float64 `json:"radiusKm" binding:"required,min=0.1,max=50"`
 }
 
-// VehicleDetailsRequest represents request for vehicles with details (pickup & destination)
 type VehicleDetailsRequest struct {
 	PickupLat      float64 `json:"pickupLat" binding:"required,latitude"`
 	PickupLon      float64 `json:"pickupLon" binding:"required,longitude"`
@@ -98,5 +96,5 @@ type VehicleDetailsRequest struct {
 	DropoffLat     float64 `json:"dropoffLat" binding:"required,latitude"`
 	DropoffLon     float64 `json:"dropoffLon" binding:"required,longitude"`
 	DropoffAddress string  `json:"dropoffAddress" binding:"required,max=500"`
-	RadiusKm       float64 `json:"radiusKm" binding:"omitempty,min=0.1,max=50"` // Optional, defaults to 5km
+	RadiusKm       float64 `json:"radiusKm" binding:"omitempty,min=0.1,max=50"`
 }

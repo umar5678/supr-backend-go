@@ -8,9 +8,6 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
 )
 
-// ==================== Profile Responses ====================
-
-// ProviderProfileResponse represents provider profile
 type ProviderProfileResponse struct {
 	ID                string                    `json:"id"`
 	UserID            string                    `json:"userId"`
@@ -27,7 +24,6 @@ type ProviderProfileResponse struct {
 	CreatedAt         time.Time                 `json:"createdAt"`
 }
 
-// ServiceCategoryResponse represents a provider's service category
 type ServiceCategoryResponse struct {
 	ID                string    `json:"id"`
 	CategorySlug      string    `json:"categorySlug"`
@@ -42,7 +38,6 @@ type ServiceCategoryResponse struct {
 	CreatedAt         time.Time `json:"createdAt"`
 }
 
-// ProviderStatistics represents overall provider statistics
 type ProviderStatistics struct {
 	TotalCompletedJobs   int     `json:"totalCompletedJobs"`
 	TotalEarnings        float64 `json:"totalEarnings"`
@@ -56,9 +51,6 @@ type ProviderStatistics struct {
 	TodayEarnings        float64 `json:"todayEarnings"`
 }
 
-// ==================== Order Responses ====================
-
-// AvailableOrderResponse represents an order available for providers
 type AvailableOrderResponse struct {
 	ID              string             `json:"id"`
 	OrderNumber     string             `json:"orderNumber"`
@@ -77,7 +69,6 @@ type AvailableOrderResponse struct {
 	ExpiresAt       *time.Time         `json:"expiresAt,omitempty"`
 }
 
-// OrderCustomerInfo represents customer info visible to provider
 type OrderCustomerInfo struct {
 	Name    string  `json:"name"`
 	Phone   string  `json:"phone,omitempty"` // Only shown after acceptance
@@ -86,7 +77,6 @@ type OrderCustomerInfo struct {
 	Lng     float64 `json:"lng"`
 }
 
-// OrderBookingInfo represents booking info
 type OrderBookingInfo struct {
 	Day           string `json:"day"`
 	Date          string `json:"date"`
@@ -96,7 +86,6 @@ type OrderBookingInfo struct {
 	FormattedTime string `json:"formattedTime"`
 }
 
-// OrderServiceItem represents a service in the order
 type OrderServiceItem struct {
 	ServiceSlug string  `json:"serviceSlug"`
 	Title       string  `json:"title"`
@@ -105,7 +94,6 @@ type OrderServiceItem struct {
 	Subtotal    float64 `json:"subtotal"`
 }
 
-// OrderAddonItem represents an addon in the order
 type OrderAddonItem struct {
 	AddonSlug string  `json:"addonSlug"`
 	Title     string  `json:"title"`
@@ -114,7 +102,6 @@ type OrderAddonItem struct {
 	Subtotal  float64 `json:"subtotal"`
 }
 
-// ProviderOrderResponse represents a provider's order (assigned/completed)
 type ProviderOrderResponse struct {
 	ID              string             `json:"id"`
 	OrderNumber     string             `json:"orderNumber"`
@@ -134,7 +121,6 @@ type ProviderOrderResponse struct {
 	UpdatedAt       time.Time          `json:"updatedAt"`
 }
 
-// OrderStatusInfo represents order status with timestamps
 type OrderStatusInfo struct {
 	Current       string     `json:"current"`
 	DisplayStatus string     `json:"displayStatus"`
@@ -146,7 +132,6 @@ type OrderStatusInfo struct {
 	CanRate       bool       `json:"canRate"`
 }
 
-// OrderRatingInfo represents rating information
 type OrderRatingInfo struct {
 	CustomerRating  *int       `json:"customerRating,omitempty"`
 	CustomerReview  string     `json:"customerReview,omitempty"`
@@ -156,7 +141,6 @@ type OrderRatingInfo struct {
 	ProviderRatedAt *time.Time `json:"providerRatedAt,omitempty"`
 }
 
-// ProviderOrderListResponse represents order in list view
 type ProviderOrderListResponse struct {
 	ID              string           `json:"id"`
 	OrderNumber     string           `json:"orderNumber"`
@@ -171,9 +155,6 @@ type ProviderOrderListResponse struct {
 	CreatedAt       time.Time        `json:"createdAt"`
 }
 
-// ==================== Earnings Responses ====================
-
-// EarningsSummaryResponse represents earnings summary
 type EarningsSummaryResponse struct {
 	TotalEarnings   float64             `json:"totalEarnings"`
 	TotalOrders     int                 `json:"totalOrders"`
@@ -184,13 +165,11 @@ type EarningsSummaryResponse struct {
 	ByCategory      []CategoryEarnings  `json:"byCategory"`
 }
 
-// EarningsPeriod represents the earnings period
 type EarningsPeriod struct {
 	FromDate string `json:"fromDate"`
 	ToDate   string `json:"toDate"`
 }
 
-// EarningsBreakdown represents earnings grouped by time period
 type EarningsBreakdown struct {
 	Period            string  `json:"period"` // date, week number, or month
 	Earnings          float64 `json:"earnings"`
@@ -198,7 +177,6 @@ type EarningsBreakdown struct {
 	FormattedEarnings string  `json:"formattedEarnings"`
 }
 
-// CategoryEarnings represents earnings by category
 type CategoryEarnings struct {
 	CategorySlug  string  `json:"categorySlug"`
 	CategoryTitle string  `json:"categoryTitle"`
@@ -207,9 +185,6 @@ type CategoryEarnings struct {
 	Percentage    float64 `json:"percentage"`
 }
 
-// ==================== Conversion Functions ====================
-
-// GetCategoryTitle returns title from slug
 func GetCategoryTitle(slug string) string {
 	titles := map[string]string{
 		"pest-control": "Pest Control",
@@ -224,7 +199,6 @@ func GetCategoryTitle(slug string) string {
 	return slug
 }
 
-// GetDisplayStatus returns human-readable status
 func GetDisplayStatus(status string) string {
 	statuses := map[string]string{
 		"pending":            "Pending",
@@ -242,7 +216,6 @@ func GetDisplayStatus(status string) string {
 	return status
 }
 
-// FormatDate formats date for display
 func FormatDate(dateStr string) string {
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
@@ -251,7 +224,6 @@ func FormatDate(dateStr string) string {
 	return date.Format("Monday, January 2, 2006")
 }
 
-// FormatTime formats time for display
 func FormatTime(timeStr string) string {
 	t, err := time.Parse("15:04", timeStr)
 	if err != nil {
@@ -260,17 +232,14 @@ func FormatTime(timeStr string) string {
 	return t.Format("3:04 PM")
 }
 
-// FormatPrice formats price
 func FormatPrice(price float64) string {
 	return fmt.Sprintf("$%.2f", price)
 }
 
-// CalculateProviderPayout calculates provider's payout (90%)
 func CalculateProviderPayout(totalPrice float64) float64 {
 	return shared.RoundToTwoDecimals(totalPrice * (1 - shared.PlatformCommissionRate))
 }
 
-// ToOrderBookingInfo converts model to response
 func ToOrderBookingInfo(info models.BookingInfo) OrderBookingInfo {
 	var preferred string
 	if !info.PreferredTime.IsZero() {
@@ -286,7 +255,6 @@ func ToOrderBookingInfo(info models.BookingInfo) OrderBookingInfo {
 	}
 }
 
-// ToOrderServiceItems converts model to response
 func ToOrderServiceItems(services models.SelectedServices) []OrderServiceItem {
 	items := make([]OrderServiceItem, len(services))
 	for i, s := range services {
@@ -301,7 +269,6 @@ func ToOrderServiceItems(services models.SelectedServices) []OrderServiceItem {
 	return items
 }
 
-// ToOrderAddonItems converts model to response
 func ToOrderAddonItems(addons models.SelectedAddons) []OrderAddonItem {
 	if addons == nil {
 		return nil
@@ -319,7 +286,6 @@ func ToOrderAddonItems(addons models.SelectedAddons) []OrderAddonItem {
 	return items
 }
 
-// ToServiceCategoryResponse converts model to response
 func ToServiceCategoryResponse(category *models.ProviderServiceCategory) ServiceCategoryResponse {
 	return ServiceCategoryResponse{
 		ID:                category.ID,
@@ -336,7 +302,6 @@ func ToServiceCategoryResponse(category *models.ProviderServiceCategory) Service
 	}
 }
 
-// ToServiceCategoryResponses converts multiple models
 func ToServiceCategoryResponses(categories []*models.ProviderServiceCategory) []ServiceCategoryResponse {
 	responses := make([]ServiceCategoryResponse, len(categories))
 	for i, cat := range categories {
@@ -345,7 +310,6 @@ func ToServiceCategoryResponses(categories []*models.ProviderServiceCategory) []
 	return responses
 }
 
-// ToAvailableOrderResponse converts order model to available order response
 func ToAvailableOrderResponse(order *models.ServiceOrderNew, distance *float64) AvailableOrderResponse {
 	providerPayout := CalculateProviderPayout(order.TotalPrice)
 
@@ -359,7 +323,6 @@ func ToAvailableOrderResponse(order *models.ServiceOrderNew, distance *float64) 
 			Address: order.CustomerInfo.Address,
 			Lat:     order.CustomerInfo.Lat,
 			Lng:     order.CustomerInfo.Lng,
-			// Phone not shown until accepted
 		},
 		BookingInfo:     ToOrderBookingInfo(order.BookingInfo),
 		Services:        ToOrderServiceItems(order.SelectedServices),
@@ -374,7 +337,6 @@ func ToAvailableOrderResponse(order *models.ServiceOrderNew, distance *float64) 
 	}
 }
 
-// ToProviderOrderResponse converts order model to provider order response
 func ToProviderOrderResponse(order *models.ServiceOrderNew) *ProviderOrderResponse {
 	providerPayout := CalculateProviderPayout(order.TotalPrice)
 
@@ -411,7 +373,6 @@ func ToProviderOrderResponse(order *models.ServiceOrderNew) *ProviderOrderRespon
 		UpdatedAt: order.UpdatedAt,
 	}
 
-	// Add rating info if order is completed
 	if order.Status == shared.OrderStatusCompleted {
 		response.Rating = &OrderRatingInfo{
 			CustomerRating:  order.CustomerRating,
@@ -426,7 +387,6 @@ func ToProviderOrderResponse(order *models.ServiceOrderNew) *ProviderOrderRespon
 	return response
 }
 
-// ToProviderOrderListResponse converts order model to list response
 func ToProviderOrderListResponse(order *models.ServiceOrderNew) ProviderOrderListResponse {
 	providerPayout := CalculateProviderPayout(order.TotalPrice)
 
@@ -445,7 +405,6 @@ func ToProviderOrderListResponse(order *models.ServiceOrderNew) ProviderOrderLis
 	}
 }
 
-// ToProviderOrderListResponses converts multiple orders
 func ToProviderOrderListResponses(orders []*models.ServiceOrderNew) []ProviderOrderListResponse {
 	responses := make([]ProviderOrderListResponse, len(orders))
 	for i, order := range orders {

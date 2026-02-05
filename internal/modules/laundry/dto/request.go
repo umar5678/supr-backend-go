@@ -4,7 +4,6 @@ import (
 	"fmt"
 )
 
-// CreateLaundryOrderRequest - Create new laundry order with products
 type CreateLaundryOrderRequest struct {
 	ServiceSlug  string             `json:"serviceSlug" binding:"required"`
 	Items        []OrderItemRequest `json:"items" binding:"required,dive"`
@@ -15,10 +14,9 @@ type CreateLaundryOrderRequest struct {
 	Address      string             `json:"address" binding:"required"`
 	Lat          float64            `json:"lat" binding:"required"`
 	Lng          float64            `json:"lng" binding:"required"`
-	Tip          *float64           `json:"tip,omitempty"` // Optional tip for delivery person
+	Tip          *float64           `json:"tip,omitempty"`
 }
 
-// OrderServiceRequest represents a service with its items in a multi-service order
 type OrderServiceRequest struct {
 	ServiceSlug string             `json:"serviceSlug" binding:"required"`
 	Items       []OrderItemRequest `json:"items" binding:"required,dive"`
@@ -27,11 +25,10 @@ type OrderServiceRequest struct {
 type OrderItemRequest struct {
 	ProductSlug string   `json:"productSlug" binding:"required"`
 	Quantity    int      `json:"quantity" binding:"required,min=1"`
-	Weight      *float64 `json:"weight,omitempty"` // Optional, can be calculated from product
+	Weight      *float64 `json:"weight,omitempty"`
 	Notes       string   `json:"notes"`
 }
 
-// Validate validates the CreateLaundryOrderRequest
 func (r *CreateLaundryOrderRequest) Validate() error {
 	if r.ServiceSlug == "" {
 		return fmt.Errorf("serviceSlug is required")
@@ -49,7 +46,6 @@ func (r *CreateLaundryOrderRequest) Validate() error {
 		return fmt.Errorf("valid coordinates are required")
 	}
 
-	// Validate each item
 	for i, item := range r.Items {
 		if item.ProductSlug == "" {
 			return fmt.Errorf("productSlug is required for item %d", i+1)
@@ -62,14 +58,12 @@ func (r *CreateLaundryOrderRequest) Validate() error {
 	return nil
 }
 
-// CompletePickupRequest represents a pickup completion request
 type CompletePickupRequest struct {
 	BagCount int     `json:"bagCount" binding:"required,gt=0"`
 	Notes    string  `json:"notes"`
 	PhotoURL *string `json:"photoUrl"`
 }
 
-// Validate validates the CompletePickupRequest
 func (r *CompletePickupRequest) Validate() error {
 	if r.BagCount <= 0 {
 		return fmt.Errorf("bagCount must be greater than 0")
@@ -77,14 +71,12 @@ func (r *CompletePickupRequest) Validate() error {
 	return nil
 }
 
-// AddLaundryItemsRequest represents a request to add items to an order
 type AddLaundryItemsRequest struct {
 	Items []AddItemDTO `json:"items" binding:"required,min=1"`
 }
 
-// AddItemDTO represents a single item being added
 type AddItemDTO struct {
-	ProductSlug string   `json:"productSlug" binding:"required"` // Changed from ItemType
+	ProductSlug string   `json:"productSlug" binding:"required"`
 	ItemType    string   `json:"itemType" binding:"required"`
 	Quantity    int      `json:"quantity" binding:"required,gt=0"`
 	ServiceSlug string   `json:"serviceSlug" binding:"required"`
@@ -92,7 +84,6 @@ type AddItemDTO struct {
 	Price       float64  `json:"price" binding:"required,gt=0"`
 }
 
-// Validate validates the AddLaundryItemsRequest
 func (r *AddLaundryItemsRequest) Validate() error {
 	if len(r.Items) == 0 {
 		return fmt.Errorf("at least one item is required")
@@ -117,12 +108,10 @@ func (r *AddLaundryItemsRequest) Validate() error {
 	return nil
 }
 
-// UpdateItemStatusRequest represents a request to update an item's status
 type UpdateItemStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=pending received washing drying pressing packed delivered"`
 }
 
-// Validate validates the UpdateItemStatusRequest
 func (r *UpdateItemStatusRequest) Validate() error {
 	if r.Status == "" {
 		return fmt.Errorf("status is required")
@@ -137,7 +126,6 @@ func (r *UpdateItemStatusRequest) Validate() error {
 	return nil
 }
 
-// Validate validates the CompleteDeliveryRequest
 func (r *CompleteDeliveryRequest) Validate() error {
 	if r.RecipientName == "" {
 		return fmt.Errorf("recipientName is required")
@@ -145,7 +133,6 @@ func (r *CompleteDeliveryRequest) Validate() error {
 	return nil
 }
 
-// Validate validates the ReportIssueRequest
 func (r *ReportIssueRequest) Validate() error {
 	if r.IssueType == "" {
 		return fmt.Errorf("issueType is required")
@@ -169,7 +156,6 @@ func (r *ReportIssueRequest) Validate() error {
 	return nil
 }
 
-// Validate validates the ResolveIssueRequest
 func (r *ResolveIssueRequest) Validate() error {
 	if r.Resolution == "" {
 		return fmt.Errorf("resolution is required")
@@ -192,7 +178,6 @@ func (r *ResolveIssueRequest) Validate() error {
 	return nil
 }
 
-// CompleteDeliveryRequest represents a delivery completion request
 type CompleteDeliveryRequest struct {
 	RecipientName      string  `json:"recipientName" binding:"required"`
 	RecipientSignature *string `json:"recipientSignature"`
@@ -200,21 +185,18 @@ type CompleteDeliveryRequest struct {
 	PhotoURL           *string `json:"photoUrl"`
 }
 
-// ReportIssueRequest represents a request to report an issue
 type ReportIssueRequest struct {
 	IssueType   string `json:"issueType" binding:"required,oneof=missing_item damage poor_cleaning late_delivery wrong_item stain_not_removed color_bleeding shrinkage other"`
 	Description string `json:"description" binding:"required"`
 	Priority    string `json:"priority" binding:"omitempty,oneof=low medium high urgent"`
 }
 
-// ResolveIssueRequest represents a request to resolve an issue
 type ResolveIssueRequest struct {
 	Resolution       string   `json:"resolution" binding:"required"`
 	RefundAmount     *float64 `json:"refundAmount"`
 	CompensationType string   `json:"compensationType" binding:"omitempty,oneof=refund discount re_clean replacement voucher"`
 }
 
-// OrderService represents a service being ordered (legacy support)
 type OrderService struct {
 	ServiceSlug string  `json:"serviceSlug" binding:"required"`
 	Quantity    int     `json:"quantity" binding:"required,gt=0"`

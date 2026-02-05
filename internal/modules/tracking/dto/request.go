@@ -5,10 +5,6 @@ import (
 	"time"
 )
 
-// ============================================================================
-// REQUEST DTOs
-// ============================================================================
-
 type UpdateLocationRequest struct {
 	Latitude  float64 `json:"latitude" binding:"required,min=-90,max=90"`
 	Longitude float64 `json:"longitude" binding:"required,min=-180,max=180"`
@@ -44,15 +40,11 @@ type FindNearbyDriversRequest struct {
 
 func (r *FindNearbyDriversRequest) SetDefaults() {
 	if r.RadiusKm == 0 {
-		r.RadiusKm = 5.0 // Default 5km radius
+		r.RadiusKm = 5.0
 	}
 	if r.Limit == 0 {
 		r.Limit = 20
 	}
-	// Don't override OnlyAvailable if explicitly set to false
-	// The default Go bool value is false, so we can't distinguish between
-	// "not set" and "explicitly false". Consider this acceptable behavior
-	// or use *bool if you need to distinguish
 }
 
 type GetPolylineRequest struct {

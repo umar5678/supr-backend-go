@@ -8,7 +8,6 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 	messages := router.Group("/messages")
 	messages.Use(authMiddleware)
 	{
-		// Message endpoints
 		messages.GET("/rides/:rideId", handler.GetMessages)
 		messages.GET("/rides/:rideId/unread-count", handler.GetUnreadCount)
 		messages.POST("", handler.SendMessage)

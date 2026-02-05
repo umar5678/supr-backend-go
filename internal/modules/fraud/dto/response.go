@@ -1,4 +1,3 @@
-// internal/modules/fraud/dto/response.go
 package dto
 
 import (

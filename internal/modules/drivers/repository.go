@@ -106,7 +106,6 @@ func (r *repository) UpdateDriverLocation(ctx context.Context, driverID string, 
 		}).Error
 }
 
-// Add this to your drivers repository implementation:
 func (r *repository) GetLatestDriverLocation(ctx context.Context, driverID string) (*models.DriverLocation, error) {
 	var location models.DriverLocation
 
@@ -214,8 +213,6 @@ func (r *repository) FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm f
 
 	return drivers, err
 }
-
-// Add to drivers/repository.go
 
 func (r *repository) GetDriverLocationHistory(ctx context.Context, driverID string, limit int) ([]*models.DriverLocation, error) {
 	var locations []*models.DriverLocation

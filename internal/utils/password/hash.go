@@ -10,19 +10,14 @@ import (
 )
 
 const (
-	// MinPasswordLength defines minimum password length
 	MinPasswordLength = 8
 
-	// MaxPasswordLength defines maximum password length
 	MaxPasswordLength = 128
 
-	// DefaultCost is bcrypt default cost (14 = ~1 second on modern hardware)
 	DefaultCost = 14
 )
 
-// Hash generates bcrypt hash from password
 func Hash(password string) (string, error) {
-	// Validate password length
 	if len(password) < MinPasswordLength {
 		return "", fmt.Errorf("password must be at least %d characters", MinPasswordLength)
 	}
@@ -38,7 +33,6 @@ func Hash(password string) (string, error) {
 	return string(bytes), nil
 }
 
-// HashWithCost generates bcrypt hash with custom cost
 func HashWithCost(password string, cost int) (string, error) {
 	if cost < bcrypt.MinCost || cost > bcrypt.MaxCost {
 		return "", fmt.Errorf("cost must be between %d and %d", bcrypt.MinCost, bcrypt.MaxCost)
@@ -52,13 +46,11 @@ func HashWithCost(password string, cost int) (string, error) {
 	return string(bytes), nil
 }
 
-// Verify checks if password matches hash
 func Verify(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
 
-// VerifyWithError checks password and returns detailed error
 func VerifyWithError(password, hash string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil {
@@ -70,7 +62,6 @@ func VerifyWithError(password, hash string) error {
 	return nil
 }
 
-// Strength checks password strength
 type PasswordStrength int
 
 const (
@@ -80,7 +71,6 @@ const (
 	StrengthStrong
 )
 
-// CheckStrength evaluates password strength
 func CheckStrength(password string) PasswordStrength {
 	length := len(password)
 
@@ -131,7 +121,6 @@ func CheckStrength(password string) PasswordStrength {
 	}
 }
 
-// ValidatePassword performs comprehensive password validation
 func ValidatePassword(password string) error {
 	if len(password) < MinPasswordLength {
 		return fmt.Errorf("password must be at least %d characters long", MinPasswordLength)
@@ -149,7 +138,6 @@ func ValidatePassword(password string) error {
 	return nil
 }
 
-// GenerateRandomPassword generates cryptographically secure random password
 func GenerateRandomPassword(length int) (string, error) {
 	if length < MinPasswordLength {
 		length = MinPasswordLength
@@ -166,7 +154,6 @@ func GenerateRandomPassword(length int) (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
 }
 
-// NeedsRehash checks if password hash needs to be updated
 func NeedsRehash(hash string) bool {
 	cost, err := bcrypt.Cost([]byte(hash))
 	if err != nil {

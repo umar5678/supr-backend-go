@@ -114,10 +114,9 @@ func (h *Handler) ListRides(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/accept [post]
 func (h *Handler) AcceptRide(c *gin.Context) {
-	userID, _ := c.Get("userID") // ✅ This is user ID from JWT token, NOT driver profile ID
+	userID, _ := c.Get("userID")
 	rideID := c.Param("id")
 
-	// ✅ Service will fetch driver profile using this userID
 	ride, err := h.service.AcceptRide(c.Request.Context(), userID.(string), rideID)
 	if err != nil {
 		c.Error(err)
@@ -138,7 +137,7 @@ func (h *Handler) AcceptRide(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Router /rides/{id}/reject [post]
 func (h *Handler) RejectRide(c *gin.Context) {
-	userID, _ := c.Get("userID") // ✅ User ID from JWT
+	userID, _ := c.Get("userID")
 	rideID := c.Param("id")
 
 	var req dto.RejectRideRequest
@@ -164,7 +163,7 @@ func (h *Handler) RejectRide(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/arrived [post]
 func (h *Handler) MarkArrived(c *gin.Context) {
-	userID, _ := c.Get("userID") // ✅ User ID from JWT
+	userID, _ := c.Get("userID") 
 	rideID := c.Param("id")
 
 	ride, err := h.service.MarkArrived(c.Request.Context(), userID.(string), rideID)
@@ -185,7 +184,7 @@ func (h *Handler) MarkArrived(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/start [post]
 func (h *Handler) StartRide(c *gin.Context) {
-	userID, _ := c.Get("userID") // ✅ User ID from JWT
+	userID, _ := c.Get("userID")
 	rideID := c.Param("id")
 	logger.Info("StartRide handler called", "userID", userID, "rideID", rideID)
 
@@ -222,7 +221,7 @@ func (h *Handler) StartRide(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/complete [post]
 func (h *Handler) CompleteRide(c *gin.Context) {
-	userID, _ := c.Get("userID") // ✅ User ID from JWT
+	userID, _ := c.Get("userID")
 	rideID := c.Param("id")
 
 	var req dto.CompleteRideRequest
@@ -287,7 +286,6 @@ func (h *Handler) TriggerSOS(c *gin.Context) {
 		return
 	}
 
-	// Extract location from request
 	var latitude, longitude float64
 	if lat, ok := req["latitude"].(float64); ok {
 		latitude = lat
@@ -329,7 +327,6 @@ func (h *Handler) GetAvailableCars(c *gin.Context) {
 		return
 	}
 
-	// Set default radius if not provided
 	if req.RadiusKm == 0 {
 		req.RadiusKm = 5.0
 	}
@@ -362,7 +359,6 @@ func (h *Handler) GetVehiclesWithDetails(c *gin.Context) {
 		return
 	}
 
-	// Set default radius if not provided
 	if req.RadiusKm == 0 {
 		req.RadiusKm = 5.0
 	}
@@ -376,13 +372,8 @@ func (h *Handler) GetVehiclesWithDetails(c *gin.Context) {
 	response.Success(c, vehicles, "Vehicles with details fetched successfully")
 }
 
-// ====================================================
-//  Ride Messaging
-// ====================================================
-
-// RideMessageManager handles real-time messaging for rides
 type RideMessageManager struct {
-	connections map[string]map[string]*websocket.Conn // rideID -> userID -> conn
+	connections map[string]map[string]*websocket.Conn
 	mu          sync.RWMutex
 	msgService  messages.Service
 	broadcast   chan *BroadcastMessage
@@ -397,7 +388,7 @@ type BroadcastMessage struct {
 }
 
 type WSChatMessage struct {
-	Type     string                 `json:"type"` // "message", "typing", "read"
+	Type     string                 `json:"type"`
 	RideID   string                 `json:"rideId"`
 	Content  string                 `json:"content"`
 	Metadata map[string]interface{} `json:"metadata"`
@@ -424,7 +415,6 @@ func (rm *RideMessageManager) RegisterConnection(rideID, userID string, conn *we
 	rm.connections[rideID][userID] = conn
 	logger.Info("user connected to ride chat", "rideID", rideID, "userID", userID)
 
-	// Notify other participants that user is online
 	rm.broadcast <- &BroadcastMessage{
 		RideID:    rideID,
 		UserID:    userID,
@@ -447,7 +437,6 @@ func (rm *RideMessageManager) UnregisterConnection(rideID, userID string) {
 
 	logger.Info("user disconnected from ride chat", "rideID", rideID, "userID", userID)
 
-	// Notify other participants that user is offline
 	rm.broadcast <- &BroadcastMessage{
 		RideID:    rideID,
 		UserID:    userID,
@@ -461,13 +450,11 @@ func (rm *RideMessageManager) BroadcastMessage(rideID, userID, senderType, conte
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Save message to database
 	msgResp, err := rm.msgService.SendMessage(ctx, rideID, userID, senderType, content, metadata)
 	if err != nil {
 		return err
 	}
 
-	// Broadcast to all connected users in this ride
 	rm.broadcast <- &BroadcastMessage{
 		RideID:    rideID,
 		UserID:    userID,
@@ -513,7 +500,6 @@ func (rm *RideMessageManager) handleBroadcast() {
 		data, _ := json.Marshal(response)
 
 		for userID, conn := range connections {
-			// Skip sender for certain events
 			if msg.ExcludeID != "" && userID == msg.ExcludeID {
 				continue
 			}

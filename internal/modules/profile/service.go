@@ -54,14 +54,12 @@ func (s *service) UpdateEmergencyContact(ctx context.Context, userID string, req
 }
 
 func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto.ReferralInfoResponse, error) {
-	// Check if user already has a referral code
 	user, err := s.repo.FindUserByID(ctx, userID)
 	if err != nil {
 		logger.Error("failed to get user", "error", err, "userID", userID)
 		return nil, response.InternalServerError("Failed to get user info", err)
 	}
 
-	// If user already has a code, return it
 	if user.ReferralCode != nil && *user.ReferralCode != "" {
 		logger.Info("user already has referral code", "userID", userID, "code", *user.ReferralCode)
 
@@ -70,7 +68,6 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 			return nil, response.InternalServerError("Failed to get referral stats", err)
 		}
 
-		// Check if user has applied a referral
 		hasApplied, err := s.repo.HasUserAppliedAnyReferral(ctx, userID)
 		if err != nil {
 			logger.Error("failed to check if user applied referral", "error", err, "userID", userID)
@@ -85,7 +82,6 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 		}, nil
 	}
 
-	// Generate new code
 	code, err := codegen.GenerateReferralCode()
 	if err != nil {
 		logger.Error("failed to generate referral code", "error", err, "userID", userID)
@@ -102,7 +98,6 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 		return nil, response.InternalServerError("Failed to get referral stats", err)
 	}
 
-	// Check if user has applied a referral
 	hasApplied, err := s.repo.HasUserAppliedAnyReferral(ctx, userID)
 	if err != nil {
 		logger.Error("failed to check if user applied referral", "error", err, "userID", userID)
@@ -120,14 +115,12 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 }
 
 func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.ApplyReferralRequest) error {
-	// Check if code is not empty
 	if req.ReferralCode == "" {
 		return response.BadRequest("Referral code cannot be empty")
 	}
 
 	logger.Info("attempting to apply referral code", "code", req.ReferralCode, "userID", userID)
 
-	// Check if code exists
 	referrer, err := s.repo.FindUserByReferralCode(ctx, req.ReferralCode)
 	if err != nil {
 		logger.Error("referral code lookup failed", "error", err, "code", req.ReferralCode)
@@ -139,12 +132,10 @@ func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.
 		return response.BadRequest("Invalid referral code")
 	}
 
-	// Prevent code owner from using their own code
 	if referrer.ID == userID {
 		return response.BadRequest("You cannot use your own referral code")
 	}
 
-	// Check if user already applied this code (prevent duplicate usage)
 	alreadyApplied, err := s.repo.HasUserAppliedCode(ctx, userID, req.ReferralCode)
 	if err != nil {
 		logger.Error("failed to check if user already applied code", "error", err, "userID", userID)
@@ -156,31 +147,26 @@ func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.
 		return response.BadRequest("You have already applied this referral code")
 	}
 
-	// Apply the referral code in database
 	if err := s.repo.ApplyReferralCode(ctx, userID, req.ReferralCode); err != nil {
 		logger.Error("failed to apply referral code", "error", err, "userID", userID)
 		return response.InternalServerError("Failed to apply referral code", err)
 	}
 
-	// Credit both users with referral bonus
 	bonusAmount := 200.0
 	metadata := map[string]interface{}{"referral_code": req.ReferralCode}
 
-	// Credit new user
 	_, err = s.walletService.CreditWallet(ctx, userID, bonusAmount, "referral_bonus", referrer.ID, "Referral bonus from code "+req.ReferralCode, metadata)
 	if err != nil {
 		logger.Error("failed to credit bonus to user", "error", err, "userID", userID)
 		return response.InternalServerError("Failed to credit bonus - contact support", err)
 	}
 
-	// Credit referrer
 	_, err = s.walletService.CreditWallet(ctx, referrer.ID, bonusAmount, "referral_reward", userID, "Referral reward from user "+userID, metadata)
 	if err != nil {
 		logger.Error("failed to credit bonus to referrer", "error", err, "referrerID", referrer.ID)
 		return response.InternalServerError("Failed to credit referrer bonus - contact support", err)
 	}
 
-	// Invalidate rider profile cache for both users to force fresh wallet data
 	cache.Delete(ctx, fmt.Sprintf("rider:profile:%s", userID))
 	cache.Delete(ctx, fmt.Sprintf("rider:profile:%s", referrer.ID))
 
@@ -194,7 +180,6 @@ func (s *service) GetReferralInfo(ctx context.Context, userID string) (*dto.Refe
 		return nil, response.InternalServerError("Failed to get referral info", err)
 	}
 
-	// Get user's referral code
 	user, err := s.repo.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to get user info", err)
@@ -205,7 +190,6 @@ func (s *service) GetReferralInfo(ctx context.Context, userID string) (*dto.Refe
 		code = *user.ReferralCode
 	}
 
-	// Check if user has applied a referral
 	hasApplied, err := s.repo.HasUserAppliedAnyReferral(ctx, userID)
 	if err != nil {
 		logger.Error("failed to check if user applied referral", "error", err, "userID", userID)
@@ -225,7 +209,6 @@ func (s *service) SubmitKYC(ctx context.Context, userID string, req dto.SubmitKY
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Check if KYC already exists
 	existing, err := s.repo.FindKYCByUserID(ctx, userID)
 	if err == nil && existing.Status == "approved" {
 		return nil, response.BadRequest("KYC already approved")
@@ -278,7 +261,6 @@ func (s *service) SaveLocation(ctx context.Context, userID string, req dto.SaveL
 		return nil, response.InternalServerError("Failed to save location", err)
 	}
 
-	// If this is set as default, update others
 	if req.IsDefault {
 		s.repo.SetDefaultLocation(ctx, userID, location.ID)
 	}

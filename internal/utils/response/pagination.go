@@ -2,7 +2,6 @@ package response
 
 import "github.com/gin-gonic/gin"
 
-// PaginationMeta represents pagination metadata
 type PaginationMeta struct {
 	Total      int64 `json:"total"`
 	Page       int   `json:"page"`
@@ -12,7 +11,6 @@ type PaginationMeta struct {
 	HasPrev    bool  `json:"hasPrev"`
 }
 
-// NewPaginationMeta creates pagination metadata
 func NewPaginationMeta(total int64, page, limit int) PaginationMeta {
 	totalPages := int(total) / limit
 	if int(total)%limit > 0 {
@@ -29,16 +27,14 @@ func NewPaginationMeta(total int64, page, limit int) PaginationMeta {
 	}
 }
 
-// Paginated sends a paginated response
 func Paginated(c *gin.Context, data interface{}, pagination PaginationMeta, message string) {
 	resp := Response{
 		Success: true,
 		Message: message,
 		Data:    data,
-		Meta:    extractMeta(c), // From response.go
+		Meta:    extractMeta(c),
 	}
 
-	// Add pagination to meta (or as separate field)
 	c.Set("pagination", pagination)
 
 	c.JSON(200, gin.H{

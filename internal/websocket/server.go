@@ -1,4 +1,3 @@
-// internal/websocket/server.go
 package websocket
 
 import (
@@ -15,27 +14,22 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		// TODO: Implement proper origin checking in production
 		return true
 	},
 }
 
-// Server handles WebSocket HTTP connections
 type Server struct {
 	manager *Manager
 }
 
-// NewServer creates a new WebSocket server
 func NewServer(manager *Manager) *Server {
 	return &Server{
 		manager: manager,
 	}
 }
 
-// HandleConnection upgrades HTTP connection to WebSocket
 func (s *Server) HandleConnection() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get user info from auth middleware
 		userID, exists := c.Get("userID")
 		if !exists {
 			c.JSON(http.StatusUnauthorized, response.UnauthorizedError("Unauthorized"))
@@ -44,31 +38,25 @@ func (s *Server) HandleConnection() gin.HandlerFunc {
 
 		userIDStr := userID.(string)
 
-		// 🔍 Log the incoming attempt
-		logger.Info("⏳ Incoming WebSocket Connection Request",
+		logger.Info("Incoming WebSocket Connection Request",
 			"userID", userIDStr,
 			"ip", c.ClientIP(),
 		)
 
-		// Get optional reconnection token
 		reconnectToken := c.Query("reconnect_token")
 
-		// Upgrade connection
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			logger.Error("websocket upgrade failed", "error", err, "userID", userIDStr)
 			return
 		}
 
-		// Create client
 		client := NewClient(s.manager.hub, conn, userIDStr, c.Request.UserAgent())
 		client.manager = s.manager
 		client.reconnectToken = reconnectToken
 
-		// Register client
 		s.manager.hub.register <- client
 
-		// Send connection success message
 		welcomeMsg := NewMessage(TypeSystemMessage, map[string]interface{}{
 			"message":        "Connected successfully",
 			"clientId":       client.ID,
@@ -77,10 +65,8 @@ func (s *Server) HandleConnection() gin.HandlerFunc {
 		})
 		client.send <- welcomeMsg
 
-		// Deliver offline messages if any
 		go s.deliverOfflineMessages(client)
 
-		// Start client pumps
 		go client.WritePump()
 		go client.ReadPump()
 
@@ -92,13 +78,11 @@ func (s *Server) HandleConnection() gin.HandlerFunc {
 	}
 }
 
-// deliverOfflineMessages sends queued messages to newly connected client
 func (s *Server) deliverOfflineMessages(client *Client) {
 	if !s.manager.config.PersistenceEnabled {
 		return
 	}
 
-	// Get offline notifications
 	if s.manager.notificationStore != nil {
 		notifications, err := s.manager.notificationStore.GetPending(s.manager.ctx, client.UserID)
 		if err != nil {
@@ -107,7 +91,6 @@ func (s *Server) deliverOfflineMessages(client *Client) {
 		}
 
 		if len(notifications) > 0 {
-			// Send bulk notification
 			bulkMsg := NewMessage(TypeNotificationBulk, map[string]interface{}{
 				"notifications": notifications,
 				"count":         len(notifications),
@@ -122,7 +105,6 @@ func (s *Server) deliverOfflineMessages(client *Client) {
 	}
 }
 
-// HandleHealthCheck returns WebSocket service health
 func (s *Server) HandleHealthCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		stats := s.manager.GetStats()
@@ -136,10 +118,8 @@ func (s *Server) HandleHealthCheck() gin.HandlerFunc {
 	}
 }
 
-// HandleStats returns detailed WebSocket statistics
 func (s *Server) HandleStats() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Only allow admin users
 		role, _ := c.Get("role")
 		if role != "admin" {
 			c.JSON(http.StatusForbidden, response.ForbiddenError("forbidden"))
@@ -157,7 +137,6 @@ func (s *Server) HandleStats() gin.HandlerFunc {
 	}
 }
 
-// HandleUserPresence checks if specific users are online
 func (s *Server) HandleUserPresence() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -183,10 +162,8 @@ func (s *Server) HandleUserPresence() gin.HandlerFunc {
 	}
 }
 
-// HandleBroadcast sends message to all connected users (admin only)
 func (s *Server) HandleBroadcast() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Only allow admin users
 		role, _ := c.Get("role")
 		if role != "admin" {
 			c.JSON(http.StatusForbidden, response.ForbiddenError("forbidden"))
@@ -213,7 +190,6 @@ func (s *Server) HandleBroadcast() gin.HandlerFunc {
 	}
 }
 
-// HandleSendToUser sends message to specific user
 func (s *Server) HandleSendToUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -227,7 +203,6 @@ func (s *Server) HandleSendToUser() gin.HandlerFunc {
 			return
 		}
 
-		// Check if user is online
 		if !s.manager.hub.IsUserConnected(req.UserID) {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,

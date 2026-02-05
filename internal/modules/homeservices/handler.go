@@ -17,8 +17,6 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
-// --- Customer Endpoints ---
-
 // ListCategories godoc
 // @Summary List service categories
 // @Description Get all active service categories
@@ -158,8 +156,6 @@ func (h *Handler) ListAddOns(c *gin.Context) {
 	response.Success(c, addOns, "Add-ons retrieved successfully")
 }
 
-// ==================== CUSTOMER ENDPOINTS ====================
-
 // CreateOrder godoc
 // @Summary Create a service order
 // @Description Book a home service
@@ -276,8 +272,6 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 
 	response.Success(c, nil, "Order cancelled successfully")
 }
-
-// ==================== PROVIDER ENDPOINTS ====================
 
 // GetProviderOrders godoc
 // @Summary Get provider orders
@@ -409,8 +403,6 @@ func (h *Handler) CompleteOrder(c *gin.Context) {
 
 	response.Success(c, nil, "Order completed successfully")
 }
-
-// ==================== ADMIN ENDPOINTS ====================
 
 // CreateCategory godoc
 // @Summary Create a category

@@ -84,7 +84,6 @@ func (r *UpdateLocationRequest) Validate() error {
 	return nil
 }
 
-// ✅ WalletTopUpRequest - Request to add funds to wallet
 type WalletTopUpRequest struct {
 	Amount        float64 `json:"amount" binding:"required,gt=0"`
 	PaymentMethod string  `json:"paymentMethod" binding:"required,oneof=card upi netbanking wallet"` // card, upi, netbanking, wallet

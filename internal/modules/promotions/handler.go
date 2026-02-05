@@ -1,4 +1,3 @@
-// internal/modules/promotions/handler.go
 package promotions
 
 import (

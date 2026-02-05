@@ -16,10 +16,9 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 512 * 1024 // 512KB
+	maxMessageSize = 512 * 1024
 )
 
-// ✅ User roles
 type UserRole string
 
 const (
@@ -28,12 +27,11 @@ const (
 	RoleAdmin  UserRole = "admin"
 )
 
-// Client represents a WebSocket connection
 type Client struct {
 	ID             string
 	UserID         string
 	UserAgent      string
-	Role           UserRole // ✅ NEW - User role (driver/rider)
+	Role           UserRole
 	hub            *Hub
 	manager        *Manager
 	conn           *websocket.Conn
@@ -42,12 +40,9 @@ type Client struct {
 	lastHeartbeat  time.Time
 	connectedAt    time.Time
 	mu             sync.RWMutex
-
-	// ✅ NEW - Pending acknowledgments
-	pendingAcks map[string]*Message // messageID -> message awaiting ACK
+	pendingAcks map[string]*Message
 }
 
-// NewClient creates a new WebSocket client
 func NewClient(hub *Hub, conn *websocket.Conn, userID, userAgent string) *Client {
 	return &Client{
 		ID:            uuid.New().String(),
@@ -65,18 +60,11 @@ func (c *Client) Manager() *Manager {
 	return c.manager
 }
 
-// ReadPump pumps messages from WebSocket to hub
-// internal/websocket/client.go
-
-// ReadPump pumps messages from WebSocket to hub
 func (c *Client) ReadPump() {
-	// 1. Define a variable to capture the disconnect reason
 	var closeErr error
 
 	defer func() {
-		// 2. Log the specific reason for disconnection
 		if closeErr != nil {
-			// Connection broke (WiFi lost, timeout, error)
 			logger.Warn("🔌 Connection BROKEN",
 				"userID", c.UserID,
 				"role", c.Role,
@@ -84,7 +72,6 @@ func (c *Client) ReadPump() {
 				"error", closeErr.Error(),
 			)
 		} else {
-			// Normal closure (User navigated away or closed app gracefully)
 			logger.Info("🔌 Connection closed normally",
 				"userID", c.UserID,
 				"role", c.Role,
@@ -106,29 +93,24 @@ func (c *Client) ReadPump() {
 
 	for {
 		var msg Message
-		// 3. Capture the error if reading fails
 		if err := c.conn.ReadJSON(&msg); err != nil {
-			closeErr = err // Save the error for the defer log
+			closeErr = err
 
-			// Filter out normal close errors for the "unexpected" check
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logger.Error("❌ WebSocket unexpected close error",
+				logger.Error("WebSocket unexpected close error",
 					"error", err,
 					"userID", c.UserID,
 				)
 			}
-			break // Break the loop, triggering the defer
+			break
 		}
 
-		// Update heartbeat on any message
 		c.updateHeartbeat()
 
-		// Handle incoming message
 		c.handleIncomingMessage(&msg)
 	}
 }
 
-// WritePump pumps messages from hub to WebSocket
 func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -156,11 +138,9 @@ func (c *Client) WritePump() {
 				return
 			}
 
-			// ✅ Track messages requiring acknowledgment
 			if message.RequireAck && message.MessageID != "" {
 				c.pendingAcks[message.MessageID] = message
 
-				// Set timeout for ACK
 				go c.waitForAck(message.MessageID, 10*time.Second)
 			}
 
@@ -173,7 +153,6 @@ func (c *Client) WritePump() {
 	}
 }
 
-// ✅ NEW - Wait for message acknowledgment
 func (c *Client) waitForAck(messageID string, timeout time.Duration) {
 	time.Sleep(timeout)
 
@@ -185,7 +164,6 @@ func (c *Client) waitForAck(messageID string, timeout time.Duration) {
 			"type", msg.Type,
 		)
 
-		// Retry critical messages (max 3 times)
 		if msg.RetryCount < 3 {
 			msg.RetryCount++
 			logger.Info("retrying message delivery",
@@ -204,15 +182,12 @@ func (c *Client) waitForAck(messageID string, timeout time.Duration) {
 	}
 }
 
-// handleIncomingMessage processes messages from client
 func (c *Client) handleIncomingMessage(msg *Message) {
-	// Set sender info
 	if msg.Data == nil {
 		msg.Data = make(map[string]interface{})
 	}
 	msg.Data["senderId"] = c.UserID
 
-	// Check for registered handler in manager
 	if c.manager != nil {
 		if handler, exists := c.manager.GetHandler(msg.Type); exists {
 			if err := handler(c, msg); err != nil {
@@ -227,7 +202,6 @@ func (c *Client) handleIncomingMessage(msg *Message) {
 		}
 	}
 
-	// Fallback to default handling
 	switch msg.Type {
 	case TypePing:
 		c.handlePing(msg)
@@ -249,7 +223,6 @@ func (c *Client) handleIncomingMessage(msg *Message) {
 	}
 }
 
-// ✅ NEW - Handle driver location updates
 func (c *Client) handleDriverLocation(msg *Message) {
 	if c.Role != RoleDriver {
 		c.SendError("Only drivers can send location updates", msg.RequestID)
@@ -270,7 +243,6 @@ func (c *Client) handleDriverLocation(msg *Message) {
 		"longitude", longitude,
 	)
 
-	// Broadcast to hub for processing (e.g., updating nearby riders)
 	locationMsg := NewMessage(TypeDriverLocationUpdate, map[string]interface{}{
 		"driverId":  c.UserID,
 		"latitude":  latitude,
@@ -278,16 +250,13 @@ func (c *Client) handleDriverLocation(msg *Message) {
 		"timestamp": time.Now().UTC(),
 	})
 
-	// You might want to broadcast this to specific riders or store in Redis
 	c.hub.BroadcastToAll(locationMsg)
 
-	// Send ack
 	c.send <- NewAckMessage(msg.RequestID, map[string]interface{}{
 		"success": true,
 	})
 }
 
-// ✅ NEW - Handle acknowledgment
 func (c *Client) handleAck(msg *Message) {
 	messageID, ok := msg.Data["messageId"].(string)
 	if !ok {
@@ -304,8 +273,6 @@ func (c *Client) handleAck(msg *Message) {
 		delete(c.pendingAcks, messageID)
 	}
 }
-
-// Default message handlers
 
 func (c *Client) handlePing(msg *Message) {
 	pong := NewMessage(TypePong, map[string]interface{}{
@@ -356,47 +323,38 @@ func (c *Client) handleReadReceipt(msg *Message) {
 	c.SendAck(msg.RequestID, map[string]interface{}{"success": true})
 }
 
-// Helper methods
-
-// SendError sends error message to client
 func (c *Client) SendError(errMsg, requestID string) error {
 	c.send <- NewErrorMessage(errMsg, requestID)
 	return nil
 }
 
-// SendAck sends acknowledgment message
 func (c *Client) SendAck(requestID string, data map[string]interface{}) error {
 	c.send <- NewAckMessage(requestID, data)
 	return nil
 }
 
-// GenerateReconnectToken generates a secure reconnection token
 func (c *Client) GenerateReconnectToken() string {
 	b := make([]byte, 32)
 	rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-// updateHeartbeat updates the last heartbeat timestamp
 func (c *Client) updateHeartbeat() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.lastHeartbeat = time.Now()
 }
 
-// GetLastHeartbeat returns the last heartbeat time
 func (c *Client) GetLastHeartbeat() time.Time {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.lastHeartbeat
 }
 
-// GetConnectionDuration returns how long client has been connected
 func (c *Client) GetConnectionDuration() time.Duration {
 	return time.Since(c.connectedAt)
 }
 
-// IsHealthy checks if connection is healthy based on heartbeat
 func (c *Client) IsHealthy() bool {
 	return time.Since(c.GetLastHeartbeat()) < pongWait
 }

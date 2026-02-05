@@ -10,14 +10,12 @@ import (
 )
 
 type Repository interface {
-	// Ride CRUD
 	CreateRide(ctx context.Context, ride *models.Ride) error
 	FindRideByID(ctx context.Context, id string) (*models.Ride, error)
 	UpdateRide(ctx context.Context, ride *models.Ride) error
 	UpdateRideStatus(ctx context.Context, rideID, status string) error
 	ListRides(ctx context.Context, userID string, filters map[string]interface{}, page, limit int) ([]*models.Ride, int64, error)
 
-	// Ride Requests
 	CreateRideRequest(ctx context.Context, request *models.RideRequest) error
 	FindRideRequestByID(ctx context.Context, id string) (*models.RideRequest, error)
 	FindRideRequestByRideAndDriver(ctx context.Context, rideID, driverID string) (*models.RideRequest, error)
@@ -27,11 +25,9 @@ type Repository interface {
 	ExpireOldRequests(ctx context.Context) error
 	FindActiveRideByDriverID(ctx context.Context, driverID string) (*models.Ride, error)
 
-	// NEW CRITICAL METHODS
 	UpdateRideStatusAndDriver(ctx context.Context, rideID, newStatus, expectedStatus string, driverID string) error
 	CancelPendingRequestsExcept(ctx context.Context, rideID, acceptedDriverID string) error
 
-	// Statistics
 	GetRiderStats(ctx context.Context, riderID string) (totalRides int, totalSpent float64, err error)
 	GetDriverStats(ctx context.Context, driverID string) (totalTrips int, totalEarnings float64, err error)
 }
@@ -43,8 +39,6 @@ type repository struct {
 func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
-
-// Ride CRUD
 
 func (r *repository) CreateRide(ctx context.Context, ride *models.Ride) error {
 	pickupPoint := fmt.Sprintf("POINT(%f %f)", ride.PickupLon, ride.PickupLat)
@@ -146,8 +140,6 @@ func (r *repository) ListRides(ctx context.Context, userID string, filters map[s
 	return rides, total, err
 }
 
-// Ride Requests
-
 func (r *repository) CreateRideRequest(ctx context.Context, request *models.RideRequest) error {
 	return r.db.WithContext(ctx).Create(request).Error
 }
@@ -231,12 +223,6 @@ func (r *repository) FindActiveRideByDriverID(ctx context.Context, driverID stri
 	return &ride, err
 }
 
-// ============================================================================
-// CRITICAL NEW METHODS FOR RACE CONDITION FIXES
-// ============================================================================
-
-// UpdateRideStatusAndDriver atomically updates ride status and assigns driver
-// This prevents race conditions where multiple drivers could accept the same ride
 func (r *repository) UpdateRideStatusAndDriver(ctx context.Context, rideID, newStatus, expectedStatus string, driverID string) error {
 	result := r.db.WithContext(ctx).Exec(`
 		UPDATE rides 
@@ -248,7 +234,6 @@ func (r *repository) UpdateRideStatusAndDriver(ctx context.Context, rideID, newS
 		return result.Error
 	}
 
-	// If no rows were affected, the ride was already accepted
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
@@ -256,8 +241,6 @@ func (r *repository) UpdateRideStatusAndDriver(ctx context.Context, rideID, newS
 	return nil
 }
 
-// CancelPendingRequestsExcept cancels all pending ride requests except the accepted one
-// This ensures only one driver gets the ride
 func (r *repository) CancelPendingRequestsExcept(ctx context.Context, rideID, acceptedDriverID string) error {
 	return r.db.WithContext(ctx).
 		Model(&models.RideRequest{}).
@@ -269,8 +252,6 @@ func (r *repository) CancelPendingRequestsExcept(ctx context.Context, rideID, ac
 			"responded_at": time.Now(),
 		}).Error
 }
-
-// Statistics
 
 func (r *repository) GetRiderStats(ctx context.Context, riderID string) (totalRides int, totalSpent float64, err error) {
 	var stats struct {

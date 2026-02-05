@@ -10,19 +10,16 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
-// TestHandler handles WebSocket testing endpoints
 type TestHandler struct {
 	manager *Manager
 }
 
-// NewTestHandler creates a new test handler
 func NewTestHandler(manager *Manager) *TestHandler {
 	return &TestHandler{
 		manager: manager,
 	}
 }
 
-// TestMessageRequest for testing WebSocket messages
 type TestMessageRequest struct {
 	UserID  string                 `json:"userId" binding:"required"`
 	Type    MessageType            `json:"type" binding:"required"`
@@ -30,14 +27,12 @@ type TestMessageRequest struct {
 	DelayMS int                    `json:"delayMs"`
 }
 
-// TestBroadcastRequest for testing broadcast messages
 type TestBroadcastRequest struct {
 	Type    MessageType            `json:"type" binding:"required"`
 	Data    map[string]interface{} `json:"data"`
 	DelayMS int                    `json:"delayMs"`
 }
 
-// SendTestMessage sends a test message to a specific user
 func (h *TestHandler) SendTestMessage(c *gin.Context) {
 	var req TestMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -45,11 +40,9 @@ func (h *TestHandler) SendTestMessage(c *gin.Context) {
 		return
 	}
 
-	// Create test message
 	msg := NewTargetedMessage(req.Type, req.UserID, req.Data)
 
 	if req.DelayMS > 0 {
-		// Simulate delay for testing
 		go func() {
 			time.Sleep(time.Duration(req.DelayMS) * time.Millisecond)
 			h.manager.Hub().SendToUser(req.UserID, msg)
@@ -72,7 +65,6 @@ func (h *TestHandler) SendTestMessage(c *gin.Context) {
 	}, "Test message sent successfully")
 }
 
-// SendTestBroadcast sends a test broadcast message to all users
 func (h *TestHandler) SendTestBroadcast(c *gin.Context) {
 	var req TestBroadcastRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -80,11 +72,9 @@ func (h *TestHandler) SendTestBroadcast(c *gin.Context) {
 		return
 	}
 
-	// Create broadcast message
 	msg := NewMessage(req.Type, req.Data)
 
-	if req.DelayMS > 0 {
-		// Simulate delay for testing
+	if req.DelayMS > 0 { 
 		go func() {
 			time.Sleep(time.Duration(req.DelayMS) * time.Millisecond)
 			h.manager.Hub().BroadcastToAll(msg)
@@ -105,7 +95,6 @@ func (h *TestHandler) SendTestBroadcast(c *gin.Context) {
 	}, "Test broadcast sent successfully")
 }
 
-// GetConnectionStats returns current WebSocket connection statistics
 func (h *TestHandler) GetConnectionStats(c *gin.Context) {
 	stats := h.manager.GetStats()
 
@@ -117,7 +106,6 @@ func (h *TestHandler) GetConnectionStats(c *gin.Context) {
 	}, "Connection stats retrieved")
 }
 
-// TestPresence checks if users are online
 func (h *TestHandler) TestPresence(c *gin.Context) {
 	userIDs := c.QueryArray("userIds")
 	if len(userIDs) == 0 {
@@ -136,14 +124,9 @@ func (h *TestHandler) TestPresence(c *gin.Context) {
 	}, "Presence check completed")
 }
 
-// internal/websocket/test_handler.go - ADD THESE METHODS
-// Add these methods to TestHandler
-
-// DebugConnections returns detailed connection information
 func (h *TestHandler) DebugConnections(c *gin.Context) {
 	debugInfo := h.manager.Hub().DebugInfo()
 
-	// Also get Redis presence info
 	ctx := context.Background()
 	onlineUsers, _ := cache.GetAllOnlineUsers(ctx)
 
@@ -154,7 +137,6 @@ func (h *TestHandler) DebugConnections(c *gin.Context) {
 	}, "Debug information retrieved")
 }
 
-// SendTestMessageDirect sends a message directly via WebSocket (bypassing Redis)
 func (h *TestHandler) SendTestMessageDirect(c *gin.Context) {
 	var req TestMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -162,7 +144,6 @@ func (h *TestHandler) SendTestMessageDirect(c *gin.Context) {
 		return
 	}
 
-	// Create and send message directly
 	msg := NewTargetedMessage(req.Type, req.UserID, req.Data)
 
 	logger.Info("sending test message directly",

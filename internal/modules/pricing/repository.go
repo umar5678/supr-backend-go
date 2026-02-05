@@ -11,7 +11,6 @@ import (
 )
 
 type Repository interface {
-	// Surge zones
 	GetActiveSurgeZones(ctx context.Context, lat, lon float64) ([]*models.SurgePricingZone, error)
 	GetSurgeZoneByGeohash(ctx context.Context, geohash string) (*models.SurgePricingZone, error)
 	GetAllActiveSurgeZones(ctx context.Context) ([]*models.SurgePricingZone, error)
@@ -19,40 +18,32 @@ type Repository interface {
 	UpdateSurgeZone(ctx context.Context, zone *models.SurgePricingZone) error
 	DeactivateSurgeZone(ctx context.Context, id string) error
 
-	// Surge pricing rules (time-based and demand-based)
 	GetActiveSurgePricingRules(ctx context.Context) ([]*models.SurgePricingRule, error)
 	GetSurgePricingRuleByVehicleType(ctx context.Context, vehicleTypeID string) (*models.SurgePricingRule, error)
 	CreateSurgePricingRule(ctx context.Context, rule *models.SurgePricingRule) error
 	UpdateSurgePricingRule(ctx context.Context, rule *models.SurgePricingRule) error
 
-	// Demand tracking
 	GetDemandByZone(ctx context.Context, zoneID string) (*models.DemandTracking, error)
 	CreateDemandTracking(ctx context.Context, demand *models.DemandTracking) error
 	UpdateDemandTracking(ctx context.Context, demand *models.DemandTracking) error
 	GetLatestDemandByGeohash(ctx context.Context, geohash string) (*models.DemandTracking, error)
 
-	// ETA estimates
 	CreateETAEstimate(ctx context.Context, eta *models.ETAEstimate) error
 	GetETAEstimate(ctx context.Context, rideID string) (*models.ETAEstimate, error)
 	UpdateETAEstimate(ctx context.Context, eta *models.ETAEstimate) error
 
-	// Surge history
 	CreateSurgeHistory(ctx context.Context, history *models.SurgeHistory) error
 	GetSurgeHistory(ctx context.Context, rideID string) (*models.SurgeHistory, error)
 
-	// Price capping
 	FindPriceCappingRule(ctx context.Context, vehicleTypeID string) (*models.PriceCappingRule, error)
 	CreatePriceCappingRule(ctx context.Context, rule *models.PriceCappingRule) error
 
-	// Wait time
 	CreateWaitTimeCharge(ctx context.Context, charge *models.WaitTimeCharge) error
 	FindWaitTimeChargeByRideID(ctx context.Context, rideID string) (*models.WaitTimeCharge, error)
 	UpdateWaitTimeCharge(ctx context.Context, charge *models.WaitTimeCharge) error
 
-	// Surge zones
 	GetSurgeMultiplier(ctx context.Context, lat, lon float64, vehicleTypeID string) (float64, error)
 
-	// Ride updates
 	UpdateRideDestination(ctx context.Context, rideID string, lat, lon float64, address string, additionalCharge float64) error
 	UpdateRideWaitTimeCharge(ctx context.Context, rideID string, charge float64) error
 }
@@ -70,7 +61,6 @@ func (r *repository) GetActiveSurgeZones(ctx context.Context, lat, lon float64) 
 
 	now := time.Now()
 
-	// Find zones where point is within radius
 	err := r.db.WithContext(ctx).
 		Where("is_active = ?", true).
 		Where("active_from <= ?", now).
@@ -81,7 +71,6 @@ func (r *repository) GetActiveSurgeZones(ctx context.Context, lat, lon float64) 
 		return nil, err
 	}
 
-	// Filter by distance (check if point is within zone radius)
 	var activeZones []*models.SurgePricingZone
 	for _, zone := range zones {
 		distance := location.HaversineDistance(lat, lon, zone.CenterLat, zone.CenterLon)
@@ -200,7 +189,6 @@ func (r *repository) UpdateRideWaitTimeCharge(ctx context.Context, rideID string
 		Update("wait_time_charge", charge).Error
 }
 
-// GetActiveSurgePricingRules returns all active surge pricing rules
 func (r *repository) GetActiveSurgePricingRules(ctx context.Context) ([]*models.SurgePricingRule, error) {
 	var rules []*models.SurgePricingRule
 	err := r.db.WithContext(ctx).
@@ -209,7 +197,6 @@ func (r *repository) GetActiveSurgePricingRules(ctx context.Context) ([]*models.
 	return rules, err
 }
 
-// GetSurgePricingRuleByVehicleType returns surge rule for a vehicle type
 func (r *repository) GetSurgePricingRuleByVehicleType(ctx context.Context, vehicleTypeID string) (*models.SurgePricingRule, error) {
 	var rule models.SurgePricingRule
 	err := r.db.WithContext(ctx).
@@ -218,17 +205,14 @@ func (r *repository) GetSurgePricingRuleByVehicleType(ctx context.Context, vehic
 	return &rule, err
 }
 
-// CreateSurgePricingRule creates a new surge pricing rule
 func (r *repository) CreateSurgePricingRule(ctx context.Context, rule *models.SurgePricingRule) error {
 	return r.db.WithContext(ctx).Create(rule).Error
 }
 
-// UpdateSurgePricingRule updates an existing surge pricing rule
 func (r *repository) UpdateSurgePricingRule(ctx context.Context, rule *models.SurgePricingRule) error {
 	return r.db.WithContext(ctx).Save(rule).Error
 }
 
-// GetDemandByZone returns demand tracking for a zone
 func (r *repository) GetDemandByZone(ctx context.Context, zoneID string) (*models.DemandTracking, error) {
 	var demand models.DemandTracking
 	err := r.db.WithContext(ctx).
@@ -238,17 +222,14 @@ func (r *repository) GetDemandByZone(ctx context.Context, zoneID string) (*model
 	return &demand, err
 }
 
-// CreateDemandTracking creates a new demand tracking record
 func (r *repository) CreateDemandTracking(ctx context.Context, demand *models.DemandTracking) error {
 	return r.db.WithContext(ctx).Create(demand).Error
 }
 
-// UpdateDemandTracking updates demand tracking record
 func (r *repository) UpdateDemandTracking(ctx context.Context, demand *models.DemandTracking) error {
 	return r.db.WithContext(ctx).Save(demand).Error
 }
 
-// GetLatestDemandByGeohash returns latest demand for a geohash
 func (r *repository) GetLatestDemandByGeohash(ctx context.Context, geohash string) (*models.DemandTracking, error) {
 	var demand models.DemandTracking
 	err := r.db.WithContext(ctx).
@@ -259,12 +240,10 @@ func (r *repository) GetLatestDemandByGeohash(ctx context.Context, geohash strin
 	return &demand, err
 }
 
-// CreateETAEstimate creates a new ETA estimate
 func (r *repository) CreateETAEstimate(ctx context.Context, eta *models.ETAEstimate) error {
 	return r.db.WithContext(ctx).Create(eta).Error
 }
 
-// GetETAEstimate retrieves ETA estimate for a ride
 func (r *repository) GetETAEstimate(ctx context.Context, rideID string) (*models.ETAEstimate, error) {
 	var eta models.ETAEstimate
 	err := r.db.WithContext(ctx).
@@ -273,17 +252,14 @@ func (r *repository) GetETAEstimate(ctx context.Context, rideID string) (*models
 	return &eta, err
 }
 
-// UpdateETAEstimate updates an ETA estimate
 func (r *repository) UpdateETAEstimate(ctx context.Context, eta *models.ETAEstimate) error {
 	return r.db.WithContext(ctx).Save(eta).Error
 }
 
-// CreateSurgeHistory creates a surge history record
 func (r *repository) CreateSurgeHistory(ctx context.Context, history *models.SurgeHistory) error {
 	return r.db.WithContext(ctx).Create(history).Error
 }
 
-// GetSurgeHistory retrieves surge history for a ride
 func (r *repository) GetSurgeHistory(ctx context.Context, rideID string) (*models.SurgeHistory, error) {
 	var history models.SurgeHistory
 	err := r.db.WithContext(ctx).
@@ -292,12 +268,8 @@ func (r *repository) GetSurgeHistory(ctx context.Context, rideID string) (*model
 	return &history, err
 }
 
-// FindZoneByLocation finds surge zone containing the given coordinates
 func (r *repository) FindZoneByLocation(ctx context.Context, lat, lon float64) (*models.SurgeZone, error) {
 	var zone models.SurgeZone
-
-	// Find zone where point is within radius
-	// Using Haversine formula in SQL for accuracy
 	query := `
         SELECT * FROM surge_zones
         WHERE is_active = true
@@ -321,7 +293,6 @@ func (r *repository) FindZoneByLocation(ctx context.Context, lat, lon float64) (
 	return &zone, nil
 }
 
-// GetSurgeRule gets the surge pricing rule for zone and vehicle type
 func (r *repository) GetSurgeRule(ctx context.Context, zoneID, vehicleTypeID string) (*models.SurgePricingRule, error) {
 	var rule models.SurgePricingRule
 
@@ -332,7 +303,6 @@ func (r *repository) GetSurgeRule(ctx context.Context, zoneID, vehicleTypeID str
 	return &rule, err
 }
 
-// GetLatestDemand gets the most recent demand tracking for zone
 func (r *repository) GetLatestDemand(ctx context.Context, zoneID, vehicleTypeID string) (*models.DemandTracking, error) {
 	var demand models.DemandTracking
 

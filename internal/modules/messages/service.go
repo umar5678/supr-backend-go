@@ -53,7 +53,6 @@ func (s *service) SendMessage(ctx context.Context, rideID, senderID, senderType,
 		return nil, response.InternalServerError("Failed to send message", err)
 	}
 
-	// Get sender name
 	senderName, err := s.repo.GetSenderName(ctx, senderID)
 	if err != nil {
 		senderName = senderType

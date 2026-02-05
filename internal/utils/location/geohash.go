@@ -8,8 +8,6 @@ const (
 	base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 )
 
-// Encode generates a geohash for given coordinates
-// precision: length of geohash string (1-12, default 9)
 func Encode(latitude, longitude float64, precision int) string {
 	if precision <= 0 || precision > 12 {
 		precision = 9
@@ -55,23 +53,21 @@ func Encode(latitude, longitude float64, precision int) string {
 	return geohash.String()
 }
 
-// GetGeohashPrecision returns appropriate geohash precision for distance
-// Returns precision level (1-12) based on search radius
 func GetGeohashPrecision(radiusKm float64) int {
 	switch {
-	case radiusKm <= 0.019: // ~19m
+	case radiusKm <= 0.019:
 		return 9
-	case radiusKm <= 0.076: // ~76m
+	case radiusKm <= 0.076:
 		return 8
-	case radiusKm <= 0.61: // ~610m
+	case radiusKm <= 0.61: 
 		return 7
-	case radiusKm <= 2.4: // ~2.4km
+	case radiusKm <= 2.4:
 		return 6
-	case radiusKm <= 20: // ~20km
+	case radiusKm <= 20: 
 		return 5
-	case radiusKm <= 78: // ~78km
+	case radiusKm <= 78: 
 		return 4
-	case radiusKm <= 630: // ~630km
+	case radiusKm <= 630: 
 		return 3
 	default:
 		return 2

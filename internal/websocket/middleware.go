@@ -1,4 +1,3 @@
-// internal/websocket/middleware.go - UPDATED
 package websocket
 
 import (
@@ -10,13 +9,10 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// AuthMiddleware authenticates WebSocket connections
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Try to get token from query parameter first (for WebSocket connections)
 		token := c.Query("token")
 
-		// If not in query, try Authorization header
 		if token == "" {
 			authHeader := c.GetHeader("Authorization")
 			if authHeader != "" {
@@ -46,7 +42,6 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		// Set user info in context
 		c.Set("userID", claims.UserID)
 		c.Set("role", claims.Role)
 

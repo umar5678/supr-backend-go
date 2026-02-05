@@ -237,14 +237,12 @@ func (bc *BatchCollector) cleanupExpiredBatches() {
 				b.mu.Lock()
 				if now.After(b.ExpiresAt) {
 					// Batch expired, call the callback to process it
-					// ✅ IMPORTANT: Callback happens BEFORE deletion so ProcessBatch can access requests
 					if bc.onBatchExpire != nil {
 						// Run callback in goroutine to avoid blocking cleanup
 						// The callback will call ProcessBatch() which needs access to the batch
 						go bc.onBatchExpire(batchID)
 					}
 
-					// ✅ FIXED: Now delete the batch after callback is triggered
 					// This gives ProcessBatch() time to fetch requests before deletion
 					// We use a small delay to ensure callback gets the batch
 					go func(vid string, bid string) {

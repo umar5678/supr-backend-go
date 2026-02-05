@@ -2,13 +2,13 @@ package dto
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
 )
 
 // ==================== Category Responses ====================
 
-// CategoryResponse represents a service category for customers
 type CategoryResponse struct {
 	Slug         string `json:"slug"`
 	Title        string `json:"title"`
@@ -19,13 +19,11 @@ type CategoryResponse struct {
 	AddonCount   int    `json:"addonCount"`
 }
 
-// CategoryListResponse represents a list of categories
 type CategoryListResponse struct {
 	Categories []CategoryResponse `json:"categories"`
 	Total      int                `json:"total"`
 }
 
-// CategoryDetailResponse represents full category details with services and addons
 type CategoryDetailResponse struct {
 	Slug        string            `json:"slug"`
 	Title       string            `json:"title"`
@@ -38,7 +36,6 @@ type CategoryDetailResponse struct {
 
 // ==================== Service Responses ====================
 
-// ServiceResponse represents a service for customers (full details)
 type ServiceResponse struct {
 	ID                 string   `json:"id"`
 	Title              string   `json:"title"`
@@ -60,7 +57,6 @@ type ServiceResponse struct {
 	FormattedPrice     string   `json:"formattedPrice,omitempty"`
 }
 
-// ServiceListResponse represents a service in list view (lighter)
 type ServiceListResponse struct {
 	ID             string   `json:"id"`
 	Title          string   `json:"title"`
@@ -75,7 +71,6 @@ type ServiceListResponse struct {
 	FormattedPrice string   `json:"formattedPrice,omitempty"`
 }
 
-// ServiceDetailResponse represents full service details with related addons
 type ServiceDetailResponse struct {
 	Service ServiceResponse `json:"service"`
 	Addons  []AddonResponse `json:"addons"`
@@ -83,7 +78,6 @@ type ServiceDetailResponse struct {
 
 // ==================== Addon Responses ====================
 
-// AddonResponse represents an addon for customers (full details)
 type AddonResponse struct {
 	ID                 string   `json:"id"`
 	Title              string   `json:"title"`
@@ -100,7 +94,6 @@ type AddonResponse struct {
 	HasDiscount        bool     `json:"hasDiscount"`
 }
 
-// AddonListResponse represents an addon in list view (lighter)
 type AddonListResponse struct {
 	ID                 string   `json:"id"`
 	Title              string   `json:"title"`
@@ -116,7 +109,6 @@ type AddonListResponse struct {
 
 // ==================== Search Response ====================
 
-// SearchResultItem represents a single search result
 type SearchResultItem struct {
 	Type           string   `json:"type"` // "service" or "addon"
 	ID             string   `json:"id"`
@@ -129,7 +121,6 @@ type SearchResultItem struct {
 	FormattedPrice string   `json:"formattedPrice,omitempty"`
 }
 
-// SearchResponse represents search results
 type SearchResponse struct {
 	Query   string             `json:"query"`
 	Results []SearchResultItem `json:"results"`
@@ -138,7 +129,6 @@ type SearchResponse struct {
 
 // ==================== Conversion Functions ====================
 
-// FormatDuration formats duration in minutes to human-readable string
 func FormatDuration(minutes *int) string {
 	if minutes == nil {
 		return ""
@@ -161,7 +151,6 @@ func FormatDuration(minutes *int) string {
 	return fmt.Sprintf("%d hours %d min", hours, mins)
 }
 
-// FormatPrice formats price to string with currency
 func FormatPrice(price *float64) string {
 	if price == nil {
 		return ""
@@ -169,15 +158,11 @@ func FormatPrice(price *float64) string {
 	return fmt.Sprintf("$%.2f", *price)
 }
 
-// FormatPriceValue formats a price value to string
 func FormatPriceValue(price float64) string {
 	return fmt.Sprintf("$%.2f", price)
 }
 
-// ToServiceResponse converts model to full service response
 func ToServiceResponse(service *models.ServiceNew) ServiceResponse {
-	// highlights := make([]string, len(service.Highlights))
-	// copy(highlights, service.Highlights)
 
 	whatsIncluded := make([]string, len(service.WhatsIncluded))
 	copy(whatsIncluded, service.WhatsIncluded)
@@ -207,7 +192,6 @@ func ToServiceResponse(service *models.ServiceNew) ServiceResponse {
 	}
 }
 
-// ToServiceListResponse converts model to list service response
 func ToServiceListResponse(service *models.ServiceNew) ServiceListResponse {
 	return ServiceListResponse{
 		ID:             service.ID,
@@ -224,7 +208,6 @@ func ToServiceListResponse(service *models.ServiceNew) ServiceListResponse {
 	}
 }
 
-// ToServiceListResponses converts multiple models to list responses
 func ToServiceListResponses(services []*models.ServiceNew) []ServiceListResponse {
 	if services == nil {
 		return []ServiceListResponse{}
@@ -236,7 +219,6 @@ func ToServiceListResponses(services []*models.ServiceNew) []ServiceListResponse
 	return responses
 }
 
-// ToServiceResponses converts multiple models to full responses
 func ToServiceResponses(services []*models.ServiceNew) []ServiceResponse {
 	if services == nil {
 		return []ServiceResponse{}
@@ -248,7 +230,6 @@ func ToServiceResponses(services []*models.ServiceNew) []ServiceResponse {
 	return responses
 }
 
-// ToAddonResponse converts model to full addon response
 func ToAddonResponse(addon *models.Addon) AddonResponse {
 	whatsIncluded := make([]string, len(addon.WhatsIncluded))
 	copy(whatsIncluded, addon.WhatsIncluded)
@@ -273,7 +254,6 @@ func ToAddonResponse(addon *models.Addon) AddonResponse {
 	}
 }
 
-// ToAddonListResponse converts model to list addon response
 func ToAddonListResponse(addon *models.Addon) AddonListResponse {
 	return AddonListResponse{
 		ID:                 addon.ID,
@@ -289,7 +269,6 @@ func ToAddonListResponse(addon *models.Addon) AddonListResponse {
 	}
 }
 
-// ToAddonListResponses converts multiple models to list responses
 func ToAddonListResponses(addons []*models.Addon) []AddonListResponse {
 	if addons == nil {
 		return []AddonListResponse{}
@@ -301,7 +280,6 @@ func ToAddonListResponses(addons []*models.Addon) []AddonListResponse {
 	return responses
 }
 
-// ToAddonResponses converts multiple models to full responses
 func ToAddonResponses(addons []*models.Addon) []AddonResponse {
 	if addons == nil {
 		return []AddonResponse{}
@@ -313,7 +291,6 @@ func ToAddonResponses(addons []*models.Addon) []AddonResponse {
 	return responses
 }
 
-// ToSearchResultFromService converts service to search result
 func ToSearchResultFromService(service *models.ServiceNew) SearchResultItem {
 	return SearchResultItem{
 		Type:           "service",
@@ -328,7 +305,6 @@ func ToSearchResultFromService(service *models.ServiceNew) SearchResultItem {
 	}
 }
 
-// ToSearchResultFromAddon converts addon to search result
 func ToSearchResultFromAddon(addon *models.Addon) SearchResultItem {
 	price := addon.Price
 	return SearchResultItem{
@@ -341,5 +317,395 @@ func ToSearchResultFromAddon(addon *models.Addon) SearchResultItem {
 		Image:          addon.Image,
 		Price:          &price,
 		FormattedPrice: FormatPriceValue(addon.Price),
+	}
+}
+
+// ==================== Order Responses ====================
+
+type OrderServiceItem struct {
+	ServiceSlug string  `json:"serviceSlug"`
+	Title       string  `json:"title"`
+	Price       float64 `json:"price"`
+	Quantity    int     `json:"quantity"`
+	Subtotal    float64 `json:"subtotal"`
+}
+
+type OrderAddonItem struct {
+	AddonSlug string  `json:"addonSlug"`
+	Title     string  `json:"title"`
+	Price     float64 `json:"price"`
+	Quantity  int     `json:"quantity"`
+	Subtotal  float64 `json:"subtotal"`
+}
+
+type OrderCustomerInfo struct {
+	Name    string  `json:"name"`
+	Phone   string  `json:"phone"`
+	Email   string  `json:"email,omitempty"`
+	Address string  `json:"address"`
+	Lat     float64 `json:"lat"`
+	Lng     float64 `json:"lng"`
+}
+
+type OrderBookingInfo struct {
+	Day            string `json:"day"`
+	Date           string `json:"date"`
+	Time           string `json:"time"`
+	PreferredTime  string `json:"preferredTime,omitempty"`
+	FormattedDate  string `json:"formattedDate"` // e.g., "Monday, January 15, 2024"
+	FormattedTime  string `json:"formattedTime"` // e.g., "2:30 PM"
+	QuantityOfPros int    `json:"quantityOfPros"`
+}
+
+type OrderPricing struct {
+	ServicesTotal      float64 `json:"servicesTotal"`
+	AddonsTotal        float64 `json:"addonsTotal"`
+	Subtotal           float64 `json:"subtotal"`
+	PlatformCommission float64 `json:"platformCommission"`
+	TotalPrice         float64 `json:"totalPrice"`
+	FormattedTotal     string  `json:"formattedTotal"`
+}
+
+type OrderPaymentInfo struct {
+	Method        string  `json:"method"`
+	Status        string  `json:"status"`
+	AmountPaid    float64 `json:"amountPaid"`
+	TransactionID string  `json:"transactionId,omitempty"`
+}
+
+type OrderProviderInfo struct {
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Phone        string  `json:"phone,omitempty"` // Only shown after acceptance
+	Rating       float64 `json:"rating"`
+	TotalReviews int     `json:"totalReviews"`
+	Photo        string  `json:"photo,omitempty"`
+}
+
+type OrderCancellationInfo struct {
+	CancelledBy     string    `json:"cancelledBy"`
+	CancelledAt     time.Time `json:"cancelledAt"`
+	Reason          string    `json:"reason"`
+	CancellationFee float64   `json:"cancellationFee"`
+	RefundAmount    float64   `json:"refundAmount"`
+}
+
+type OrderRatingInfo struct {
+	CustomerRating  *int       `json:"customerRating,omitempty"`
+	CustomerReview  string     `json:"customerReview,omitempty"`
+	CustomerRatedAt *time.Time `json:"customerRatedAt,omitempty"`
+	ProviderRating  *int       `json:"providerRating,omitempty"`
+	ProviderReview  string     `json:"providerReview,omitempty"`
+	ProviderRatedAt *time.Time `json:"providerRatedAt,omitempty"`
+	CanRate         bool       `json:"canRate"`
+}
+
+type OrderStatusInfo struct {
+	Current            string     `json:"current"`
+	DisplayStatus      string     `json:"displayStatus"`
+	ProviderAcceptedAt *time.Time `json:"providerAcceptedAt,omitempty"`
+	ProviderStartedAt  *time.Time `json:"providerStartedAt,omitempty"`
+	CompletedAt        *time.Time `json:"completedAt,omitempty"`
+	CanCancel          bool       `json:"canCancel"`
+}
+
+type OrderResponse struct {
+	ID            string                 `json:"id"`
+	OrderNumber   string                 `json:"orderNumber"`
+	CustomerInfo  OrderCustomerInfo      `json:"customerInfo"`
+	BookingInfo   OrderBookingInfo       `json:"bookingInfo"`
+	CategorySlug  string                 `json:"categorySlug"`
+	CategoryTitle string                 `json:"categoryTitle"`
+	Services      []OrderServiceItem     `json:"services"`
+	Addons        []OrderAddonItem       `json:"addons,omitempty"`
+	SpecialNotes  string                 `json:"specialNotes,omitempty"`
+	Pricing       OrderPricing           `json:"pricing"`
+	Payment       *OrderPaymentInfo      `json:"payment,omitempty"`
+	Provider      *OrderProviderInfo     `json:"provider,omitempty"`
+	Status        OrderStatusInfo        `json:"status"`
+	Cancellation  *OrderCancellationInfo `json:"cancellation,omitempty"`
+	Rating        *OrderRatingInfo       `json:"rating,omitempty"`
+	CreatedAt     time.Time              `json:"createdAt"`
+	UpdatedAt     time.Time              `json:"updatedAt"`
+}
+
+type OrderListResponse struct {
+	ID             string           `json:"id"`
+	OrderNumber    string           `json:"orderNumber"`
+	CategorySlug   string           `json:"categorySlug"`
+	CategoryTitle  string           `json:"categoryTitle"`
+	BookingInfo    OrderBookingInfo `json:"bookingInfo"`
+	TotalPrice     float64          `json:"totalPrice"`
+	FormattedTotal string           `json:"formattedTotal"`
+	Status         string           `json:"status"`
+	DisplayStatus  string           `json:"displayStatus"`
+	ServiceCount   int              `json:"serviceCount"`
+	CanCancel      bool             `json:"canCancel"`
+	CanRate        bool             `json:"canRate"`
+	CreatedAt      time.Time        `json:"createdAt"`
+}
+
+type OrderCreatedResponse struct {
+	ID                      string           `json:"id"`
+	OrderNumber             string           `json:"orderNumber"`
+	Status                  string           `json:"status"`
+	DisplayStatus           string           `json:"displayStatus"`
+	BookingInfo             OrderBookingInfo `json:"bookingInfo"`
+	TotalPrice              float64          `json:"totalPrice"`
+	FormattedTotal          string           `json:"formattedTotal"`
+	EstimatedAssignmentTime string           `json:"estimatedAssignmentTime"`
+	Message                 string           `json:"message"`
+}
+
+type CancellationPreviewResponse struct {
+	OrderID         string  `json:"orderId"`
+	OrderNumber     string  `json:"orderNumber"`
+	CurrentStatus   string  `json:"currentStatus"`
+	TotalPrice      float64 `json:"totalPrice"`
+	CancellationFee float64 `json:"cancellationFee"`
+	RefundAmount    float64 `json:"refundAmount"`
+	FeePercentage   float64 `json:"feePercentage"`
+	Message         string  `json:"message"`
+}
+
+// ==================== Conversion Functions ====================
+
+func GetDisplayStatus(status string) string {
+	statusMap := map[string]string{
+		"pending":            "Pending",
+		"searching_provider": "Finding Provider",
+		"assigned":           "Provider Assigned",
+		"accepted":           "Provider Confirmed",
+		"in_progress":        "In Progress",
+		"completed":          "Completed",
+		"cancelled":          "Cancelled",
+		"expired":            "Expired",
+	}
+	if display, ok := statusMap[status]; ok {
+		return display
+	}
+	return status
+}
+
+func FormatOrderDate(dateStr string) string {
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return dateStr
+	}
+	return date.Format("Monday, January 2, 2006")
+}
+
+func FormatOrderTime(timeStr string) string {
+	t, err := time.Parse("15:04", timeStr)
+	if err != nil {
+		return timeStr
+	}
+	return t.Format("3:04 PM")
+}
+
+func ToOrderCustomerInfo(info models.CustomerInfo) OrderCustomerInfo {
+	return OrderCustomerInfo{
+		Name:    info.Name,
+		Phone:   info.Phone,
+		Email:   info.Email,
+		Address: info.Address,
+		Lat:     info.Lat,
+		Lng:     info.Lng,
+	}
+}
+
+func ToOrderBookingInfo(info models.BookingInfo) OrderBookingInfo {
+	dateStr := fmt.Sprint(info.Date)
+	timeStr := fmt.Sprint(info.Time)
+	preferredStr := fmt.Sprint(info.PreferredTime)
+
+	return OrderBookingInfo{
+		Day:            fmt.Sprint(info.Day),
+		Date:           dateStr,
+		Time:           timeStr,
+		PreferredTime:  preferredStr,
+		FormattedDate:  FormatOrderDate(dateStr),
+		FormattedTime:  FormatOrderTime(timeStr),
+		QuantityOfPros: info.QuantityOfPros,
+	}
+}
+
+func ToOrderServiceItems(services models.SelectedServices) []OrderServiceItem {
+	items := make([]OrderServiceItem, len(services))
+	for i, s := range services {
+		items[i] = OrderServiceItem{
+			ServiceSlug: s.ServiceSlug,
+			Title:       s.Title,
+			Price:       s.Price,
+			Quantity:    s.Quantity,
+			Subtotal:    s.Price * float64(s.Quantity),
+		}
+	}
+	return items
+}
+
+func ToOrderAddonItems(addons models.SelectedAddons) []OrderAddonItem {
+	if addons == nil {
+		return nil
+	}
+	items := make([]OrderAddonItem, len(addons))
+	for i, a := range addons {
+		items[i] = OrderAddonItem{
+			AddonSlug: a.AddonSlug,
+			Title:     a.Title,
+			Price:     a.Price,
+			Quantity:  a.Quantity,
+			Subtotal:  a.Price * float64(a.Quantity),
+		}
+	}
+	return items
+}
+
+func ToOrderPricing(order *models.ServiceOrderNew) OrderPricing {
+	return OrderPricing{
+		ServicesTotal:      order.ServicesTotal,
+		AddonsTotal:        order.AddonsTotal,
+		Subtotal:           order.Subtotal,
+		PlatformCommission: order.PlatformCommission,
+		TotalPrice:         order.TotalPrice,
+		FormattedTotal:     FormatPriceValue(order.TotalPrice),
+	}
+}
+
+func ToOrderPaymentInfo(info *models.PaymentInfo) *OrderPaymentInfo {
+	if info == nil {
+		return nil
+	}
+	return &OrderPaymentInfo{
+		Method:        info.Method,
+		Status:        info.Status,
+		AmountPaid:    info.AmountPaid,
+		TransactionID: info.TransactionID,
+	}
+}
+
+func ToOrderCancellationInfo(info *models.CancellationInfo) *OrderCancellationInfo {
+	if info == nil {
+		return nil
+	}
+	return &OrderCancellationInfo{
+		CancelledBy:     info.CancelledBy,
+		CancelledAt:     info.CancelledAt,
+		Reason:          info.Reason,
+		CancellationFee: info.CancellationFee,
+		RefundAmount:    info.RefundAmount,
+	}
+}
+
+func ToOrderStatusInfo(order *models.ServiceOrderNew) OrderStatusInfo {
+	return OrderStatusInfo{
+		Current:            order.Status,
+		DisplayStatus:      GetDisplayStatus(order.Status),
+		ProviderAcceptedAt: order.ProviderAcceptedAt,
+		ProviderStartedAt:  order.ProviderStartedAt,
+		CompletedAt:        order.CompletedAt,
+		CanCancel:          order.CanBeCancelled(),
+	}
+}
+
+func ToOrderRatingInfo(order *models.ServiceOrderNew) *OrderRatingInfo {
+	if order.Status != "completed" {
+		return nil
+	}
+	return &OrderRatingInfo{
+		CustomerRating:  order.CustomerRating,
+		CustomerReview:  order.CustomerReview,
+		CustomerRatedAt: order.CustomerRatedAt,
+		ProviderRating:  order.ProviderRating,
+		ProviderReview:  order.ProviderReview,
+		ProviderRatedAt: order.ProviderRatedAt,
+		CanRate:         order.CanBeRatedByCustomer(),
+	}
+}
+
+func GetCategoryTitle(slug string) string {
+	configs := map[string]string{
+		"pest-control": "Pest Control",
+		"cleaning":     "Cleaning Services",
+		"iv-therapy":   "IV Therapy",
+		"massage":      "Massage Therapy",
+		"handyman":     "Handyman Services",
+	}
+	if title, ok := configs[slug]; ok {
+		return title
+	}
+	return slug
+}
+
+func ToOrderResponse(order *models.ServiceOrderNew) *OrderResponse {
+	response := &OrderResponse{
+		ID:            order.ID,
+		OrderNumber:   order.OrderNumber,
+		CustomerInfo:  ToOrderCustomerInfo(order.CustomerInfo),
+		BookingInfo:   ToOrderBookingInfo(order.BookingInfo),
+		CategorySlug:  order.CategorySlug,
+		CategoryTitle: GetCategoryTitle(order.CategorySlug),
+		Services:      ToOrderServiceItems(order.SelectedServices),
+		Addons:        ToOrderAddonItems(order.SelectedAddons),
+		SpecialNotes:  order.SpecialNotes,
+		Pricing:       ToOrderPricing(order),
+		Payment:       ToOrderPaymentInfo(order.PaymentInfo),
+		Status:        ToOrderStatusInfo(order),
+		Cancellation:  ToOrderCancellationInfo(order.CancellationInfo),
+		Rating:        ToOrderRatingInfo(order),
+		CreatedAt:     order.CreatedAt,
+		UpdatedAt:     order.UpdatedAt,
+	}
+
+	// Add provider info if assigned (placeholder - would load from user table)
+	if order.AssignedProviderID != nil {
+		response.Provider = &OrderProviderInfo{
+			ID: *order.AssignedProviderID,
+		}
+	}
+
+	return response
+}
+
+func ToOrderListResponse(order *models.ServiceOrderNew) OrderListResponse {
+	return OrderListResponse{
+		ID:             order.ID,
+		OrderNumber:    order.OrderNumber,
+		CategorySlug:   order.CategorySlug,
+		CategoryTitle:  GetCategoryTitle(order.CategorySlug),
+		BookingInfo:    ToOrderBookingInfo(order.BookingInfo),
+		TotalPrice:     order.TotalPrice,
+		FormattedTotal: FormatPriceValue(order.TotalPrice),
+		Status:         order.Status,
+		DisplayStatus:  GetDisplayStatus(order.Status),
+		ServiceCount:   len(order.SelectedServices),
+		CanCancel:      order.CanBeCancelled(),
+		CanRate:        order.CanBeRatedByCustomer(),
+		CreatedAt:      order.CreatedAt,
+	}
+}
+
+func ToOrderListResponses(orders []*models.ServiceOrderNew) []OrderListResponse {
+	if orders == nil {
+		return []OrderListResponse{}
+	}
+	responses := make([]OrderListResponse, len(orders))
+	for i, order := range orders {
+		responses[i] = ToOrderListResponse(order)
+	}
+	return responses
+}
+
+func ToOrderCreatedResponse(order *models.ServiceOrderNew) *OrderCreatedResponse {
+	return &OrderCreatedResponse{
+		ID:                      order.ID,
+		OrderNumber:             order.OrderNumber,
+		Status:                  order.Status,
+		DisplayStatus:           GetDisplayStatus(order.Status),
+		BookingInfo:             ToOrderBookingInfo(order.BookingInfo),
+		TotalPrice:              order.TotalPrice,
+		FormattedTotal:          FormatPriceValue(order.TotalPrice),
+		EstimatedAssignmentTime: "5-15 minutes",
+		Message:                 "Your booking has been created. We're finding the best provider for you.",
 	}
 }

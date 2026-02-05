@@ -9,7 +9,6 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 	ratings.Use(authMiddleware)
 	{
 		ratings.POST("", handler.CreateRating)
-		// Public routes
 		ratings.GET("/driver/:driverId/stats", handler.GetDriverRatingStats)
 		ratings.GET("/driver/:driverId/breakdown", handler.GetDriverRatingBreakdown)
 

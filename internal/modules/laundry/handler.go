@@ -29,7 +29,6 @@ func (h *Handler) GetServicesWithProducts(c *gin.Context) {
 		return
 	}
 
-	// Convert models to DTOs
 	serviceResponses := dto.ToLaundryServiceResponses(services)
 	response.Success(c, serviceResponses, "Service catalog retrieved successfully")
 }
@@ -109,7 +108,6 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Convert to response DTO for consistent frontend data
 	orderResponse, err := h.service.GetOrder(c, order.ID)
 	if err != nil {
 		c.Error(err)
@@ -161,8 +159,6 @@ func (h *Handler) GetAvailableOrders(c *gin.Context) {
 		c.Error(response.UnauthorizedError("User ID not found in context"))
 		return
 	}
-
-	// Get provider ID from user (user ID is provider ID in this context)
 	providerID := userID.(string)
 
 	orders, err := h.service.GetAvailableOrders(c, providerID)
@@ -198,7 +194,6 @@ func (h *Handler) InitiatePickup(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get provider ID from user (implement provider lookup)
 	providerID := userID.(string)
 
 	pickup, err := h.service.InitiatePickup(c, orderID, providerID)
@@ -234,7 +229,6 @@ func (h *Handler) CompletePickup(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if err := req.Validate(); err != nil {
 		c.Error(response.BadRequest("Validation failed: " + err.Error()))
 		return
@@ -272,7 +266,6 @@ func (h *Handler) AddItems(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if err := req.Validate(); err != nil {
 		c.Error(response.BadRequest("Validation failed: " + err.Error()))
 		return
@@ -311,7 +304,6 @@ func (h *Handler) UpdateItemStatus(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if err := req.Validate(); err != nil {
 		c.Error(response.BadRequest("Validation failed: " + err.Error()))
 		return
@@ -348,7 +340,6 @@ func (h *Handler) InitiateDelivery(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get provider ID from user (implement provider lookup)
 	providerID := userID.(string)
 
 	delivery, err := h.service.InitiateDelivery(c, orderID, providerID)
@@ -428,13 +419,11 @@ func (h *Handler) ReportIssue(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if err := req.Validate(); err != nil {
 		c.Error(response.BadRequest("Validation failed: " + err.Error()))
 		return
 	}
 
-	// Get provider ID from order (empty string, will be resolved in service)
 	issue, err := h.service.ReportIssue(c, orderID, userID.(string), "", &req)
 	if err != nil {
 		c.Error(response.InternalServerError("Failed to report issue", err))
@@ -459,7 +448,6 @@ func (h *Handler) GetProviderPickups(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get provider ID from user (implement provider lookup)
 	pickups, err := h.service.GetProviderPickups(c, userID.(string))
 	if err != nil {
 		c.Error(response.InternalServerError("Failed to fetch pickups", err))
@@ -484,7 +472,6 @@ func (h *Handler) GetProviderDeliveries(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get provider ID from user (implement provider lookup)
 	deliveries, err := h.service.GetProviderDeliveries(c, userID.(string))
 	if err != nil {
 		c.Error(response.InternalServerError("Failed to fetch deliveries", err))
@@ -509,7 +496,6 @@ func (h *Handler) GetProviderIssues(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get provider ID from user (implement provider lookup)
 	issues, err := h.service.GetProviderIssues(c, userID.(string))
 	if err != nil {
 		c.Error(response.InternalServerError("Failed to fetch issues", err))

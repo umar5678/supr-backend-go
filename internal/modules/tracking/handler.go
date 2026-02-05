@@ -26,42 +26,40 @@ func NewHandler(service Service) *Handler {
 // @Router /tracking/location [post]
 func (h *Handler) UpdateLocation(c *gin.Context) {
 	logger.Info("============================================================================")
-	logger.Info("🚀 TRACKING HANDLER: UpdateLocation CALLED")
+	logger.Info("TRACKING HANDLER: UpdateLocation CALLED")
 
 	userID, exists := c.Get("userID")
 	if !exists {
-		logger.Error("❌ No userID in context")
+		logger.Error("No userID in context")
 		c.Error(response.BadRequest("User not authenticated"))
 		return
 	}
 
 	driverUserID := userID.(string)
-	logger.Info("👤 Driver User ID from auth", "userID", driverUserID)
+	logger.Info("Driver User ID from auth", "userID", driverUserID)
 
 	var req dto.UpdateLocationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Error("❌ Invalid request body", "error", err)
+		logger.Error("Invalid request body", "error", err)
 		c.Error(response.BadRequest("Invalid request body"))
 		return
 	}
 
-	logger.Info("📍 Location data received",
+	logger.Info("Location data received",
 		"lat", req.Latitude,
 		"lng", req.Longitude,
 		"heading", req.Heading,
 		"speed", req.Speed,
 	)
 
-	// ✅ Convert user ID to driver profile ID
-	logger.Info("🔄 Converting user ID to profile ID...")
+	logger.Info(" Converting user ID to profile ID...")
 	driverProfileID, err := h.service.GetDriverProfileID(c.Request.Context(), driverUserID)
 	if err != nil {
-		logger.Error("❌ Driver profile NOT found",
+		logger.Error("Driver profile NOT found",
 			"userID", driverUserID,
 			"error", err,
 		)
 
-		// Still update location
 		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverUserID, req); err != nil {
 			c.Error(err)
 			return
@@ -70,57 +68,53 @@ func (h *Handler) UpdateLocation(c *gin.Context) {
 		return
 	}
 
-	logger.Info("✅ Driver profile found",
+	logger.Info("Driver profile found",
 		"userID", driverUserID,
 		"profileID", driverProfileID,
 	)
 
-	// ✅ Check for active ride
-	logger.Info("🔍 Checking for active ride...")
+	logger.Info("Checking for active ride...")
 	activeRide, riderID, err := h.service.GetDriverActiveRide(c.Request.Context(), driverProfileID)
 
 	if err != nil {
-		logger.Warn("⚠️ No active ride found",
+		logger.Warn("No active ride found",
 			"driverProfileID", driverProfileID,
 			"error", err,
 		)
 
-		// Just update location
 		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverProfileID, req); err != nil {
 			c.Error(err)
 			return
 		}
 
-		logger.Info("✅ Location updated (no active ride)")
+		logger.Info("Location updated (no active ride)")
 		response.Success(c, nil, "Location updated successfully")
 		return
 	}
 
 	if activeRide == "" || riderID == "" {
-		logger.Warn("⚠️ Active ride data incomplete",
+		logger.Warn("Active ride data incomplete",
 			"rideID", activeRide,
 			"riderID", riderID,
 		)
 
-		// Just update location
 		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverProfileID, req); err != nil {
 			c.Error(err)
 			return
 		}
 
-		logger.Info("✅ Location updated (incomplete ride data)")
+		logger.Info("Location updated (incomplete ride data)")
 		response.Success(c, nil, "Location updated successfully")
 		return
 	}
 
-	logger.Info("✅ Active ride FOUND",
+	logger.Info("Active ride FOUND",
 		"driverProfileID", driverProfileID,
 		"rideID", activeRide,
 		"riderUserID", riderID,
 	)
 
-	// Update location AND stream to rider
-	logger.Info("🚗 Calling UpdateDriverLocationWithStreaming...")
+	logger.Info("Calling UpdateDriverLocationWithStreaming...")
 	if err := h.service.UpdateDriverLocationWithStreaming(
 		c.Request.Context(),
 		driverProfileID,
@@ -128,170 +122,15 @@ func (h *Handler) UpdateLocation(c *gin.Context) {
 		activeRide,
 		riderID,
 	); err != nil {
-		logger.Error("❌ UpdateDriverLocationWithStreaming FAILED", "error", err)
+		logger.Error("UpdateDriverLocationWithStreaming FAILED", "error", err)
 		c.Error(err)
 		return
 	}
 
-	logger.Info("✅ Location updated with streaming SUCCESS")
+	logger.Info("Location updated with streaming SUCCESS")
 	logger.Info("========================================================================================")
 	response.Success(c, nil, "Location updated successfully")
 }
-
-// func (h *Handler) UpdateLocation(c *gin.Context) {
-// 	userID, _ := c.Get("userID")
-// 	driverUserID := userID.(string)
-
-// 	var req dto.UpdateLocationRequest
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.Error(response.BadRequest("Invalid request body"))
-// 		return
-// 	}
-
-// 	// ✅ CRITICAL: Convert user ID to driver profile ID
-// 	driverProfileID, err := h.service.GetDriverProfileID(c.Request.Context(), driverUserID)
-// 	if err != nil {
-// 		logger.Warn("⚠️ driver profile not found, updating location without streaming",
-// 			"userID", driverUserID,
-// 			"error", err,
-// 		)
-
-// 		// Still update location even if profile not found
-// 		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverUserID, req); err != nil {
-// 			c.Error(err)
-// 			return
-// 		}
-// 		response.Success(c, nil, "Location updated successfully")
-// 		return
-// 	}
-
-// 	logger.Info("📍 Driver location update received",
-// 		"driverUserID", driverUserID,
-// 		"driverProfileID", driverProfileID,
-// 		"lat", req.Latitude,
-// 		"lng", req.Longitude,
-// 	)
-
-// 	// ✅ Check for active ride using PROFILE ID (not user ID)
-// 	activeRide, riderID, err := h.service.GetDriverActiveRide(c.Request.Context(), driverProfileID)
-
-// 	if err == nil && activeRide != "" && riderID != "" {
-// 		logger.Info("✅ Active ride found, will stream location",
-// 			"driverProfileID", driverProfileID,
-// 			"rideID", activeRide,
-// 			"riderUserID", riderID,
-// 		)
-
-// 		// Update location AND stream to rider
-// 		if err := h.service.UpdateDriverLocationWithStreaming(
-// 			c.Request.Context(),
-// 			driverProfileID, // ✅ Use PROFILE ID
-// 			req,
-// 			activeRide,
-// 			riderID,
-// 		); err != nil {
-// 			logger.Error("❌ Failed to update with streaming", "error", err)
-// 			c.Error(err)
-// 			return
-// 		}
-// 	} else {
-// 		logger.Debug("ℹ️ No active ride, updating location only",
-// 			"driverProfileID", driverProfileID,
-// 			"error", err,
-// 		)
-
-// 		// Just update location (no active ride)
-// 		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverProfileID, req); err != nil {
-// 			c.Error(err)
-// 			return
-// 		}
-// 	}
-
-// 	response.Success(c, nil, "Location updated successfully")
-// }
-
-// func (h *Handler) UpdateLocation(c *gin.Context) {
-// 	userID, _ := c.Get("userID")
-// 	driverUserID := userID.(string) // This is the driver's USER ID
-
-// 	var req dto.UpdateLocationRequest
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.Error(response.BadRequest("Invalid request body"))
-// 		return
-// 	}
-
-// 	// ✅ FIX: Convert user ID to driver profile ID first
-// 	driverProfileID, err := h.service.GetDriverProfileID(c.Request.Context(), driverUserID)
-// 	if err != nil {
-// 		logger.Warn("driver profile not found for user",
-// 			"userID", driverUserID,
-// 			"error", err,
-// 		)
-// 		// Still update location even if not a driver
-// 		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverUserID, req); err != nil {
-// 			c.Error(err)
-// 			return
-// 		}
-// 		response.Success(c, nil, "Location updated successfully")
-// 		return
-// 	}
-
-// 	// ✅ Check if driver has active ride using PROFILE ID
-// 	activeRide, riderID, err := h.service.GetDriverActiveRide(c.Request.Context(), driverProfileID)
-
-// 	if err == nil && activeRide != "" && riderID != "" {
-// 		logger.Debug("driver has active ride, streaming location",
-// 			"driverProfileID", driverProfileID,
-// 			"driverUserID", driverUserID,
-// 			"rideID", activeRide,
-// 			"riderID", riderID,
-// 		)
-
-// 		// ✅ Update location AND stream to rider
-// 		if err := h.service.UpdateDriverLocationWithStreaming(
-// 			c.Request.Context(),
-// 			driverProfileID, // Use profile ID for location storage
-// 			req,
-// 			activeRide,
-// 			riderID,
-// 		); err != nil {
-// 			c.Error(err)
-// 			return
-// 		}
-// 	} else {
-// 		logger.Debug("no active ride found, updating location only",
-// 			"driverProfileID", driverProfileID,
-// 			"driverUserID", driverUserID,
-// 			"error", err,
-// 		)
-
-// 		// Just update location (no active ride)
-// 		if err := h.service.UpdateDriverLocation(c.Request.Context(), driverProfileID, req); err != nil {
-// 			c.Error(err)
-// 			return
-// 		}
-// 	}
-
-// 	response.Success(c, nil, "Location updated successfully")
-// }
-
-// func (h *Handler) UpdateLocation(c *gin.Context) {
-// 	userID, _ := c.Get("userID")
-// 	driverID := userID.(string)
-
-// 	var req dto.UpdateLocationRequest
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.Error(response.BadRequest("Invalid request body"))
-// 		return
-// 	}
-
-// 	if err := h.service.UpdateDriverLocation(c.Request.Context(), driverID, req); err != nil {
-// 		c.Error(err)
-// 		return
-// 	}
-
-// 	response.Success(c, nil, "Location updated successfully")
-// }
 
 // GetDriverLocation godoc
 // @Summary Get driver's current location
@@ -339,65 +178,3 @@ func (h *Handler) FindNearbyDrivers(c *gin.Context) {
 
 	response.Success(c, result, "Nearby drivers found")
 }
-
-// ============================================================================
-// POLYLINE ENDPOINTS
-// ============================================================================
-
-// GetRidePolyline godoc
-// @Summary Get polyline for a ride (route taken by driver)
-// @Tags tracking
-// @Security BearerAuth
-// @Produce json
-// @Param rideId path string true "Ride ID"
-// @Success 200 {object} response.Response{data=dto.PolylineResponse}
-// @Router /tracking/polyline/ride/{rideId} [get]
-// func (h *Handler) GetRidePolyline(c *gin.Context) {
-// 	rideID := c.Param("rideId")
-
-// 	polyline, err := h.service.GetRidePolyline(c.Request.Context(), rideID)
-// 	if err != nil {
-// 		c.Error(err)
-// 		return
-// 	}
-
-// 	result := dto.PolylineResponse{
-// 		RideID:   rideID,
-// 		Polyline: polyline,
-// 	}
-
-// 	response.Success(c, result, "Polyline retrieved successfully")
-// }
-
-// GeneratePolyline godoc
-// @Summary Generate polyline for driver's location history
-// @Tags tracking
-// @Security BearerAuth
-// @Produce json
-// @Param driverId path string true "Driver ID"
-// @Param from query string true "Start time (RFC3339)"
-// @Param to query string true "End time (RFC3339)"
-// @Success 200 {object} response.Response{data=dto.PolylineResponse}
-// @Router /tracking/polyline/driver/{driverId} [get]
-// func (h *Handler) GeneratePolyline(c *gin.Context) {
-// 	var req dto.GeneratePolylineRequest
-// 	if err := c.ShouldBindQuery(&req); err != nil {
-// 		c.Error(response.BadRequest("Invalid query parameters"))
-// 		return
-// 	}
-
-// 	driverID := c.Param("driverId")
-// 	req.DriverID = driverID
-
-// 	polyline, err := h.service.GeneratePolyline(c.Request.Context(), req.DriverID, req.From, req.To)
-// 	if err != nil {
-// 		c.Error(err)
-// 		return
-// 	}
-
-// 	result := dto.PolylineResponse{
-// 		Polyline: polyline,
-// 	}
-
-// 	response.Success(c, result, "Polyline generated successfully")
-// }

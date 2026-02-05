@@ -158,12 +158,11 @@ func (r *repository) UpdateDriverRating(ctx context.Context, driverID string) er
 func (r *repository) UpdateRiderRating(ctx context.Context, riderID string) error {
 	avgRating, _ := r.GetRiderRating(ctx, riderID)
 
-	// Get or create rider profile
 	var profile models.RiderProfile
 	err := r.db.WithContext(ctx).Where("user_id = ?", riderID).First(&profile).Error
 
 	if err == gorm.ErrRecordNotFound {
-		// Create new profile
+
 		profile = models.RiderProfile{
 			UserID: riderID,
 			Rating: avgRating,

@@ -11,7 +11,6 @@ import (
 	websocketutil "github.com/umar5678/go-backend/internal/websocket/websocketutils"
 )
 
-// RideWebSocketHelper provides ride-specific WebSocket functionality
 type RideWebSocketHelper struct {
 	service Service
 }
@@ -20,12 +19,10 @@ func NewRideWebSocketHelper() *RideWebSocketHelper {
 	return &RideWebSocketHelper{}
 }
 
-// SetService sets the rides service for WebSocket operations
 func (h *RideWebSocketHelper) SetService(service Service) {
 	h.service = service
 }
 
-// SendDriverLocationUpdate sends real-time driver location to rider
 func (h *RideWebSocketHelper) SendDriverLocationUpdate(ctx context.Context, riderID, rideID string, location map[string]interface{}) {
 	locationData := map[string]interface{}{
 		"rideId":    rideID,
@@ -42,7 +39,6 @@ func (h *RideWebSocketHelper) SendDriverLocationUpdate(ctx context.Context, ride
 	}
 }
 
-// SendRideStatusToBoth sends status update to both rider and driver
 func (h *RideWebSocketHelper) SendRideStatusToBoth(ctx context.Context, riderID, driverID, rideID, status, message string) {
 	statusData := map[string]interface{}{
 		"rideId":    rideID,
@@ -60,27 +56,18 @@ func (h *RideWebSocketHelper) SendRideStatusToBoth(ctx context.Context, riderID,
 	}
 }
 
-// CheckUserOnline checks if a user is currently connected via WebSocket
 func (h *RideWebSocketHelper) CheckUserOnline(userID string) bool {
 	return websocketutil.IsUserOnline(userID)
 }
 
-// SendRideRequest sends ride request to driver
 func (h *RideWebSocketHelper) SendRideRequest(driverID string, rideDetails map[string]interface{}) error {
 	return websocketutil.SendRideRequest(driverID, rideDetails)
 }
 
-// SendRideAccepted sends ride acceptance to rider
 func (h *RideWebSocketHelper) SendRideAccepted(riderID string, rideDetails map[string]interface{}) error {
 	return websocketutil.SendRideAccepted(riderID, rideDetails)
 }
 
-// ============================================================================
-// Available Cars WebSocket Handler
-// ============================================================================
-
-// HandleAvailableCarsStream handles WebSocket connections for streaming available cars
-// This allows riders to see real-time updates of available cars near them
 func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, riderID string) error {
 	if h.service == nil {
 		logger.Error("service not initialized for available cars handler")
@@ -90,7 +77,7 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 	defer conn.Close()
 
 	ctx := context.Background()
-	ticker := time.NewTicker(5 * time.Second) // Default update interval
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	var currentRequest *dto.AvailableCarRequest
@@ -100,7 +87,6 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 	for {
 		select {
 		case <-ticker.C:
-			// Auto-refresh available cars at specified interval
 			if currentRequest != nil && time.Since(lastUpdateTime) >= updateInterval {
 				cars, err := h.service.GetAvailableCars(ctx, riderID, *currentRequest)
 				if err != nil {
@@ -117,7 +103,6 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 					continue
 				}
 
-				// Send update to client
 				msg := dto.WebSocketAvailableCarsMessage{
 					Type:      "cars_update",
 					Data:      cars,
@@ -134,7 +119,6 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 			}
 
 		default:
-			// Read incoming messages from client
 			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 
 			var incomingMsg map[string]interface{}
@@ -153,7 +137,6 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 
 			switch msgType {
 			case "subscribe_available_cars":
-				// Parse request parameters
 				req := &dto.AvailableCarRequest{}
 
 				if lat, ok := incomingMsg["latitude"].(float64); ok {
@@ -183,10 +166,9 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 				if radius, ok := incomingMsg["radiusKm"].(float64); ok && radius > 0 {
 					req.RadiusKm = radius
 				} else {
-					req.RadiusKm = 5.0 // Default
+					req.RadiusKm = 5.0
 				}
 
-				// Set update interval if provided
 				if interval, ok := incomingMsg["updateIntervalSeconds"].(float64); ok && interval > 0 {
 					updateInterval = time.Duration(int(interval)) * time.Second
 					ticker.Stop()
@@ -202,8 +184,6 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 					"longitude", req.Longitude,
 					"radiusKm", req.RadiusKm,
 					"updateInterval", updateInterval.Seconds())
-
-				// Send subscription confirmation
 				msg := dto.WebSocketAvailableCarsMessage{
 					Type:      "subscribed",
 					Timestamp: time.Now(),
@@ -214,7 +194,6 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 				}
 
 			case "update_location":
-				// Update rider location for available cars search
 				if lat, ok := incomingMsg["latitude"].(float64); ok {
 					if currentRequest != nil {
 						currentRequest.Latitude = lat
@@ -227,7 +206,6 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 					}
 				}
 
-				// Force immediate update
 				if currentRequest != nil {
 					lastUpdateTime = time.Now().Add(-updateInterval)
 				}
@@ -244,7 +222,6 @@ func (h *RideWebSocketHelper) HandleAvailableCarsStream(conn *websocket.Conn, ri
 				return nil
 
 			case "ping":
-				// Respond to ping with pong
 				msg := dto.WebSocketAvailableCarsMessage{
 					Type:      "pong",
 					Timestamp: time.Now(),
