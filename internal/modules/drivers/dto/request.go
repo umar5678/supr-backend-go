@@ -106,3 +106,11 @@ func (r *WalletTopUpRequest) Validate() error {
 	}
 	return nil
 }
+
+type PaymentRequest struct {
+	DriverID      string
+	UserID        string
+	Amount        float64
+	PaymentMethod string
+	Reference     *string
+}

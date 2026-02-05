@@ -171,3 +171,11 @@ func ToVehicleResponse(vehicle *models.Vehicle) *VehicleResponse {
 
 	return resp
 }
+
+type PaymentResult struct {
+	Success       bool  
+	OrderID       string
+	TransactionID string
+	Provider      string
+	Error         string
+}

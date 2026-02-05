@@ -1,4 +1,3 @@
-// internal/modules/drivers/repository.go
 package drivers
 
 import (
@@ -12,7 +11,6 @@ import (
 )
 
 type Repository interface {
-	// Driver Profile
 	CreateDriver(ctx context.Context, driver *models.DriverProfile) error
 	FindDriverByID(ctx context.Context, id string) (*models.DriverProfile, error)
 	FindDriverByUserID(ctx context.Context, userID string) (*models.DriverProfile, error)
@@ -23,18 +21,15 @@ type Repository interface {
 	GetDriverLocationHistory(ctx context.Context, driverID string, limit int) ([]*models.DriverLocation, error)
 	GetLatestDriverLocation(ctx context.Context, driverID string) (*models.DriverLocation, error)
 
-	// Vehicle
 	CreateVehicle(ctx context.Context, vehicle *models.Vehicle) error
 	FindVehicleByDriverID(ctx context.Context, driverID string) (*models.Vehicle, error)
 	FindVehicleByPlate(ctx context.Context, licensePlate string) (*models.Vehicle, error)
 	UpdateVehicle(ctx context.Context, vehicle *models.Vehicle) error
 
-	// Statistics
 	IncrementTrips(ctx context.Context, driverID string) error
 	UpdateEarnings(ctx context.Context, driverID string, amount float64) error
 	UpdateRating(ctx context.Context, driverID string, newRating float64) error
 
-	// Nearby drivers (for future ride matching)
 	FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm float64, vehicleTypeID string) ([]*models.DriverProfile, error)
 }
 
@@ -46,7 +41,6 @@ func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-// Driver Profile Methods
 
 func (r *repository) CreateDriver(ctx context.Context, driver *models.DriverProfile) error {
 	return r.db.WithContext(ctx).Create(driver).Error
@@ -121,8 +115,6 @@ func (r *repository) GetLatestDriverLocation(ctx context.Context, driverID strin
 	return &location, nil
 }
 
-// Vehicle Methods
-
 func (r *repository) CreateVehicle(ctx context.Context, vehicle *models.Vehicle) error {
 	return r.db.WithContext(ctx).Create(vehicle).Error
 }
@@ -148,8 +140,6 @@ func (r *repository) UpdateVehicle(ctx context.Context, vehicle *models.Vehicle)
 	return r.db.WithContext(ctx).Save(vehicle).Error
 }
 
-// Statistics Methods
-
 func (r *repository) IncrementTrips(ctx context.Context, driverID string) error {
 	return r.db.WithContext(ctx).
 		Model(&models.DriverProfile{}).
@@ -174,12 +164,8 @@ func (r *repository) UpdateRating(ctx context.Context, driverID string, newRatin
 		Update("rating", newRating).Error
 }
 
-// Nearby Drivers (using PostGIS)
-
 func (r *repository) FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm float64, vehicleTypeID string) ([]*models.DriverProfile, error) {
 	var drivers []*models.DriverProfile
-
-	// Convert km to meters for ST_DWithin
 	radiusMeters := radiusKm * 1000
 
 	locationStr := fmt.Sprintf("POINT(%f %f)", lng, lat)

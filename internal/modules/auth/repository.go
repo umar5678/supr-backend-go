@@ -8,7 +8,6 @@ import (
 )
 
 type Repository interface {
-	// User operations
 	Create(ctx context.Context, user *models.User) error
 	FindByID(ctx context.Context, id string) (*models.User, error)
 	FindByEmail(ctx context.Context, email string) (*models.User, error)
@@ -16,7 +15,6 @@ type Repository interface {
 	Update(ctx context.Context, user *models.User) error
 	UpdateLastLogin(ctx context.Context, userID string) error
 
-	// Wallet operations (will be used by auth service)
 	CreateWallet(ctx context.Context, wallet *models.Wallet) error
 }
 

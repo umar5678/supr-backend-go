@@ -8,10 +8,8 @@ import (
 	"github.com/umar5678/go-backend/internal/models"
 )
 
-// Phone regex pattern (international format)
 var phoneRegex = regexp.MustCompile(`^\+?[1-9]\d{1,14}$`)
 
-// PhoneSignupRequest for rider/driver signup
 type PhoneSignupRequest struct {
 	Name  string          `json:"name" binding:"required,min=2,max=255"`
 	Phone string          `json:"phone" binding:"required"`
@@ -37,7 +35,6 @@ func (r *PhoneSignupRequest) Validate() error {
 	return nil
 }
 
-// PhoneLoginRequest for rider/driver login
 type PhoneLoginRequest struct {
 	Phone string          `json:"phone" binding:"required"`
 }
@@ -52,7 +49,6 @@ func (r *PhoneLoginRequest) Validate() error {
 	return nil
 }
 
-// EmailSignupRequest for other roles
 type EmailSignupRequest struct {
 	Name     string          `json:"name" binding:"required,min=2,max=255"`
 	Email    string          `json:"email" binding:"required,email"`
@@ -73,7 +69,6 @@ func (r *EmailSignupRequest) Validate() error {
 	if len(r.Password) < 8 {
 		return errors.New("password must be at least 8 characters")
 	}
-	// Email-based roles
 	validRoles := []models.UserRole{
 		models.RoleAdmin,
 		models.RoleDeliveryPerson,
@@ -93,7 +88,6 @@ func (r *EmailSignupRequest) Validate() error {
 	return nil
 }
 
-// EmailLoginRequest for other roles
 type EmailLoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
@@ -109,12 +103,10 @@ func (r *EmailLoginRequest) Validate() error {
 	return nil
 }
 
-// RefreshTokenRequest
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refreshToken" binding:"required"`
 }
 
-// UpdateProfileRequest
 type UpdateProfileRequest struct {
 	Name            *string `json:"name" binding:"omitempty,min=2,max=255"`
 	Email           *string `json:"email" binding:"omitempty,email"`
@@ -124,7 +116,6 @@ type UpdateProfileRequest struct {
 	DOB             *string `json:"dob" binding:"omitempty,datetime=2006-01-02"`
 }
 
-// Parse DOB
 func (r *UpdateProfileRequest) ParseDOB() (*time.Time, error) {
 	if r.DOB == nil {
 		return nil, nil

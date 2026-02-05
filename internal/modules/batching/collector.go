@@ -10,16 +10,15 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// BatchCollector manages the collection of ride requests within a batching window
 type BatchCollector struct {
-	batchWindow        time.Duration     // 10-second default window
-	maxBatchSize       int               // maximum requests per batch
-	batches            map[string]*batch // batchID -> batch
-	vehicleTypeBatches map[string]string // vehicleTypeID -> current batchID
+	batchWindow        time.Duration     
+	maxBatchSize       int               
+	batches            map[string]*batch 
+	vehicleTypeBatches map[string]string 
 	mu                 sync.RWMutex
 	ticker             *time.Ticker
 	done               chan struct{}
-	onBatchExpire      func(batchID string) // Callback when batch expires for processing
+	onBatchExpire      func(batchID string) 
 }
 
 type batch struct {
@@ -31,9 +30,6 @@ type batch struct {
 	mu            sync.Mutex
 }
 
-// NewBatchCollector creates a new batch collector with 10-second window
-// onBatchExpire is a callback function that's called when a batch window expires
-// The callback should call ProcessBatch() to match requests to drivers
 func NewBatchCollector(batchWindow time.Duration, maxBatchSize int) *BatchCollector {
 	bc := &BatchCollector{
 		batchWindow:        batchWindow,
@@ -41,28 +37,26 @@ func NewBatchCollector(batchWindow time.Duration, maxBatchSize int) *BatchCollec
 		batches:            make(map[string]*batch),
 		vehicleTypeBatches: make(map[string]string),
 		done:               make(chan struct{}),
-		onBatchExpire:      nil, // Set later via SetBatchExpireCallback
+		onBatchExpire:      nil, 
 	}
 
-	// Start cleanup goroutine
+	
 	go bc.cleanupExpiredBatches()
 
 	return bc
 }
 
-// SetBatchExpireCallback sets the callback function to call when a batch expires
+
 func (bc *BatchCollector) SetBatchExpireCallback(callback func(batchID string)) {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 	bc.onBatchExpire = callback
 }
 
-// AddRequest adds a ride request to the appropriate batch
 func (bc *BatchCollector) AddRequest(ctx context.Context, req dto.RideRequestInfo) (string, error) {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
-	// Get or create batch for this vehicle type
 	batchID, exists := bc.vehicleTypeBatches[req.VehicleTypeID]
 	var b *batch
 
@@ -88,7 +82,6 @@ func (bc *BatchCollector) AddRequest(ctx context.Context, req dto.RideRequestInf
 		b = bc.batches[batchID]
 	}
 
-	// Add request to batch
 	b.mu.Lock()
 	b.Requests = append(b.Requests, req)
 	requestCount := len(b.Requests)
@@ -100,11 +93,9 @@ func (bc *BatchCollector) AddRequest(ctx context.Context, req dto.RideRequestInf
 		"requestCount", requestCount,
 	)
 
-	// Return batch info immediately but don't block on timing
 	return batchID, nil
 }
 
-// GetBatch retrieves a batch by ID
 func (bc *BatchCollector) GetBatch(batchID string) (*dto.RequestBatch, error) {
 	bc.mu.RLock()
 	b, exists := bc.batches[batchID]
@@ -117,7 +108,6 @@ func (bc *BatchCollector) GetBatch(batchID string) (*dto.RequestBatch, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	// Calculate centroid
 	centroid := bc.calculateCentroid(b.Requests)
 
 	return &dto.RequestBatch{
@@ -132,7 +122,6 @@ func (bc *BatchCollector) GetBatch(batchID string) (*dto.RequestBatch, error) {
 	}, nil
 }
 
-// GetBatchRequests returns all requests in a batch
 func (bc *BatchCollector) GetBatchRequests(batchID string) ([]dto.RideRequestInfo, error) {
 	bc.mu.RLock()
 	b, exists := bc.batches[batchID]
@@ -145,14 +134,12 @@ func (bc *BatchCollector) GetBatchRequests(batchID string) ([]dto.RideRequestInf
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	// Return copy to prevent external modifications
 	requests := make([]dto.RideRequestInfo, len(b.Requests))
 	copy(requests, b.Requests)
 
 	return requests, nil
 }
 
-// CheckBatchReady checks if batch is ready for processing (window expired or max size reached)
 func (bc *BatchCollector) CheckBatchReady(batchID string) bool {
 	bc.mu.RLock()
 	b, exists := bc.batches[batchID]
@@ -165,22 +152,18 @@ func (bc *BatchCollector) CheckBatchReady(batchID string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	// Ready if window expired or max size reached
 	isExpired := time.Now().After(b.ExpiresAt)
 	isMaxed := len(b.Requests) >= bc.maxBatchSize
 
 	return isExpired || isMaxed
 }
 
-// CompleteBatch marks batch as processed and removes it
 func (bc *BatchCollector) CompleteBatch(batchID string) error {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
 	if b, exists := bc.batches[batchID]; exists {
-		// Remove from vehicle type index
 		delete(bc.vehicleTypeBatches, b.VehicleTypeID)
-		// Remove batch
 		delete(bc.batches, batchID)
 
 		logger.Info("Completed batch",
@@ -192,7 +175,6 @@ func (bc *BatchCollector) CompleteBatch(batchID string) error {
 	return nil
 }
 
-// GetBatchStatus returns current status of all batches
 func (bc *BatchCollector) GetBatchStatus() map[string]interface{} {
 	bc.mu.RLock()
 	defer bc.mu.RUnlock()
@@ -223,7 +205,6 @@ func (bc *BatchCollector) GetBatchStatus() map[string]interface{} {
 	return status
 }
 
-// cleanupExpiredBatches removes batches that have expired without being processed
 func (bc *BatchCollector) cleanupExpiredBatches() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -236,22 +217,15 @@ func (bc *BatchCollector) cleanupExpiredBatches() {
 			for batchID, b := range bc.batches {
 				b.mu.Lock()
 				if now.After(b.ExpiresAt) {
-					// Batch expired, call the callback to process it
 					if bc.onBatchExpire != nil {
-						// Run callback in goroutine to avoid blocking cleanup
-						// The callback will call ProcessBatch() which needs access to the batch
 						go bc.onBatchExpire(batchID)
 					}
 
-					// This gives ProcessBatch() time to fetch requests before deletion
-					// We use a small delay to ensure callback gets the batch
 					go func(vid string, bid string) {
-						// Small delay to allow ProcessBatch to read the batch
 						time.Sleep(100 * time.Millisecond)
 						bc.mu.Lock()
 						defer bc.mu.Unlock()
 
-						// Remove from tracking and batches
 						delete(bc.vehicleTypeBatches, vid)
 						delete(bc.batches, bid)
 						logger.Warn("Expired batch removed after processing",
@@ -270,7 +244,6 @@ func (bc *BatchCollector) cleanupExpiredBatches() {
 	}
 }
 
-// Stop stops the batch collector
 func (bc *BatchCollector) Stop() {
 	close(bc.done)
 	if bc.ticker != nil {
@@ -278,7 +251,6 @@ func (bc *BatchCollector) Stop() {
 	}
 }
 
-// calculateCentroid calculates the geographic center of all requests
 func (bc *BatchCollector) calculateCentroid(requests []dto.RideRequestInfo) dto.Location {
 	if len(requests) == 0 {
 		return dto.Location{}
@@ -299,7 +271,6 @@ func (bc *BatchCollector) calculateCentroid(requests []dto.RideRequestInfo) dto.
 	}
 }
 
-// extractRequestIDs extracts ride IDs from requests
 func extractRequestIDs(requests []dto.RideRequestInfo) []string {
 	ids := make([]string, len(requests))
 	for i, req := range requests {

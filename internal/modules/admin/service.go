@@ -65,18 +65,16 @@ func (s *service) ListUsers(ctx context.Context, role, status, page, limit strin
 }
 
 func (s *service) ApproveServiceProvider(ctx context.Context, providerID string) error {
-	// Get service provider profile
+
 	profile, err := s.spRepo.FindByID(ctx, providerID)
 	if err != nil {
 		return response.NotFoundError("Service provider")
 	}
 
-	// Update user status to active
 	if err := s.repo.UpdateUserStatus(ctx, profile.UserID, models.StatusActive); err != nil {
 		return response.InternalServerError("Failed to update user status", err)
 	}
 
-	// Update service provider status to active
 	if err := s.spRepo.UpdateStatus(ctx, providerID, models.SPStatusActive); err != nil {
 		return response.InternalServerError("Failed to update provider status", err)
 	}

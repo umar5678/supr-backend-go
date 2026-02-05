@@ -1,4 +1,3 @@
-// internal/modules/drivers/handler.go
 package drivers
 
 import (
@@ -14,9 +13,6 @@ type Handler struct {
 func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
-
-//  test
-
 // RegisterDriver godoc
 // @Summary Register driver profile
 // @Tags drivers
@@ -208,7 +204,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 	response.Success(c, dashboard, "Dashboard retrieved successfully")
 }
 
-// ✅ TopUpWallet godoc
+// TopUpWallet godoc
 // @Summary Add funds to driver wallet (balance top-up)
 // @Description Driver can add funds to wallet for commissions and penalties and subscriptions
 // @Tags drivers
@@ -239,7 +235,7 @@ func (h *Handler) TopUpWallet(c *gin.Context) {
 	response.Success(c, result, "Wallet topped up successfully")
 }
 
-// ✅ GetWalletStatus godoc
+// GetWalletStatus godoc
 // @Summary Get detailed wallet status including restrictions
 // @Description Returns wallet balance, restriction status, and required amount to lift restrictions
 // @Tags drivers
@@ -262,7 +258,7 @@ func (h *Handler) GetWalletStatus(c *gin.Context) {
 	response.Success(c, status, "Wallet status retrieved successfully")
 }
 
-// ✅ GetWalletTransactionHistory godoc
+// GetWalletTransactionHistory godoc
 // @Summary Get driver wallet transaction history
 // @Description Get all transactions including earnings, commissions, penalties, and top-ups
 // @Tags drivers

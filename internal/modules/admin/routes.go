@@ -9,8 +9,8 @@ import (
 
 func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gin.HandlerFunc) {
 	admin := router.Group("/admin")
-	admin.Use(authMiddleware)            // All admin routes require auth
-	admin.Use(middleware.RequireAdmin()) // All routes require admin role
+	admin.Use(authMiddleware)           
+	admin.Use(middleware.RequireAdmin())
 	{
 		admin.GET("/users", handler.ListUsers)
 		admin.PUT("/users/:id/status", handler.UpdateUserStatus)

@@ -1,4 +1,3 @@
-// internal/modules/drivers/routes.go
 package drivers
 
 import (

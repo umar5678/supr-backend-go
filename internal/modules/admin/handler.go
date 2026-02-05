@@ -1,7 +1,5 @@
 package admin
 
-// now
-
 import (
 	"github.com/gin-gonic/gin"
 	dto "github.com/umar5678/go-backend/internal/modules/admin/dto"

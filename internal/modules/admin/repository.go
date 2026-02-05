@@ -37,17 +37,17 @@ func (r *repository) ListUsers(ctx context.Context, filters map[string]interface
 
 	query := r.db.WithContext(ctx).Model(&models.User{})
 
-	// Apply filters
+
 	for key, value := range filters {
 		if value != "" {
 			query = query.Where(key+" = ?", value)
 		}
 	}
 
-	// Count total
+
 	query.Count(&total)
 
-	// Paginate
+
 	offset := (page - 1) * limit
 	err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&users).Error
 
@@ -68,7 +68,6 @@ func (r *repository) DeleteUser(ctx context.Context, userID string) error {
 func (r *repository) GetDashboardStats(ctx context.Context) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 
-	// Count users by role
 	var roleCounts []struct {
 		Role  string
 		Count int64
@@ -94,7 +93,6 @@ func (r *repository) GetDashboardStats(ctx context.Context) (map[string]interfac
 
 	stats["usersByStatus"] = statusCounts
 
-	// Total users
 	var totalUsers int64
 	r.db.WithContext(ctx).Model(&models.User{}).Count(&totalUsers)
 	stats["totalUsers"] = totalUsers
