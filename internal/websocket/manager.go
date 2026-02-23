@@ -278,7 +278,14 @@ func (m *Manager) SendNotification(userID string, notification interface{}) erro
 // rdbSnapshotManager performs periodic RDB-style snapshots of WebSocket state
 // This is inspired by Redis RDB persistence - point-in-time snapshots at intervals
 func (m *Manager) rdbSnapshotManager() {
-	ticker := time.NewTicker(m.config.RDBSnapshotInterval)
+	// Validate RDBSnapshotInterval to prevent non-positive duration panic
+	snapshotInterval := m.config.RDBSnapshotInterval
+	if snapshotInterval <= 0 {
+		logger.Warn("invalid RDBSnapshotInterval, using default", "interval", snapshotInterval)
+		snapshotInterval = 5 * time.Minute
+	}
+
+	ticker := time.NewTicker(snapshotInterval)
 	defer ticker.Stop()
 
 	snapshotCount := 0
@@ -457,7 +464,14 @@ func (m *Manager) RecoverFromSnapshot() error {
 }
 
 func (m *Manager) monitorHeartbeats() {
-	ticker := time.NewTicker(m.config.HeartbeatInterval)
+	// Validate HeartbeatInterval to prevent non-positive duration panic
+	heartbeatInterval := m.config.HeartbeatInterval
+	if heartbeatInterval <= 0 {
+		logger.Warn("invalid HeartbeatInterval, using default", "interval", heartbeatInterval)
+		heartbeatInterval = 54 * time.Second
+	}
+
+	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
 
 	inactivityTicker := time.NewTicker(1 * time.Minute)

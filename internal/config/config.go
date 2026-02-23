@@ -113,6 +113,50 @@ func LoadConfig() (*Config, error) {
 	cfg.Logger.Output = v.GetString("LOG_OUTPUT")
 	cfg.Logger.FilePath = v.GetString("LOG_FILE_PATH")
 
+	// Load WebSocket config with defaults
+	cfg.WebSocket = DefaultWebSocketConfig()
+
+	// Override with environment variables if provided
+	if readBufSize := v.GetInt("WEBSOCKET_READ_BUFFER_SIZE"); readBufSize > 0 {
+		cfg.WebSocket.ReadBufferSize = readBufSize
+	}
+	if writeBufSize := v.GetInt("WEBSOCKET_WRITE_BUFFER_SIZE"); writeBufSize > 0 {
+		cfg.WebSocket.WriteBufferSize = writeBufSize
+	}
+	if maxMsgSize := v.GetInt64("WEBSOCKET_MAX_MESSAGE_SIZE"); maxMsgSize > 0 {
+		cfg.WebSocket.MaxMessageSize = maxMsgSize
+	}
+	if handshakeTimeout := v.GetDuration("WEBSOCKET_HANDSHAKE_TIMEOUT"); handshakeTimeout > 0 {
+		cfg.WebSocket.HandshakeTimeout = handshakeTimeout * time.Second
+	}
+	if writeWait := v.GetDuration("WEBSOCKET_WRITE_WAIT"); writeWait > 0 {
+		cfg.WebSocket.WriteWait = writeWait * time.Second
+	}
+	if pongWait := v.GetDuration("WEBSOCKET_PONG_WAIT"); pongWait > 0 {
+		cfg.WebSocket.PongWait = pongWait * time.Second
+	}
+	if pingPeriod := v.GetDuration("WEBSOCKET_PING_PERIOD"); pingPeriod > 0 {
+		cfg.WebSocket.PingPeriod = pingPeriod * time.Second
+	}
+	if maxConnections := v.GetInt("WEBSOCKET_MAX_CONNECTIONS"); maxConnections > 0 {
+		cfg.WebSocket.MaxConnections = maxConnections
+	}
+	if msgBufSize := v.GetInt("WEBSOCKET_MESSAGE_BUFFER_SIZE"); msgBufSize > 0 {
+		cfg.WebSocket.MessageBufferSize = msgBufSize
+	}
+	cfg.WebSocket.EnablePresence = v.GetBool("WEBSOCKET_ENABLE_PRESENCE")
+	cfg.WebSocket.EnableMessageStore = v.GetBool("WEBSOCKET_ENABLE_MESSAGE_STORE")
+	cfg.WebSocket.PersistenceEnabled = v.GetBool("WEBSOCKET_PERSISTENCE_ENABLED")
+	if persistenceMode := v.GetString("WEBSOCKET_PERSISTENCE_MODE"); persistenceMode != "" {
+		cfg.WebSocket.PersistenceMode = persistenceMode
+	}
+	if rdbInterval := v.GetDuration("WEBSOCKET_RDB_SNAPSHOT_INTERVAL"); rdbInterval > 0 {
+		cfg.WebSocket.RDBSnapshotInterval = rdbInterval * time.Second
+	}
+	if aofSync := v.GetString("WEBSOCKET_AOF_SYNC_POLICY"); aofSync != "" {
+		cfg.WebSocket.AOFSyncPolicy = aofSync
+	}
+
 	return &cfg, nil
 }
 
