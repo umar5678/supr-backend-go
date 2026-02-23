@@ -94,8 +94,17 @@ func main() {
 	defer cache.CloseRedis()
 
 	wsConfig := &websocket.Config{
-		PersistenceEnabled: false,
-		HeartbeatInterval:  30 * time.Second,
+		JWTSecret:           cfg.JWT.Secret,
+		MaxConnections:      cfg.WebSocket.MaxConnections,
+		MessageBufferSize:   cfg.WebSocket.MessageBufferSize,
+		HeartbeatInterval:   cfg.WebSocket.PingPeriod,
+		ConnectionTimeout:   cfg.WebSocket.PongWait,
+		EnablePresence:      cfg.WebSocket.EnablePresence,
+		EnableMessageStore:  cfg.WebSocket.EnableMessageStore,
+		PersistenceEnabled:  cfg.WebSocket.PersistenceEnabled,
+		PersistenceMode:     cfg.WebSocket.PersistenceMode,
+		RDBSnapshotInterval: cfg.WebSocket.RDBSnapshotInterval,
+		AOFSyncPolicy:       cfg.WebSocket.AOFSyncPolicy,
 	}
 
 	wsManager := websocket.NewManager(wsConfig)

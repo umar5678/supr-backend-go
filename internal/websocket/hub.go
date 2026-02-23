@@ -674,3 +674,33 @@ func (h *Hub) BroadcastToRole(role string, msg *Message) {
 	ctx := context.Background()
 	cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
+
+func (h *Hub) CheckInactiveConnections(timeout time.Duration) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	now := time.Now()
+	var clientsToRemove []*Client
+
+	for userID, clients := range h.clients {
+		for _, client := range clients {
+			// Check if client hasn't sent heartbeat within timeout
+			if now.Sub(client.lastHeartbeat) > timeout {
+				logger.Info("Inactive WebSocket connection detected",
+					"userID", userID,
+					"clientID", client.ID,
+					"inactiveFor", now.Sub(client.lastHeartbeat).String(),
+					"timeout", timeout.String(),
+				)
+				clientsToRemove = append(clientsToRemove, client)
+			}
+		}
+	}
+
+	// Unregister inactive clients
+	h.mu.Unlock()
+	for _, client := range clientsToRemove {
+		h.unregisterClient(client)
+	}
+	h.mu.Lock()
+}

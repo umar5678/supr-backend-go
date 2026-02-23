@@ -8,13 +8,14 @@ import (
 
 // Config is the top-level configuration struct.
 type Config struct {
-	App      AppConfig
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	Upload   UploadConfig
-	Logger   LoggerConfig
+	App       AppConfig
+	Server    ServerConfig
+	Database  DatabaseConfig
+	Redis     RedisConfig
+	JWT       JWTConfig
+	Upload    UploadConfig
+	Logger    LoggerConfig
+	WebSocket WebSocketConfig
 }
 
 // AppConfig holds application-level settings.
