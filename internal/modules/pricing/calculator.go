@@ -26,6 +26,11 @@ func (c *FareCalculator) CalculateEstimate(
 	averageSpeedKmh := 40.0
 	estimatedDuration := location.CalculateETA(estimatedDistance, averageSpeedKmh)
 
+	const maxEstimatedDurationSeconds = 12 * 60 * 60
+	if estimatedDuration > maxEstimatedDurationSeconds {
+		estimatedDuration = maxEstimatedDurationSeconds
+	}
+
 	distanceFare := estimatedDistance * vehicleType.PerKmRate
 	durationMinutes := float64(estimatedDuration) / 60.0
 	durationFare := durationMinutes * vehicleType.PerMinuteRate
@@ -57,9 +62,17 @@ func (c *FareCalculator) CalculateActualFare(
 	vehicleType *models.VehicleType,
 	surgeMultiplier float64,
 ) *models.FareEstimate {
+	const maxRideDurationSeconds = 12 * 60 * 60
+	duration := actualDurationSec
+	if duration > maxRideDurationSeconds {
+		duration = maxRideDurationSeconds
+	}
+	if duration < 0 {
+		duration = 0
+	}
 
 	distanceFare := actualDistanceKm * vehicleType.PerKmRate
-	durationMinutes := float64(actualDurationSec) / 60.0
+	durationMinutes := float64(duration) / 60.0
 	durationFare := durationMinutes * vehicleType.PerMinuteRate
 
 	subTotal := vehicleType.BaseFare + distanceFare + durationFare
@@ -78,7 +91,7 @@ func (c *FareCalculator) CalculateActualFare(
 		SurgeAmount:       math.Round(surgeAmount*100) / 100,
 		TotalFare:         totalFare,
 		EstimatedDistance: actualDistanceKm,
-		EstimatedDuration: actualDurationSec,
+		EstimatedDuration: duration,
 		VehicleTypeName:   vehicleType.DisplayName,
 	}
 }

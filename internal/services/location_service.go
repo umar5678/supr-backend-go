@@ -3,13 +3,13 @@ package services
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/drivers"
 	"github.com/umar5678/go-backend/internal/modules/rides"
 	"github.com/umar5678/go-backend/internal/services/cache"
+	"github.com/umar5678/go-backend/internal/utils/location"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	websocketutil "github.com/umar5678/go-backend/internal/websocket/websocketutils"
 )
@@ -149,24 +149,20 @@ func (s *locationService) CalculateRoute(ctx context.Context, startLat, startLng
 	return &models.Route{
 		Polyline: "polyline_encoded_string",
 		Distance: 5000,
-		Duration: 900, 
+		Duration: 900,
 		Summary:  "Fastest route",
 	}, nil
 }
 
 func (s *locationService) CalculateETA(ctx context.Context, driverLat, driverLng, destLat, destLng float64) (int, error) {
-	distance := calculateHaversineDistance(driverLat, driverLng, destLat, destLng)
-	eta := int((distance / 13.8889) * 3600)
+	distanceKm := location.HaversineDistance(driverLat, driverLng, destLat, destLng)
+	// Convert km/h to m/s: 13.8889 m/s ≈ 50 km/h average speed
+	eta := int((distanceKm / 13.8889) * 3600)
 	return eta, nil
 }
 
 func calculateHaversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
-	const R = 6371000
-	dLat := (lat2 - lat1) * (3.14159265358979323846 / 180)
-	dLon := (lon2 - lon1) * (3.14159265358979323846 / 180)
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
-		math.Cos(lat1*(3.14159265358979323846/180))*math.Cos(lat2*(3.14159265358979323846/180))*
-			math.Sin(dLon/2)*math.Sin(dLon/2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-	return R * c
+	// DEPRECATED: Use location.HaversineDistance instead
+	// This function returns km, not meters
+	return location.HaversineDistance(lat1, lon1, lat2, lon2)
 }

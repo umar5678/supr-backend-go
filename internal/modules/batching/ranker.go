@@ -2,13 +2,13 @@ package batching
 
 import (
 	"context"
-	"math"
 	"sort"
 
 	"github.com/umar5678/go-backend/internal/modules/batching/dto"
 	"github.com/umar5678/go-backend/internal/modules/drivers"
 	"github.com/umar5678/go-backend/internal/modules/ratings"
 	"github.com/umar5678/go-backend/internal/modules/tracking"
+	"github.com/umar5678/go-backend/internal/utils/location"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
@@ -261,21 +261,5 @@ func (dr *DriverRanker) GetDetailedBreakdown(
 }
 
 func calculateHaversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
-	const earthRadiusKm = 6371.0
-
-	dLat := degreesToRadians(lat2 - lat1)
-	dLon := degreesToRadians(lon2 - lon1)
-	lat1Rad := degreesToRadians(lat1)
-	lat2Rad := degreesToRadians(lat2)
-
-	a := math.Sin(dLat/2.0)*math.Sin(dLat/2.0) +
-		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
-			math.Sin(dLon/2.0)*math.Sin(dLon/2.0)
-	c := 2.0 * math.Asin(math.Sqrt(a))
-
-	return earthRadiusKm * c
-}
-
-func degreesToRadians(degrees float64) float64 {
-	return degrees * math.Pi / 180.0
+	return location.HaversineDistance(lat1, lon1, lat2, lon2)
 }

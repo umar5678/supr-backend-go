@@ -69,13 +69,13 @@ type service struct {
 	pricingService    pricingservice.Service
 	trackingService   trackingservice.Service
 	walletService     walletservice.Service
-	ridePINService    ridepinservice.Service    
-	profileService    profile.Service           
-	sosService        sos.Service               
-	promotionsService promotionsservice.Service 
-	ratingsService    ratingsservice.Service    
-	fraudService      fraudservice.Service      
-	batchingService   batchingservice.Service   
+	ridePINService    ridepinservice.Service
+	profileService    profile.Service
+	sosService        sos.Service
+	promotionsService promotionsservice.Service
+	ratingsService    ratingsservice.Service
+	fraudService      fraudservice.Service
+	batchingService   batchingservice.Service
 	wsHelper          *RideWebSocketHelper
 }
 
@@ -285,7 +285,7 @@ func (s *service) CreateRide(ctx context.Context, riderID string, req dto.Create
 			Amount:        finalAmount,
 			ReferenceType: "ride",
 			ReferenceID:   rideID,
-			HoldDuration:  1800, 
+			HoldDuration:  1800,
 		}
 
 		holdResp, err := s.walletService.HoldFunds(ctx, riderID, holdReq)
@@ -548,7 +548,7 @@ func (s *service) processMatchingResult(ctx context.Context, result *batchingdto
 				return
 			}
 
-			driverIDPtr := assign.DriverID 
+			driverIDPtr := assign.DriverID
 			ride.DriverID = &driverIDPtr
 			ride.Status = "accepted"
 			ride.AcceptedAt = ptr(time.Now())
@@ -638,7 +638,7 @@ func (s *service) FindDriverForRide(ctx context.Context, rideID string) error {
 		)
 	}
 
-	radii := []float64{3.0, 5.0, 8.0} 
+	radii := []float64{3.0, 5.0, 8.0}
 	if riderRating < 3.5 {
 		radii = []float64{8.0}
 		logger.Warn("low-rated rider search reduced",
@@ -647,7 +647,7 @@ func (s *service) FindDriverForRide(ctx context.Context, rideID string) error {
 			"searchRadius", "8km only",
 		)
 	} else if riderRating < 4.0 {
-		radii = []float64{5.0, 8.0} 
+		radii = []float64{5.0, 8.0}
 		logger.Info("medium-rated rider search radius adjusted",
 			"rideID", rideID,
 			"riderRating", riderRating,
@@ -1253,8 +1253,8 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
 	distanceKm := distanceToDropoff
-	const maxCompletionRadiusKm = 0.100 
-	const epsilon = 0.001          
+	const maxCompletionRadiusKm = 0.100
+	const epsilon = 0.001
 
 	if distanceKm > maxCompletionRadiusKm+epsilon {
 		logger.Warn("driver outside completion radius", "rideID", rideID, "distanceKm", distanceKm, "maxRadiusKm", maxCompletionRadiusKm)
@@ -1262,6 +1262,30 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 	}
 
 	logger.Info("driver verified within 100 meter radius", "rideID", rideID, "distanceKm", distanceKm)
+
+	// Validate ride duration (must be 60 seconds to 12 hours)
+	const minRideDurationSeconds = 60
+	const maxRideDurationSeconds = 12 * 60 * 60
+	if req.ActualDuration < minRideDurationSeconds || req.ActualDuration > maxRideDurationSeconds {
+		logger.Error("invalid ride duration",
+			"rideID", rideID,
+			"receivedSeconds", req.ActualDuration,
+			"inMinutes", float64(req.ActualDuration)/60.0,
+		)
+		return nil, response.BadRequest(fmt.Sprintf(
+			"Invalid ride duration: %d seconds. Must be between 1 minute and 12 hours",
+			req.ActualDuration,
+		))
+	}
+
+	// Log ride completion details for debugging
+	logger.Info("CompleteRide called",
+		"rideID", rideID,
+		"driverID", userID,
+		"actualDistance", req.ActualDistance,
+		"actualDurationSeconds", req.ActualDuration,
+		"actualDurationMinutes", float64(req.ActualDuration)/60.0,
+	)
 
 	actualFareReq := pricingdto.CalculateActualFareRequest{
 		ActualDistanceKm:  req.ActualDistance,
@@ -1275,32 +1299,58 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		return nil, err
 	}
 
-	driverFare := actualFareResp.TotalFare
-	riderFare := actualFareResp.TotalFare
+	cappingResp, err := s.pricingService.ApplyPriceCapping(ctx, ride.VehicleTypeID, actualFareResp.TotalFare)
+	if err != nil {
+		logger.Error("price capping calculation failed",
+			"error", err,
+			"rideID", rideID,
+			"vehicleTypeID", ride.VehicleTypeID,
+		)
+		// Fallback if capping fails
+		cappingResp = &pricingdto.FareBreakdownResponse{
+			TotalFare:     actualFareResp.TotalFare,
+			CustomerPrice: actualFareResp.TotalFare,
+			DriverEarning: actualFareResp.TotalFare,
+			PlatformFee:   0,
+			PriceCapped:   false,
+		}
+	}
+
+	Fare := cappingResp.CustomerPrice
+	DriverFareAmount := cappingResp.DriverEarning
+
+	if cappingResp.PriceCapped {
+		logger.Info("ride fare capped due to price ceiling",
+			"rideID", rideID,
+			"calculatedFare", actualFareResp.TotalFare,
+			"customerPrice", cappingResp.CustomerPrice,
+			"driverEarning", cappingResp.DriverEarning,
+			"platformAbsorbed", cappingResp.PlatformAbsorbed,
+		)
+	}
 
 	if ride.WaitTimeCharge != nil {
-		driverFare += *ride.WaitTimeCharge
-		riderFare += *ride.WaitTimeCharge
+		Fare += *ride.WaitTimeCharge
+		DriverFareAmount += *ride.WaitTimeCharge
 	}
 
 	if ride.DestinationChangeCharge != nil {
-		driverFare += *ride.DestinationChangeCharge
-		riderFare += *ride.DestinationChangeCharge
+		Fare += *ride.DestinationChangeCharge
+		DriverFareAmount += *ride.DestinationChangeCharge
 	}
 
 	if ride.PromoDiscount != nil && *ride.PromoDiscount > 0 {
-		driverFare -= *ride.PromoDiscount
-		riderFare -= *ride.PromoDiscount
-		logger.Info("promo code applied - both driver and rider get discount",
+		Fare -= *ride.PromoDiscount
+		logger.Info("promo code applied to ride",
 			"rideID", rideID,
 			"originalFare", actualFareResp.TotalFare,
-			"driverFare", driverFare,
-			"riderFare", riderFare,
+			"finalRiderFare", Fare,
+			"driverFare", DriverFareAmount,
 			"promoDiscount", *ride.PromoDiscount,
 		)
 	}
 
-	actualFare := driverFare
+	actualFare := Fare
 
 	if s.sosService != nil {
 		activeSOS, _ := s.sosService.GetActiveSOS(ctx, ride.RiderID)
@@ -1315,9 +1365,9 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	ride.ActualDistance = &req.ActualDistance
 	ride.ActualDuration = &req.ActualDuration
-	ride.ActualFare = &actualFare
-	ride.DriverFare = &driverFare
-	ride.RiderFare = &riderFare  
+	ride.ActualFare = &actualFareResp.TotalFare
+	ride.DriverFare = &DriverFareAmount
+	ride.RiderFare = &actualFare
 	ride.Status = "completed"
 	completedAt := time.Now()
 	ride.CompletedAt = &completedAt
@@ -1328,14 +1378,18 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	if ride.WalletHoldID != nil {
 		captureReq := walletdto.CaptureHoldRequest{
-			HoldID:      *ride.WalletHoldID,
-			Amount:      ride.ActualFare,
-			Description: fmt.Sprintf("Cash payment for ride %s", rideID),
+			HoldID: *ride.WalletHoldID,
+			Amount: ride.RiderFare,
+			Description: fmt.Sprintf("Ride payment for %s (Distance: %.2f km, Duration: %.0f min)",
+				rideID,
+				req.ActualDistance,
+				float64(req.ActualDuration)/60.0,
+			),
 		}
 
 		_, err := s.walletService.CaptureHold(ctx, ride.RiderID, captureReq)
 		if err != nil {
-			logger.Error("failed to capture hold", "error", err, "rideID", rideID)
+			logger.Error("failed to capture hold", "error", err, "rideID", rideID, "amount", ride.RiderFare)
 			return nil, response.InternalServerError("Failed to process payment", err)
 		}
 	}
@@ -1569,10 +1623,10 @@ func (s *service) assignDriverToRide(ctx context.Context, rideID, userID, driver
 	rideDetails := map[string]interface{}{
 		"rideId":   rideID,
 		"driverId": driver.ID,
-		"userId":   driver.UserID, 
+		"userId":   driver.UserID,
 		"driver": map[string]interface{}{
 			"id":     driver.ID,
-			"userId": driver.UserID, 
+			"userId": driver.UserID,
 			"name":   driver.User.Name,
 			"phone":  driver.User.Phone,
 			"rating": driver.Rating,
@@ -1583,7 +1637,7 @@ func (s *service) assignDriverToRide(ctx context.Context, rideID, userID, driver
 			"color": driver.Vehicle.Color,
 			"plate": driver.Vehicle.LicensePlate,
 		},
-		"location": map[string]interface{}{ 
+		"location": map[string]interface{}{
 			"latitude":  driverLat,
 			"longitude": driverLon,
 		},
@@ -1736,11 +1790,11 @@ func (s *service) GetAvailableCars(ctx context.Context, riderID string, req dto.
 			CurrentLatitude:    driverLat,
 			CurrentLongitude:   driverLon,
 			Heading:            driver.Heading,
-			DistanceKm:         math.Round(distanceKm*10) / 10, 
+			DistanceKm:         math.Round(distanceKm*10) / 10,
 			ETASeconds:         etaSeconds,
 			ETAMinutes:         etaMinutes,
-			EstimatedFare:      math.Round(estimatedFare*100) / 100, 
-			SurgeMultiplier:    1.0,                                 
+			EstimatedFare:      math.Round(estimatedFare*100) / 100,
+			SurgeMultiplier:    1.0,
 			AcceptanceRate:     driver.AcceptanceRate,
 			CancellationRate:   driver.CancellationRate,
 			TotalTrips:         driver.TotalTrips,
@@ -2174,17 +2228,17 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 		driverPenalty = 0.0
 	case "accepted", "arrived":
 		if isRider {
-			riderCancellationFee = 2.0 
+			riderCancellationFee = 2.0
 		} else {
-			driverPenalty = 3.0 
+			driverPenalty = 3.0
 		}
 	case "started":
 		if isRider {
-			riderCancellationFee = 5.0 
-			driverPenalty = 0.0        
+			riderCancellationFee = 5.0
+			driverPenalty = 0.0
 		} else {
-			driverPenalty = 10.0       
-			riderCancellationFee = 0.0 
+			driverPenalty = 10.0
+			riderCancellationFee = 0.0
 		}
 	}
 
@@ -2386,7 +2440,7 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 		}
 
 		if driverProfile != nil && driverProfile.ID != "" {
-			driverProfileID = driverProfile.ID 
+			driverProfileID = driverProfile.ID
 
 			if err := s.driversRepo.UpdateDriverStatus(ctx, driverProfileID, "online"); err != nil {
 				logger.Warn("failed to update driver status", "error", err, "driverID", driverProfileID)
@@ -2540,16 +2594,5 @@ func (s *service) TriggerSOS(ctx context.Context, riderID, rideID string, latitu
 }
 
 func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
-	const earthRadius = 6371.0
-
-	dLat := (lat2 - lat1) * (3.14159265359 / 180.0)
-	dLon := (lon2 - lon1) * (3.14159265359 / 180.0)
-
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
-		math.Cos(lat1*(3.14159265359/180.0))*math.Cos(lat2*(3.14159265359/180.0))*
-			math.Sin(dLon/2)*math.Sin(dLon/2)
-
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-
-	return earthRadius * c
+	return location.HaversineDistance(lat1, lon1, lat2, lon2)
 }

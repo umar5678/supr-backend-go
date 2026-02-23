@@ -46,20 +46,17 @@ func (m *Matcher) MatchRequestsToDrivers(
 		driverScores := make([]driverMatchScore, 0)
 
 		for _, driver := range availableDrivers {
-			distance := calculateHaversineDistance(
-				driver.Distance, driver.Distance,
-				request.PickupLat, request.PickupLon,
-			)
+			distance := driver.Distance
 
 			var distanceBonus float64
 			if distance < 0.5 {
-				distanceBonus = 10.0 
+				distanceBonus = 10.0
 			} else if distance < 2.0 {
-				distanceBonus = 5.0 
+				distanceBonus = 5.0
 			} else if distance < 5.0 {
-				distanceBonus = 0 
+				distanceBonus = 0
 			} else {
-				distanceBonus = -5.0 
+				distanceBonus = -5.0
 			}
 
 			baseConfidence := driver.TotalScore / 100.0
@@ -142,10 +139,7 @@ func (m *Matcher) MatchSingleRequestToDriver(
 	}
 
 	for _, driver := range rankedDrivers {
-		distance := calculateHaversineDistance(
-			driver.Distance, driver.Distance,
-			request.PickupLat, request.PickupLon,
-		)
+		distance := driver.Distance
 
 		baseConfidence := driver.TotalScore / 100.0
 		var distanceBonus float64
@@ -205,6 +199,6 @@ func sortRequestsByComplexity(requests []dto.RideRequestInfo) []dto.RideRequestI
 
 type driverMatchScore struct {
 	Driver     dto.DriverRankingScore
-	Distance   float64 
-	Confidence float64 
+	Distance   float64
+	Confidence float64
 }
