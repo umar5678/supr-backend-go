@@ -107,7 +107,7 @@ func main() {
 		AOFSyncPolicy:       cfg.WebSocket.AOFSyncPolicy,
 	}
 
-	wsManager := websocket.NewManager(wsConfig)
+	wsManager := websocket.NewManager(wsConfig, db)
 	wsServer := websocket.NewServer(wsManager)
 
 	websocketutils.Initialize(wsManager)

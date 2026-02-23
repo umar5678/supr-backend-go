@@ -20,17 +20,17 @@ const (
 	TypeUserOffline MessageType = "user_offline"
 	TypePresence    MessageType = "presence"
 
-	TypeRideRequest          MessageType = "ride_request"           
-	TypeRideRequestAccepted  MessageType = "ride_request_accepted"  
-	TypeRideRequestRejected  MessageType = "ride_request_rejected"  
-	TypeRideStatusUpdate     MessageType = "ride_status_update"     
-	TypeRideDriverArriving   MessageType = "ride_driver_arriving"   
-	TypeRideDriverArrived    MessageType = "ride_driver_arrived"    
-	TypeRideStarted          MessageType = "ride_started"           
-	TypeRideCompleted        MessageType = "ride_completed"         
-	TypeRideCancelled        MessageType = "ride_cancelled"         
-	TypeDriverLocationUpdate MessageType = "driver_location_update" 
-	TypeRatingPrompt         MessageType = "rating_prompt"          
+	TypeRideRequest          MessageType = "ride_request"
+	TypeRideRequestAccepted  MessageType = "ride_request_accepted"
+	TypeRideRequestRejected  MessageType = "ride_request_rejected"
+	TypeRideStatusUpdate     MessageType = "ride_status_update"
+	TypeRideDriverArriving   MessageType = "ride_driver_arriving"
+	TypeRideDriverArrived    MessageType = "ride_driver_arrived"
+	TypeRideStarted          MessageType = "ride_started"
+	TypeRideCompleted        MessageType = "ride_completed"
+	TypeRideCancelled        MessageType = "ride_cancelled"
+	TypeDriverLocationUpdate MessageType = "driver_location_update"
+	TypeRatingPrompt         MessageType = "rating_prompt"
 
 	TypeSOSAlert     = "sos_alert"
 	TypeSOSResolved  = "sos_resolved"
@@ -42,17 +42,24 @@ const (
 	TypePong          MessageType = "pong"
 	TypeAck           MessageType = "ack"
 	TypeConnectionAck MessageType = "connection_ack"
+	// Reconnection message types
+	TypeReconnect      MessageType = "reconnect"
+	TypeReconnectAck   MessageType = "reconnect_ack"
+	TypeMessageSync    MessageType = "message_sync"
+	TypeMessageSyncAck MessageType = "message_sync_ack"
+	TypeSessionExpired MessageType = "session_expired"
+	TypeSyncComplete   MessageType = "sync_complete"
 )
 
 type Message struct {
 	Type         MessageType            `json:"type"`
-	TargetUserID string                 `json:"targetUserId,omitempty"` 
+	TargetUserID string                 `json:"targetUserId,omitempty"`
 	Data         map[string]interface{} `json:"data"`
 	Timestamp    time.Time              `json:"timestamp"`
 	RequestID    string                 `json:"requestId,omitempty"`
-	RequireAck bool   `json:"requireAck,omitempty"` 
-	RetryCount int    `json:"-"`                    
-	MessageID  string `json:"messageId,omitempty"`  
+	RequireAck   bool                   `json:"requireAck,omitempty"`
+	RetryCount   int                    `json:"-"`
+	MessageID    string                 `json:"messageId,omitempty"`
 }
 
 func NewMessage(msgType MessageType, data map[string]interface{}) *Message {
@@ -90,4 +97,36 @@ func NewAckMessage(requestID string, data map[string]interface{}) *Message {
 		Timestamp: time.Now().UTC(),
 		RequestID: requestID,
 	}
+}
+
+type StreamedMessage struct {
+	ID           string                 `json:"id"`
+	Type         MessageType            `json:"type"`
+	TargetUserID string                 `json:"targetUserId,omitempty"`
+	Data         map[string]interface{} `json:"data"`
+	Timestamp    time.Time              `json:"timestamp"`
+	RequestID    string                 `json:"requestId,omitempty"`
+	MessageID    string                 `json:"messageId,omitempty"`
+	Acknowledged []string               `json:"acknowledged,omitempty"`
+	Retried      int                    `json:"retried,omitempty"`
+}
+
+type ReconnectRequest struct {
+	SessionID     string `json:"sessionId"`     
+	LastMessageID string `json:"lastMessageId"` 
+}
+
+type ReconnectAck struct {
+	SessionID          string `json:"sessionId"`
+	ClientID           string `json:"clientId"`
+	ReconnectionCount  int    `json:"reconnectionCount"`
+	HasPendingMessages bool   `json:"hasPendingMessages"`
+	From               string `json:"from"`
+}
+
+type MessageSyncBatch struct {
+	Messages      []*StreamedMessage `json:"messages"`
+	BatchIndex    int                `json:"batchIndex"`
+	TotalBatches  int                `json:"totalBatches"`
+	LastMessageID string             `json:"lastMessageId"`
 }

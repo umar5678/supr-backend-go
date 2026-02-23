@@ -15,6 +15,13 @@ type MessageStore interface {
 	GetPending(ctx context.Context, userID string, limit int) ([]*Message, error)
 	MarkDelivered(ctx context.Context, userID string, messageIDs []string) error
 	DeleteOld(ctx context.Context, olderThan time.Duration) error
+
+	StoreMessage(ctx context.Context, userID string, msg *Message) (streamID string, err error)
+	GetMessagesSince(ctx context.Context, userID string, since time.Time) ([]*StreamedMessage, error)
+	GetMessagesAfterID(ctx context.Context, userID string, messageID string) ([]*StreamedMessage, error)
+	AcknowledgeMessage(ctx context.Context, sessionID string, streamMsgID string) error
+	GetMessageAcknowledgments(ctx context.Context, sessionID string) ([]string, error)
+	CleanupExpiredMessages(ctx context.Context) error
 }
 
 type NotificationStore interface {
@@ -153,4 +160,142 @@ func (s *RedisNotificationStore) MarkRead(ctx context.Context, userID string, no
 func (s *RedisNotificationStore) Clear(ctx context.Context, userID string) error {
 	key := fmt.Sprintf("notifications:pending:%s", userID)
 	return cache.MainClient.Del(ctx, key).Err()
+}
+
+const (
+	streamKeyPrefix  = "ws:stream:"
+	ackSetKeyPrefix  = "ws:acks:"
+	maxStreamEntries = 10000
+	streamRetention  = 24 * time.Hour
+)
+
+func (s *RedisMessageStore) StoreMessage(ctx context.Context, userID string, msg *Message) (string, error) {
+	if userID == "" {
+		return "", fmt.Errorf("userID required for message storage")
+	}
+
+	streamedMsg := &StreamedMessage{
+		Type:         msg.Type,
+		TargetUserID: msg.TargetUserID,
+		Data:         msg.Data,
+		Timestamp:    msg.Timestamp,
+		RequestID:    msg.RequestID,
+		MessageID:    msg.MessageID,
+		Acknowledged: []string{},
+	}
+
+	msgJSON, err := json.Marshal(streamedMsg)
+	if err != nil {
+		return "", err
+	}
+
+	key := streamKeyPrefix + userID
+	streamID := fmt.Sprintf("%d-%d", time.Now().UnixMilli(), 0)
+
+	if err := cache.MainClient.LPush(ctx, key, string(msgJSON)).Err(); err != nil {
+		return "", err
+	}
+
+	cache.MainClient.LTrim(ctx, key, 0, maxStreamEntries-1)
+	cache.MainClient.Expire(ctx, key, streamRetention)
+
+	return streamID, nil
+}
+
+func (s *RedisMessageStore) GetMessagesSince(ctx context.Context, userID string, since time.Time) ([]*StreamedMessage, error) {
+	key := streamKeyPrefix + userID
+
+	messages, err := cache.MainClient.LRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*StreamedMessage
+	for _, msgStr := range messages {
+		var msg StreamedMessage
+		if err := json.Unmarshal([]byte(msgStr), &msg); err != nil {
+			continue
+		}
+
+		if msg.Timestamp.After(since) {
+			result = append(result, &msg)
+		}
+	}
+
+	return result, nil
+}
+
+func (s *RedisMessageStore) GetMessagesAfterID(ctx context.Context, userID string, messageID string) ([]*StreamedMessage, error) {
+	key := streamKeyPrefix + userID
+
+	messages, err := cache.MainClient.LRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*StreamedMessage
+	found := false
+
+	for _, msgStr := range messages {
+		var msg StreamedMessage
+		if err := json.Unmarshal([]byte(msgStr), &msg); err != nil {
+			continue
+		}
+
+		if found {
+			result = append(result, &msg)
+		}
+
+		if msg.MessageID == messageID {
+			found = true
+		}
+	}
+
+	return result, nil
+}
+
+func (s *RedisMessageStore) AcknowledgeMessage(ctx context.Context, sessionID string, streamMsgID string) error {
+	key := ackSetKeyPrefix + sessionID
+
+	if err := cache.MainClient.SAdd(ctx, key, streamMsgID).Err(); err != nil {
+		return err
+	}
+
+	cache.MainClient.Expire(ctx, key, 24*time.Hour)
+	return nil
+}
+
+func (s *RedisMessageStore) GetMessageAcknowledgments(ctx context.Context, sessionID string) ([]string, error) {
+	key := ackSetKeyPrefix + sessionID
+
+	return cache.MainClient.SMembers(ctx, key).Result()
+}
+
+func (s *RedisMessageStore) CleanupExpiredMessages(ctx context.Context) error {
+	return nil
+}
+
+type ReliableMessageQueue struct {
+	messageStore MessageStore
+	retryCount   int
+	retryDelay   time.Duration
+}
+
+func NewReliableMessageQueue(messageStore MessageStore) *ReliableMessageQueue {
+	return &ReliableMessageQueue{
+		messageStore: messageStore,
+		retryCount:   3,
+		retryDelay:   5 * time.Second,
+	}
+}
+
+func (rmq *ReliableMessageQueue) SendAndStoreMessage(ctx context.Context, client *Client, msg *Message) error {
+	streamID, err := rmq.messageStore.StoreMessage(ctx, client.UserID, msg)
+	if err != nil {
+		return err
+	}
+
+	msg.MessageID = streamID
+
+	return client.SendMessage(msg)
 }

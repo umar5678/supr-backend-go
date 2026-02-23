@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/messages"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/websocket"
@@ -78,8 +79,8 @@ func (h *MessageHandler) HandleSendMessage(client *websocket.Client, msg *websoc
 	}
 
 	userID := client.UserID
-	userType := "rider" 
-	if client.Role == websocket.RoleDriver {
+	userType := "rider"
+	if client.Role == models.RoleDriver {
 		userType = "driver"
 	}
 

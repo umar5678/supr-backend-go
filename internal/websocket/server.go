@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -38,12 +39,47 @@ func (s *Server) HandleConnection() gin.HandlerFunc {
 
 		userIDStr := userID.(string)
 
+		var userRole models.UserRole
+		if roleVal, exists := c.Get("role"); exists {
+			if roleStr, ok := roleVal.(string); ok {
+				userRole = models.UserRole(roleStr)
+			}
+		}
+
+		if userRole == "" {
+			logger.Warn("websocket connection with missing role", "userID", userIDStr)
+			c.JSON(http.StatusBadRequest, response.BadRequest("User role not found"))
+			return
+		}
+
 		logger.Info("Incoming WebSocket Connection Request",
 			"userID", userIDStr,
+			"role", userRole,
 			"ip", c.ClientIP(),
 		)
 
 		reconnectToken := c.Query("reconnect_token")
+		var isReconnect bool
+		var previousSession *SessionState
+
+		if reconnectToken != "" {
+			session, err := s.manager.sessionManager.GetSession(reconnectToken)
+			if err == nil && session.UserID == userIDStr {
+				isReconnect = true
+				previousSession = session
+				logger.Info("Reconnection attempt detected",
+					"userID", userIDStr,
+					"sessionId", reconnectToken,
+					"reconnectionCount", session.ReconnectionCount,
+				)
+			} else {
+				logger.Warn("Reconnect token invalid or expired",
+					"userID", userIDStr,
+					"token", reconnectToken,
+					"error", err,
+				)
+			}
+		}
 
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -51,19 +87,40 @@ func (s *Server) HandleConnection() gin.HandlerFunc {
 			return
 		}
 
-		client := NewClient(s.manager.hub, conn, userIDStr, c.Request.UserAgent())
+		client := NewClient(s.manager.hub, conn, userIDStr, c.Request.UserAgent(), userRole)
 		client.manager = s.manager
-		client.reconnectToken = reconnectToken
 
 		s.manager.hub.register <- client
 
-		welcomeMsg := NewMessage(TypeSystemMessage, map[string]interface{}{
-			"message":        "Connected successfully",
-			"clientId":       client.ID,
-			"reconnectToken": client.GenerateReconnectToken(),
-			"serverTime":     time.Now().UTC(),
-		})
-		client.send <- welcomeMsg
+		if isReconnect && previousSession != nil {
+			logger.Info("Processing reconnection",
+				"sessionId", reconnectToken,
+				"userId", userIDStr,
+				"clientId", client.ID,
+			)
+
+			clientLifecycle := NewClientLifecycle(s.manager.sessionManager, s.manager.messageStore)
+			if err := clientLifecycle.OnClientReconnect(client, reconnectToken); err != nil {
+				logger.Error("failed to restore session on reconnect", "error", err)
+
+				errorMsg := NewMessage(TypeError, map[string]interface{}{
+					"error": "Failed to restore session",
+				})
+				client.send <- errorMsg
+			} else {
+				if err := s.manager.reconnectionHandler.SyncMessageHistory(client, previousSession.LastMessageID); err != nil {
+					logger.Error("failed to sync message history", "error", err)
+				}
+			}
+		} else {
+			welcomeMsg := NewMessage(TypeSystemMessage, map[string]interface{}{
+				"message":        "Connected successfully",
+				"clientId":       client.ID,
+				"reconnectToken": client.GenerateReconnectToken(),
+				"serverTime":     time.Now().UTC(),
+			})
+			client.send <- welcomeMsg
+		}
 
 		go s.deliverOfflineMessages(client)
 
@@ -73,6 +130,7 @@ func (s *Server) HandleConnection() gin.HandlerFunc {
 		logger.Info("websocket connection established",
 			"userID", userIDStr,
 			"clientID", client.ID,
+			"isReconnect", isReconnect,
 			"userAgent", c.Request.UserAgent(),
 		)
 	}

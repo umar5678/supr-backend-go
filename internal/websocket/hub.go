@@ -6,20 +6,23 @@ import (
 	"sync"
 	"time"
 
+	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
 type Hub struct {
-	clients map[string][]*Client
-	drivers map[string][]*Client
-	riders map[string][]*Client
+	clients           map[string][]*Client
+	drivers           map[string][]*Client
+	riders            map[string][]*Client
 	adminClients      []*Client
 	safetyTeamClients []*Client
-	mu sync.RWMutex
-	register chan *Client
-	unregister chan *Client
-	broadcast chan *Message
+	clientLifecycle   *ClientLifecycle
+	sessionManager    *SessionManager
+	mu                sync.RWMutex
+	register          chan *Client
+	unregister        chan *Client
+	broadcast         chan *Message
 }
 
 func NewHub() *Hub {
@@ -33,6 +36,14 @@ func NewHub() *Hub {
 		unregister:        make(chan *Client),
 		broadcast:         make(chan *Message, 256),
 	}
+}
+
+func (h *Hub) SetClientLifecycle(lifecycle *ClientLifecycle) {
+	h.clientLifecycle = lifecycle
+}
+
+func (h *Hub) SetSessionManager(sessionManager *SessionManager) {
+	h.sessionManager = sessionManager
 }
 
 func (h *Hub) Run(ctx context.Context) {
@@ -85,19 +96,26 @@ func (h *Hub) Run(ctx context.Context) {
 }
 
 func (h *Hub) registerClient(client *Client) {
+
+	if h.clientLifecycle != nil {
+		if err := h.clientLifecycle.OnClientConnect(client); err != nil {
+			logger.Error("client lifecycle handler failed on connect", "error", err, "userId", client.UserID)
+		}
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	h.clients[client.UserID] = append(h.clients[client.UserID], client)
 	switch client.Role {
-	case RoleDriver:
+	case models.RoleDriver:
 		h.drivers[client.UserID] = append(h.drivers[client.UserID], client)
 		logger.Info("driver registered",
 			"driverID", client.UserID,
 			"clientID", client.ID,
 			"totalDrivers", len(h.drivers),
 		)
-	case RoleRider:
+	case models.RoleRider:
 		h.riders[client.UserID] = append(h.riders[client.UserID], client)
 		logger.Info("rider registered",
 			"riderID", client.UserID,
@@ -187,6 +205,10 @@ func (h *Hub) getTotalConnectionsUnsafe() int {
 }
 
 func (h *Hub) unregisterClient(client *Client) {
+	if h.clientLifecycle != nil {
+		h.clientLifecycle.OnClientDisconnect(client)
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -212,9 +234,9 @@ func (h *Hub) unregisterClient(client *Client) {
 		}
 
 		switch client.Role {
-		case RoleDriver:
+		case models.RoleDriver:
 			h.removeFromRoleMap(h.drivers, client)
-		case RoleRider:
+		case models.RoleRider:
 			h.removeFromRoleMap(h.riders, client)
 		}
 
@@ -621,14 +643,14 @@ func (h *Hub) BroadcastToRole(role string, msg *Message) {
 	var targetClients []*Client
 
 	switch role {
-	case string(RoleAdmin):
+	case string(models.RoleAdmin):
 		targetClients = h.adminClients
-	case string(RoleDriver):
+	case string(models.RoleDriver):
 
 		for _, clients := range h.drivers {
 			targetClients = append(targetClients, clients...)
 		}
-	case string(RoleRider):
+	case string(models.RoleRider):
 
 		for _, clients := range h.riders {
 			targetClients = append(targetClients, clients...)

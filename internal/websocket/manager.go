@@ -9,18 +9,23 @@ import (
 
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/logger"
+	"gorm.io/gorm"
 )
 
 type Manager struct {
-	hub               *Hub
-	config            *Config
-	eventHandlers     map[MessageType]EventHandler
-	handlersMutex     sync.RWMutex
-	messageStore      MessageStore
-	notificationStore NotificationStore
-	ctx               context.Context
-	cancel            context.CancelFunc
-	wg                sync.WaitGroup
+	hub                  *Hub
+	config               *Config
+	eventHandlers        map[MessageType]EventHandler
+	handlersMutex        sync.RWMutex
+	messageStore         MessageStore
+	notificationStore    NotificationStore
+	sessionManager       *SessionManager
+	reconnectionHandler  *ReconnectionHandler
+	reliableMessageQueue *ReliableMessageQueue
+	connectionMonitor    *ConnectionMonitor
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	wg                   sync.WaitGroup
 }
 
 type Config struct {
@@ -40,7 +45,7 @@ type Config struct {
 
 type EventHandler func(client *Client, msg *Message) error
 
-func NewManager(cfg *Config) *Manager {
+func NewManager(cfg *Config, db *gorm.DB) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	m := &Manager{
@@ -55,6 +60,24 @@ func NewManager(cfg *Config) *Manager {
 		m.messageStore = NewRedisMessageStore()
 		m.notificationStore = NewRedisNotificationStore()
 	}
+
+	m.sessionManager = NewSessionManager(ctx)
+
+	// Initialize connection monitor with database for role validation
+	m.connectionMonitor = NewConnectionMonitorWithDB(
+		cfg.HeartbeatInterval,
+		cfg.ConnectionTimeout,
+		15*time.Minute,
+		db,
+	)
+
+	// Initialize reconnection handler with connection monitor for role validation
+	m.reconnectionHandler = NewReconnectionHandler(m.sessionManager, m.messageStore, m.connectionMonitor)
+	m.reliableMessageQueue = NewReliableMessageQueue(m.messageStore)
+
+	clientLifecycle := NewClientLifecycle(m.sessionManager, m.messageStore)
+	m.hub.SetClientLifecycle(clientLifecycle)
+	m.hub.SetSessionManager(m.sessionManager)
 
 	m.registerDefaultHandlers()
 
@@ -136,11 +159,18 @@ func (m *Manager) Hub() *Hub {
 	return m.hub
 }
 
+func (m *Manager) GetConnectionMonitor() *ConnectionMonitor {
+	return m.connectionMonitor
+}
+
 func (m *Manager) registerDefaultHandlers() {
 	m.RegisterHandler(TypePing, m.handlePing)
 	m.RegisterHandler(TypeTyping, m.handleTyping)
 	m.RegisterHandler(TypeReadReceipt, m.handleReadReceipt)
 	m.RegisterHandler(TypePresence, m.handlePresenceRequest)
+	// Reconnection handlers
+	m.RegisterHandler(TypeReconnect, m.handleReconnect)
+	m.RegisterHandler(TypeMessageSyncAck, m.handleSyncAck)
 }
 
 func (m *Manager) handlePing(client *Client, msg *Message) error {
@@ -212,6 +242,37 @@ func (m *Manager) handlePresenceRequest(client *Client, msg *Message) error {
 	return nil
 }
 
+func (m *Manager) handleReconnect(client *Client, msg *Message) error {
+	if msg.Data == nil {
+		msg.Data = make(map[string]interface{})
+	}
+
+	return m.reconnectionHandler.HandleReconnectMessage(client, msg)
+}
+
+func (m *Manager) handleSyncAck(client *Client, msg *Message) error {
+	if msg.Data == nil {
+		msg.Data = make(map[string]interface{})
+	}
+
+	return m.reconnectionHandler.HandleSyncAck(client, msg.Data)
+}
+
+// SessionManager returns the session manager for integration with other services
+func (m *Manager) SessionManager() *SessionManager {
+	return m.sessionManager
+}
+
+// MessageStore returns the message store for accessing persisted messages
+func (m *Manager) MessageStore() MessageStore {
+	return m.messageStore
+}
+
+// ReliableMessageQueue returns the reliable message queue for sending critical messages
+func (m *Manager) ReliableMessageQueue() *ReliableMessageQueue {
+	return m.reliableMessageQueue
+}
+
 func (m *Manager) collectMetrics() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -278,7 +339,6 @@ func (m *Manager) SendNotification(userID string, notification interface{}) erro
 // rdbSnapshotManager performs periodic RDB-style snapshots of WebSocket state
 // This is inspired by Redis RDB persistence - point-in-time snapshots at intervals
 func (m *Manager) rdbSnapshotManager() {
-	// Validate RDBSnapshotInterval to prevent non-positive duration panic
 	snapshotInterval := m.config.RDBSnapshotInterval
 	if snapshotInterval <= 0 {
 		logger.Warn("invalid RDBSnapshotInterval, using default", "interval", snapshotInterval)
@@ -464,7 +524,6 @@ func (m *Manager) RecoverFromSnapshot() error {
 }
 
 func (m *Manager) monitorHeartbeats() {
-	// Validate HeartbeatInterval to prevent non-positive duration panic
 	heartbeatInterval := m.config.HeartbeatInterval
 	if heartbeatInterval <= 0 {
 		logger.Warn("invalid HeartbeatInterval, using default", "interval", heartbeatInterval)

@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"sync"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
@@ -18,19 +20,11 @@ const (
 	maxMessageSize = 512 * 1024
 )
 
-type UserRole string
-
-const (
-	RoleDriver UserRole = "driver"
-	RoleRider  UserRole = "rider"
-	RoleAdmin  UserRole = "admin"
-)
-
 type Client struct {
 	ID             string
 	UserID         string
 	UserAgent      string
-	Role           UserRole
+	Role           models.UserRole
 	hub            *Hub
 	manager        *Manager
 	conn           *websocket.Conn
@@ -38,20 +32,27 @@ type Client struct {
 	reconnectToken string
 	lastHeartbeat  time.Time
 	connectedAt    time.Time
+	ctx            context.Context
+	cancel         context.CancelFunc
 	mu             sync.RWMutex
-	pendingAcks map[string]*Message
+	pendingAcks    map[string]*Message
 }
 
-func NewClient(hub *Hub, conn *websocket.Conn, userID, userAgent string) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, userID, userAgent string, role models.UserRole) *Client {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Client{
 		ID:            uuid.New().String(),
 		UserID:        userID,
 		UserAgent:     userAgent,
+		Role:          role,
 		hub:           hub,
 		conn:          conn,
 		send:          make(chan *Message, 256),
 		lastHeartbeat: time.Now(),
 		connectedAt:   time.Now(),
+		ctx:           ctx,
+		cancel:        cancel,
+		pendingAcks:   make(map[string]*Message),
 	}
 }
 
@@ -223,7 +224,7 @@ func (c *Client) handleIncomingMessage(msg *Message) {
 }
 
 func (c *Client) handleDriverLocation(msg *Message) {
-	if c.Role != RoleDriver {
+	if c.Role != models.RoleDriver {
 		c.SendError("Only drivers can send location updates", msg.RequestID)
 		return
 	}
@@ -330,6 +331,21 @@ func (c *Client) SendError(errMsg, requestID string) error {
 func (c *Client) SendAck(requestID string, data map[string]interface{}) error {
 	c.send <- NewAckMessage(requestID, data)
 	return nil
+}
+
+func (c *Client) SendMessage(msg *Message) error {
+	select {
+	case c.send <- msg:
+		return nil
+	case <-c.ctx.Done():
+		return c.ctx.Err()
+	default:
+		logger.Warn("client send channel full",
+			"userId", c.UserID,
+			"clientId", c.ID,
+		)
+		return nil // Don't error, just warn
+	}
 }
 
 func (c *Client) GenerateReconnectToken() string {
