@@ -1,4 +1,3 @@
-// internal/websocket/client.go - ENHANCED VERSION
 package websocket
 
 import (

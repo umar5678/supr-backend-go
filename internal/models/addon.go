@@ -8,7 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Addon represents an add-on service that can be purchased with a main service
 type Addon struct {
 	ID                 string         `gorm:"type:uuid;primaryKey" json:"id"`
 	Title              string         `gorm:"type:varchar(255);not null" json:"title"`
@@ -28,7 +27,6 @@ type Addon struct {
 	DeletedAt          gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-// BeforeCreate hook to generate UUID
 func (a *Addon) BeforeCreate(tx *gorm.DB) error {
 	if a.ID == "" {
 		a.ID = uuid.New().String()
@@ -36,22 +34,18 @@ func (a *Addon) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// TableName specifies the table name
 func (Addon) TableName() string {
 	return "addons"
 }
 
-// IsPublished checks if addon is visible to customers
 func (a *Addon) IsPublished() bool {
 	return a.IsActive && a.IsAvailable && a.DeletedAt.Time.IsZero()
 }
 
-// HasDiscount checks if addon has a discount
 func (a *Addon) HasDiscount() bool {
 	return a.StrikethroughPrice != nil && *a.StrikethroughPrice > a.Price
 }
 
-// DiscountPercentage calculates the discount percentage
 func (a *Addon) DiscountPercentage() float64 {
 	if !a.HasDiscount() {
 		return 0

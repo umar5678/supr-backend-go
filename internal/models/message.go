@@ -11,7 +11,6 @@ const (
 	MessageTypeSystem   MessageType = "system"
 )
 
-// WebSocket message event types
 const (
 	MessageEventNew      = "message:new"
 	MessageEventRead     = "message:read"
@@ -25,7 +24,7 @@ type RideMessage struct {
 	ID          string                 `json:"id" gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
 	RideID      string                 `json:"rideId" gorm:"type:uuid;index"`
 	SenderID    string                 `json:"senderId" gorm:"type:uuid;index"`
-	SenderType  string                 `json:"senderType"` // "rider" or "driver"
+	SenderType  string                 `json:"senderType"` 
 	MessageType MessageType            `json:"messageType"`
 	Content     string                 `json:"content"`
 	Metadata    map[string]interface{} `json:"metadata" gorm:"type:jsonb"`
@@ -35,11 +34,9 @@ type RideMessage struct {
 	UpdatedAt   time.Time              `json:"updatedAt"`
 	DeletedAt   *time.Time             `json:"-" gorm:"index"`
 
-	// Relations
 	Ride *Ride `json:"-" gorm:"foreignKey:RideID"`
 }
 
-// MessageResponse DTO
 type MessageResponse struct {
 	ID          string                 `json:"id"`
 	RideID      string                 `json:"rideId"`
@@ -54,9 +51,8 @@ type MessageResponse struct {
 	CreatedAt   time.Time              `json:"createdAt"`
 }
 
-// WebSocket message event
 type WSMessageEvent struct {
-	Type     string      `json:"type"` // "message", "typing", "read", "status"
+	Type     string      `json:"type"` 
 	RideID   string      `json:"rideId"`
 	SenderID string      `json:"senderId"`
 	Data     interface{} `json:"data"`

@@ -1,4 +1,3 @@
-// internal/services/websocket/service.go
 package websocketservice
 
 import (

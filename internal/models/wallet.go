@@ -4,17 +4,15 @@ import (
 	"time"
 )
 
-// WalletType represents the type of wallet
 type WalletType string
 
 const (
 	WalletTypeRider           WalletType = "rider"
 	WalletTypeDriver          WalletType = "driver"
 	WalletTypePlatform        WalletType = "platform"
-	WalletTypeServiceProvider WalletType = "service_provider" // ✅ For handyman, delivery_person, service_provider
+	WalletTypeServiceProvider WalletType = "service_provider"
 )
 
-// TransactionType represents the type of transaction
 type TransactionType string
 
 const (
@@ -26,7 +24,6 @@ const (
 	TransactionTypeTransfer TransactionType = "transfer"
 )
 
-// TransactionStatus represents the status of a transaction
 type TransactionStatus string
 
 const (
@@ -38,7 +35,6 @@ const (
 	TransactionStatusReleased  TransactionStatus = "released"
 )
 
-// Wallet model
 type Wallet struct {
 	ID              string     `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	UserID          string     `gorm:"type:uuid;not null;index" json:"userId"`
@@ -51,7 +47,6 @@ type Wallet struct {
 	UpdatedAt       time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`
 	FreeRideCredits float64    `gorm:"type:decimal(12,2);not null;default:0.00" json:"freeRideCredits"`
 
-	// Relations
 	User         User                `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Transactions []WalletTransaction `gorm:"foreignKey:WalletID" json:"transactions,omitempty"`
 	Holds        []WalletHold        `gorm:"foreignKey:WalletID" json:"holds,omitempty"`
@@ -61,12 +56,10 @@ func (Wallet) TableName() string {
 	return "wallets"
 }
 
-// GetAvailableBalance returns balance minus held balance
 func (w *Wallet) GetAvailableBalance() float64 {
 	return w.Balance - w.HeldBalance
 }
 
-// WalletTransaction model
 type WalletTransaction struct {
 	ID            string                 `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	WalletID      string                 `gorm:"type:uuid;not null;index" json:"walletId"`
@@ -83,7 +76,6 @@ type WalletTransaction struct {
 	ProcessedAt   *time.Time             `json:"processedAt,omitempty"`
 	CreatedAt     time.Time              `gorm:"autoCreateTime" json:"createdAt"`
 
-	// Relations
 	Wallet Wallet `gorm:"foreignKey:WalletID" json:"wallet,omitempty"`
 }
 
@@ -91,7 +83,6 @@ func (WalletTransaction) TableName() string {
 	return "wallet_transactions"
 }
 
-// WalletHold model
 type WalletHold struct {
 	ID            string            `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	WalletID      string            `gorm:"type:uuid;not null;index" json:"walletId"`
@@ -103,7 +94,6 @@ type WalletHold struct {
 	ReleasedAt    *time.Time        `json:"releasedAt,omitempty"`
 	CreatedAt     time.Time         `gorm:"autoCreateTime" json:"createdAt"`
 
-	// Relations
 	Wallet Wallet `gorm:"foreignKey:WalletID" json:"wallet,omitempty"`
 }
 

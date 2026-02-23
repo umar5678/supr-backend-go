@@ -156,13 +156,10 @@ func (s *locationService) CalculateRoute(ctx context.Context, startLat, startLng
 
 func (s *locationService) CalculateETA(ctx context.Context, driverLat, driverLng, destLat, destLng float64) (int, error) {
 	distanceKm := location.HaversineDistance(driverLat, driverLng, destLat, destLng)
-	// Convert km/h to m/s: 13.8889 m/s ≈ 50 km/h average speed
 	eta := int((distanceKm / 13.8889) * 3600)
 	return eta, nil
 }
 
 func calculateHaversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
-	// DEPRECATED: Use location.HaversineDistance instead
-	// This function returns km, not meters
 	return location.HaversineDistance(lat1, lon1, lat2, lon2)
 }

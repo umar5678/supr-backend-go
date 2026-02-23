@@ -6,7 +6,6 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
-// Helper to check if role matches any of the allowed roles
 func hasRole(userRole string, allowedRoles []string) bool {
 	for _, role := range allowedRoles {
 		if userRole == role {
@@ -16,12 +15,10 @@ func hasRole(userRole string, allowedRoles []string) bool {
 	return false
 }
 
-// RequireAdmin ensures user is admin
 func RequireAdmin() gin.HandlerFunc {
 	return RequireRole(string(models.RoleAdmin))
 }
 
-// RequireServiceProvider ensures user is any type of service provider
 func RequireServiceProvider() gin.HandlerFunc {
 	return RequireRole(
 		string(models.RoleServiceProvider),
@@ -30,17 +27,14 @@ func RequireServiceProvider() gin.HandlerFunc {
 	)
 }
 
-// RequireRider ensures user is a rider
 func RequireRider() gin.HandlerFunc {
 	return RequireRole(string(models.RoleRider))
 }
 
-// RequireDriver ensures user is a driver
 func RequireDriver() gin.HandlerFunc {
 	return RequireRole(string(models.RoleDriver))
 }
 
-// RequireRiderOrDriver for ride-related endpoints
 func RequireRiderOrDriver() gin.HandlerFunc {
 	return RequireRole(
 		string(models.RoleRider),
@@ -48,7 +42,6 @@ func RequireRiderOrDriver() gin.HandlerFunc {
 	)
 }
 
-// RequireAdminOrSelf allows access if user is admin OR accessing their own resource
 func RequireAdminOrSelf() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("userRole")
@@ -65,13 +58,11 @@ func RequireAdminOrSelf() gin.HandlerFunc {
 			return
 		}
 
-		// Allow if admin
 		if roleStr == string(models.RoleAdmin) {
 			c.Next()
 			return
 		}
 
-		// Allow if accessing own resource
 		userID, _ := c.Get("userID")
 		resourceUserID := c.Param("id")
 		if resourceUserID == "" {
@@ -88,7 +79,6 @@ func RequireAdminOrSelf() gin.HandlerFunc {
 	}
 }
 
-// RequireServiceProviderOrAdmin allows service providers to access their own resources, admins access all
 func RequireServiceProviderOrAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("userRole")
@@ -105,13 +95,11 @@ func RequireServiceProviderOrAdmin() gin.HandlerFunc {
 			return
 		}
 
-		// Allow if admin
 		if roleStr == string(models.RoleAdmin) {
 			c.Next()
 			return
 		}
 
-		// Allow if any service provider role
 		serviceProviderRoles := []string{
 			string(models.RoleServiceProvider),
 			string(models.RoleHandyman),

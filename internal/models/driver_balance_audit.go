@@ -2,7 +2,6 @@ package models
 
 import "time"
 
-// DriverBalanceAudit tracks all driver wallet balance changes
 type DriverBalanceAudit struct {
 	ID                   string    `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	DriverID             string    `gorm:"type:uuid;not null;index" json:"driverId"`
@@ -15,7 +14,6 @@ type DriverBalanceAudit struct {
 	TriggeredRestriction bool      `gorm:"default:false;index" json:"triggeredRestriction"` // Whether this action triggered account restriction
 	CreatedAt            time.Time `gorm:"autoCreateTime;index" json:"createdAt"`
 
-	// Relations
 	DriverProfile DriverProfile `gorm:"foreignKey:DriverID" json:"driverProfile,omitempty"`
 	User          User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }

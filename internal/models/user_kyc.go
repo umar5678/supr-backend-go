@@ -9,11 +9,11 @@ type UserKYC struct {
     ID              string         `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
     UserID          string         `gorm:"type:uuid;not null;uniqueIndex" json:"userId"`
     User            User           `gorm:"foreignKey:UserID" json:"user,omitempty"`
-    IDType          string         `gorm:"type:varchar(50)" json:"idType"` // 'national_id', 'passport', 'driver_license'
+    IDType          string         `gorm:"type:varchar(50)" json:"idType"` 
     IDNumber        string         `gorm:"type:varchar(100)" json:"idNumber"`
     IDDocumentURL   string         `gorm:"type:varchar(500)" json:"idDocumentUrl"`
     SelfieURL       string         `gorm:"type:varchar(500)" json:"selfieUrl"`
-    Status          string         `gorm:"type:varchar(50);default:'pending'" json:"status"` // 'pending', 'approved', 'rejected'
+    Status          string         `gorm:"type:varchar(50);default:'pending'" json:"status"`
     RejectionReason string         `gorm:"type:text" json:"rejectionReason,omitempty"`
     VerifiedAt      *time.Time     `json:"verifiedAt,omitempty"`
     CreatedAt       time.Time      `gorm:"autoCreateTime" json:"createdAt"`

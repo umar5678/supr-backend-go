@@ -1,4 +1,3 @@
-// internal/models/promo_code_usage.go
 package models
 
 import (

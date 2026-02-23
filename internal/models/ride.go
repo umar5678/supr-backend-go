@@ -11,9 +11,8 @@ type Ride struct {
 	RiderID       string  `gorm:"type:uuid;not null;index" json:"riderId"`
 	DriverID      *string `gorm:"type:uuid;index" json:"driverId"`
 	VehicleTypeID string  `gorm:"type:uuid;not null" json:"vehicleTypeId"`
-	Status        string  `gorm:"type:varchar(50);not null;index" json:"status"` // searching, accepted, arrived, started, completed, cancelled
+	Status        string  `gorm:"type:varchar(50);not null;index" json:"status"`
 
-	// Locations
 	PickupLocation string  `gorm:"type:geometry(Point,4326);not null" json:"pickupLocation"`
 	PickupLat      float64 `gorm:"type:decimal(10,8);not null" json:"pickupLat"`
 	PickupLon      float64 `gorm:"type:decimal(11,8);not null" json:"pickupLon"`
@@ -24,17 +23,14 @@ type Ride struct {
 	DropoffLon      float64 `gorm:"type:decimal(11,8);not null" json:"dropoffLon"`
 	DropoffAddress  string  `gorm:"type:text" json:"dropoffAddress"`
 
-	// Estimates
-	EstimatedDistance float64 `gorm:"type:decimal(10,2)" json:"estimatedDistance"` // km
-	EstimatedDuration int     `json:"estimatedDuration"`                           // seconds
+	EstimatedDistance float64 `gorm:"type:decimal(10,2)" json:"estimatedDistance"` 
+	EstimatedDuration int     `json:"estimatedDuration"`                           
 	EstimatedFare     float64 `gorm:"type:decimal(10,2)" json:"estimatedFare"`
 
-	// Actuals
-	ActualDistance *float64 `gorm:"type:decimal(10,2)" json:"actualDistance"` // km
-	ActualDuration *int     `json:"actualDuration"`                           // seconds
+	ActualDistance *float64 `gorm:"type:decimal(10,2)" json:"actualDistance"`
+	ActualDuration *int     `json:"actualDuration"`                          
 	ActualFare     *float64 `gorm:"type:decimal(10,2)" json:"actualFare"`
 
-	// Pricing
 	SurgeMultiplier         float64  `gorm:"type:decimal(3,2);default:1.0" json:"surgeMultiplier"`
 	WaitTimeCharge          *float64 `gorm:"type:decimal(10,2)" json:"waitTimeCharge"`
 	PromoDiscount           *float64 `gorm:"type:decimal(10,2)" json:"promoDiscount"`
@@ -42,24 +38,19 @@ type Ride struct {
 	PromoCode               *string  `gorm:"type:varchar(50)" json:"promoCode"`
 	DestinationChangeCharge *float64 `gorm:"type:decimal(10,2)" json:"destinationChangeCharge"`
 
-	// Driver and Rider Fares - Both see same amount (with promo discount applied if used)
-	DriverFare *float64 `gorm:"type:decimal(10,2)" json:"driverFare"` // What driver earns (with discount if applicable)
-	RiderFare  *float64 `gorm:"type:decimal(10,2)" json:"riderFare"`  // What rider pays (with discount if applicable)
+	DriverFare *float64 `gorm:"type:decimal(10,2)" json:"driverFare"` 
+	RiderFare  *float64 `gorm:"type:decimal(10,2)" json:"riderFare"`  
 
-	// Rating
 	DriverRating *float64 `gorm:"type:decimal(2,1)" json:"driverRating"`
 	RiderRating  *float64 `gorm:"type:decimal(2,1)" json:"riderRating"`
 
-	// Wallet
 	WalletHoldID *string `gorm:"type:uuid" json:"walletHoldId"`
 
-	// Notes
 	RiderNotes         string  `gorm:"type:text" json:"riderNotes"`
 	CancellationReason string  `gorm:"type:text" json:"cancellationReason"`
-	CancelledBy        *string `gorm:"type:varchar(50)" json:"cancelledBy"` // rider, driver, system
+	CancelledBy        *string `gorm:"type:varchar(50)" json:"cancelledBy"` 
 	IsScheduled        bool    `gorm:"default:false" json:"isScheduled"`
 
-	// Timestamps
 	ScheduledAt *time.Time `json:"scheduledAt"`
 	RequestedAt time.Time  `gorm:"not null" json:"requestedAt"`
 	AcceptedAt  *time.Time `json:"acceptedAt"`
@@ -72,7 +63,6 @@ type Ride struct {
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	// Relations
 	Rider         User           `gorm:"foreignKey:RiderID" json:"rider,omitempty"`
 	Driver        *User          `gorm:"foreignKey:DriverID" json:"driver,omitempty"`
 	DriverProfile *DriverProfile `gorm:"foreignKey:UserID;references:DriverID" json:"driverProfile,omitempty"`
@@ -83,12 +73,11 @@ func (Ride) TableName() string {
 	return "rides"
 }
 
-// Add to ride.go models
 type RideRequest struct {
 	ID              string     `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	RideID          string     `gorm:"type:uuid;not null;index" json:"rideId"`
 	DriverID        string     `gorm:"type:uuid;not null;index" json:"driverId"`
-	Status          string     `gorm:"type:varchar(50);not null" json:"status"` // pending, accepted, rejected, expired, cancelled
+	Status          string     `gorm:"type:varchar(50);not null" json:"status"`
 	SentAt          time.Time  `gorm:"not null" json:"sentAt"`
 	RespondedAt     *time.Time `json:"respondedAt,omitempty"`
 	ExpiresAt       time.Time  `gorm:"not null;index" json:"expiresAt"`
@@ -96,7 +85,6 @@ type RideRequest struct {
 	CreatedAt       time.Time  `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt       time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`
 
-	// Relations
 	Ride   Ride          `gorm:"foreignKey:RideID" json:"ride,omitempty"`
 	Driver DriverProfile `gorm:"foreignKey:DriverID" json:"driver,omitempty"`
 }

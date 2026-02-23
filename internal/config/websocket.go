@@ -1,9 +1,7 @@
-// internal/config/websocket.go
 package config
 
 import "time"
 
-// WebSocketConfig holds WebSocket-specific configuration
 type WebSocketConfig struct {
 	Enabled             bool          `mapstructure:"WEBSOCKET_ENABLED"`
 	ReadBufferSize      int           `mapstructure:"WEBSOCKET_READ_BUFFER_SIZE"`
@@ -23,7 +21,6 @@ type WebSocketConfig struct {
 	AOFSyncPolicy       string        `mapstructure:"WEBSOCKET_AOF_SYNC_POLICY"`       // "always", "everysec", or "no"
 }
 
-// DefaultWebSocketConfig returns default WebSocket configuration
 func DefaultWebSocketConfig() WebSocketConfig {
 	return WebSocketConfig{
 		Enabled:             true,

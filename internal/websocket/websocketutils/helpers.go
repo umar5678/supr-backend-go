@@ -1,4 +1,3 @@
-// internal/websocket/websocketutils/helpers.go
 package websocketutils
 
 import (

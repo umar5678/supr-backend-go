@@ -18,12 +18,8 @@ func ConnectPostgres(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name, cfg.SSLMode,
 	)
 
-	// Configure GORM logger
 	gormLogger := gormlogger.Default.LogMode(gormlogger.Silent)
 
-	// if cfg.LogQueries  {
-	// 	gormLogger = gormlogger.Default.LogMode(gormlogger.Info)
-	// }
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: gormLogger,
@@ -40,12 +36,10 @@ func ConnectPostgres(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to get database instance: %w", err)
 	}
 
-	// Connection pool settings
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	sqlDB.SetConnMaxLifetime(cfg.MaxLifetime)
 
-	// Test connection
 	if err := sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
@@ -58,7 +52,6 @@ func ConnectPostgres(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	return db, nil
 }
 
-// Close closes the database connection
 func Close(db *gorm.DB) error {
 	sqlDB, err := db.DB()
 	if err != nil {

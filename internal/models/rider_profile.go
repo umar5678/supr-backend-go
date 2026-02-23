@@ -9,19 +9,16 @@ import (
 	"gorm.io/gorm"
 )
 
-// Address represents a location with coordinates
 type Address struct {
 	Lat     float64 `json:"lat"`
 	Lng     float64 `json:"lng"`
 	Address string  `json:"address"`
 }
 
-// Value implements the driver.Valuer interface for JSON encoding
 func (a Address) Value() (driver.Value, error) {
 	return json.Marshal(a)
 }
 
-// Scan implements the sql.Scanner interface for JSON decoding
 func (a *Address) Scan(value interface{}) error {
 	if value == nil {
 		return nil
@@ -35,7 +32,6 @@ func (a *Address) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, a)
 }
 
-// RiderProfile model
 type RiderProfile struct {
 	ID                   string         `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	UserID               string         `gorm:"type:uuid;not null;uniqueIndex" json:"userId"`
@@ -49,7 +45,7 @@ type RiderProfile struct {
 	CreatedAt            time.Time      `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt            time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 	DeletedAt            gorm.DeletedAt `gorm:"index" json:"-"`
-	// Relations
+
 	User   User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Wallet Wallet `gorm:"foreignKey:UserID;references:UserID" json:"wallet,omitempty"`
 }

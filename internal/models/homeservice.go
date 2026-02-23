@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// JSONBMap for storing flexible JSON data in PostgreSQL
 type JSONBMap map[string]interface{}
 
 func (j JSONBMap) Value() (driver.Value, error) {
@@ -27,7 +26,6 @@ func (j *JSONBMap) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, j)
 }
 
-// ServiceCategory represents main categories (Women's Salon, Men's Salon, etc.)
 type ServiceCategory struct {
 	ID          uint           `gorm:"primaryKey" json:"id"`
 	Name        string         `gorm:"type:varchar(255);not null" json:"name"`
@@ -36,11 +34,10 @@ type ServiceCategory struct {
 	BannerImage string         `gorm:"type:varchar(500)" json:"bannerImage"`
 	IsActive    bool           `gorm:"default:true" json:"isActive"`
 	SortOrder   int            `gorm:"default:0" json:"sortOrder"`
-	Highlights  pq.StringArray `gorm:"type:text[];default:'{}'" json:"highlights"` // PostgreSQL array
+	Highlights  pq.StringArray `gorm:"type:text[];default:'{}'" json:"highlights"`
 	CreatedAt   time.Time      `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 
-	// Relations
 	Tabs     []ServiceTab   `gorm:"foreignKey:CategoryID" json:"tabs,omitempty"`
 	Services []Service      `gorm:"foreignKey:CategoryID" json:"services,omitempty"`
 	AddOns   []AddOnService `gorm:"foreignKey:CategoryID" json:"addOns,omitempty"`
@@ -48,7 +45,6 @@ type ServiceCategory struct {
 
 func (ServiceCategory) TableName() string { return "service_categories" }
 
-// ServiceTab represents subcategories/tabs (Bestsellers, Hair, Nails, etc.)
 type ServiceTab struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	CategoryID  uint      `gorm:"not null;index" json:"categoryId"`
@@ -63,24 +59,22 @@ type ServiceTab struct {
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
 
-	// Relations
 	Category *ServiceCategory `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 }
 
 func (ServiceTab) TableName() string { return "service_tabs" }
 
-// Service represents individual services
 type Service struct {
 	ID                  uint      `gorm:"primaryKey" json:"id"`
 	CategoryID          uint      `gorm:"not null;index" json:"categoryId"`
-	TabID               uint      `gorm:"not null;index" json:"tabId"` // Which tab this belongs to
+	TabID               uint      `gorm:"not null;index" json:"tabId"`
 	Name                string    `gorm:"type:varchar(255);not null" json:"name"`
 	Description         string    `gorm:"type:text;not null" json:"description"`
 	ImageURL            string    `gorm:"type:varchar(500)" json:"imageUrl"`
 	BasePrice           float64   `gorm:"type:decimal(10,2);not null" json:"basePrice"`
 	OriginalPrice       float64   `gorm:"type:decimal(10,2)" json:"originalPrice"`
 	DiscountPercentage  int       `gorm:"default:0" json:"discountPercentage"`
-	PricingModel        string    `gorm:"type:varchar(50);not null;default:'fixed'" json:"pricingModel"` // fixed, hourly, per_unit
+	PricingModel        string    `gorm:"type:varchar(50);not null;default:'fixed'" json:"pricingModel"`
 	BaseDurationMinutes int       `gorm:"not null" json:"baseDurationMinutes"`
 	MaxQuantity         int       `gorm:"default:1" json:"maxQuantity"`
 	IsActive            bool      `gorm:"default:true" json:"isActive"`
@@ -88,7 +82,6 @@ type Service struct {
 	CreatedAt           time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt           time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
 
-	// Relations
 	Category *ServiceCategory `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	Tab      *ServiceTab      `gorm:"foreignKey:TabID" json:"tab,omitempty"`
 	Options  []ServiceOption  `gorm:"foreignKey:ServiceID" json:"options,omitempty"`
@@ -96,7 +89,6 @@ type Service struct {
 
 func (Service) TableName() string { return "services" }
 
-// AddOnService represents optional add-ons
 type AddOnService struct {
 	ID              uint      `gorm:"primaryKey" json:"id"`
 	CategoryID      uint      `gorm:"not null;index" json:"categoryId"`
@@ -111,18 +103,16 @@ type AddOnService struct {
 	CreatedAt       time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt       time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
 
-	// Relations
 	Category *ServiceCategory `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 }
 
 func (AddOnService) TableName() string { return "addon_services" }
 
-// ServiceOption represents configurable options for a service
 type ServiceOption struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	ServiceID  uint      `gorm:"not null;index" json:"serviceId"`
 	Name       string    `gorm:"type:varchar(255);not null" json:"name"`
-	Type       string    `gorm:"type:varchar(50);not null" json:"type"` // select_single, select_multiple, quantity, text
+	Type       string    `gorm:"type:varchar(50);not null" json:"type"`
 	IsRequired bool      `gorm:"default:false" json:"isRequired"`
 	CreatedAt  time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
@@ -133,7 +123,6 @@ type ServiceOption struct {
 
 func (ServiceOption) TableName() string { return "service_options" }
 
-// ServiceOptionChoice represents available choices for an option
 type ServiceOptionChoice struct {
 	ID                      uint      `gorm:"primaryKey" json:"id"`
 	OptionID                uint      `gorm:"not null;index" json:"optionId"`
@@ -148,13 +137,12 @@ type ServiceOptionChoice struct {
 
 func (ServiceOptionChoice) TableName() string { return "service_option_choices" }
 
-// ServiceProvider represents a professional who can perform services
 type ServiceProvider struct {
 	ID            string    `gorm:"type:uuid;primaryKey" json:"id"`
 	UserID        string    `gorm:"type:uuid;uniqueIndex;not null" json:"userId"`
 	Photo         *string   `gorm:"type:varchar(500)" json:"photo,omitempty"`
 	Rating        float64   `gorm:"type:decimal(3,2);default:0" json:"rating"`
-	Status        string    `gorm:"type:varchar(50);not null;default:'offline'" json:"status"` // available, busy, offline
+	Status        string    `gorm:"type:varchar(50);not null;default:'offline'" json:"status"`
 	IsVerified    bool      `gorm:"default:false" json:"isVerified"`
 	TotalJobs     int       `gorm:"default:0" json:"totalJobs"`
 	CompletedJobs int       `gorm:"default:0" json:"completedJobs"`
@@ -162,7 +150,6 @@ type ServiceProvider struct {
 	CreatedAt     time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt     time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
 
-	// Relations
 	User *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
@@ -174,21 +161,20 @@ func (p *ServiceProvider) BeforeCreate(tx *gorm.DB) error {
 }
 func (ServiceProvider) TableName() string { return "service_providers" }
 
-// ServiceOrder represents a booking
 type ServiceOrder struct {
 	ID             string     `gorm:"type:uuid;primaryKey" json:"id"`
 	Code           string     `gorm:"type:varchar(50);uniqueIndex;not null" json:"code"`
 	UserID         string     `gorm:"type:uuid;not null;index" json:"userId"`
 	ProviderID     *string    `gorm:"type:uuid;index" json:"providerId,omitempty"`
-	Status         string     `gorm:"type:varchar(50);not null;index" json:"status"` // pending, searching, accepted, in_progress, completed, cancelled
+	Status         string     `gorm:"type:varchar(50);not null;index" json:"status"`
 	Address        string     `gorm:"type:text;not null" json:"address"`
 	Latitude       float64    `gorm:"type:decimal(10,8);not null" json:"latitude"`
 	Longitude      float64    `gorm:"type:decimal(11,8);not null" json:"longitude"`
 	ServiceDate    time.Time  `gorm:"not null" json:"serviceDate"`
-	Frequency      string     `gorm:"type:varchar(50);default:'once'" json:"frequency"`      // once, daily, weekly, monthly
-	QuantityOfPros int        `gorm:"type:integer;not null;default:1" json:"quantityOfPros"` //  NEW: Number of professionals
+	Frequency      string     `gorm:"type:varchar(50);default:'once'" json:"frequency"`      
+	QuantityOfPros int        `gorm:"type:integer;not null;default:1" json:"quantityOfPros"` 
 	HoursOfService float64    `gorm:"type:decimal(5,2);not null;default:1.0" json:"hoursOfService"`
-	CategorySlug   string     `gorm:"type:varchar(255);index" json:"categorySlug"` // Service category slug for provider filtering
+	CategorySlug   string     `gorm:"type:varchar(255);index" json:"categorySlug"` 
 	Subtotal       float64    `gorm:"type:decimal(10,2);not null" json:"subtotal"`
 	Discount       float64    `gorm:"type:decimal(10,2);default:0" json:"discount"`
 	SurgeFee       float64    `gorm:"type:decimal(10,2);default:0" json:"surgeFee"`
@@ -204,13 +190,11 @@ type ServiceOrder struct {
 	WalletHold     float64    `gorm:"type:decimal(10,2);default:0" json:"walletHold"`
 	WalletHoldID   *string    `gorm:"type:uuid" json:"walletHoldId,omitempty"`
 
-	// Relations
 	Items    []OrderItem      `gorm:"foreignKey:OrderID" json:"items,omitempty"`
 	AddOns   []OrderAddOn     `gorm:"foreignKey:OrderID" json:"addOns,omitempty"`
 	Provider *ServiceProvider `gorm:"foreignKey:ProviderID" json:"provider,omitempty"`
 }
 
-// OrderAddOn - NEW: Track add-ons in orders
 type OrderAddOn struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	OrderID   string    `gorm:"type:uuid;not null;index" json:"orderId"`
@@ -237,7 +221,6 @@ func (o *ServiceOrder) BeforeCreate(tx *gorm.DB) error {
 
 func (ServiceOrder) TableName() string { return "service_orders" }
 
-// OrderItem represents a service within an order
 type OrderItem struct {
 	ID              uint                   `gorm:"primaryKey" json:"id"`
 	OrderID         string                 `gorm:"type:uuid;not null;index" json:"orderId"`
@@ -254,7 +237,6 @@ type OrderItem struct {
 
 func (OrderItem) TableName() string { return "order_items" }
 
-// Rating represents a service rating
 type Rating struct {
 	ID         string    `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	OrderID    string    `gorm:"type:uuid;not null;uniqueIndex" json:"orderId"`
@@ -267,7 +249,6 @@ type Rating struct {
 
 func (Rating) TableName() string { return "ratings" }
 
-// SurgeZone for dynamic surge pricing (optional)
 type SurgeZone struct {
 	ID              uint       `gorm:"primaryKey" json:"id"`
 	Name            string     `gorm:"type:varchar(100);not null" json:"name"`

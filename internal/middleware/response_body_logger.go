@@ -23,23 +23,18 @@ func DevelopmentLogger() gin.HandlerFunc {
 
 		startTime := time.Now()
 
-		// Log incoming request
 		logRequest(c)
 
-		// Capture response body
 		blw := &bodyLogWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}
 		c.Writer = blw
 
-		// Process request
 		c.Next()
 
-		// Log outgoing response
 		duration := time.Since(startTime)
 		logResponse(c, blw.body.String(), duration)
 	}
 }
 
-// logRequest logs incoming request details
 func logRequest(c *gin.Context) {
 	var bodyBytes []byte
 	if c.Request.Body != nil {
@@ -47,13 +42,12 @@ func logRequest(c *gin.Context) {
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
 
-	// Build compact log
 	query := c.Request.URL.RawQuery
 	if query != "" {
 		query = "?" + query
 	}
 
-	fmt.Printf("📥 %s %s%s | %s | %s",
+	fmt.Printf("%s %s%s | %s | %s",
 		c.Request.Method,
 		c.Request.URL.Path,
 		query,
@@ -61,7 +55,6 @@ func logRequest(c *gin.Context) {
 		maskAuth(c.GetHeader("Authorization")),
 	)
 
-	// Print body inline if simple, otherwise on new line
 	if len(bodyBytes) > 0 {
 		var bodyData interface{}
 		if err := json.Unmarshal(bodyBytes, &bodyData); err == nil {
@@ -75,18 +68,15 @@ func logRequest(c *gin.Context) {
 	fmt.Println()
 }
 
-// logResponse logs outgoing response details
 func logResponse(c *gin.Context, responseBody string, duration time.Duration) {
 	statusCode := c.Writer.Status()
 	statusEmoji := getStatusEmoji(statusCode)
 
-	// Parse response
 	var responseData interface{}
 	if len(responseBody) > 0 {
 		json.Unmarshal([]byte(responseBody), &responseData)
 	}
 
-	// Clean response data
 	responseData = cleanResponseData(responseData)
 
 	fmt.Printf("%s %d | %dms | %db",
@@ -96,7 +86,6 @@ func logResponse(c *gin.Context, responseBody string, duration time.Duration) {
 		len(responseBody),
 	)
 
-	// Only show response if it has meaningful data
 	if responseData != nil && hasDataToShow(responseData) {
 		if isSimpleBody(responseData) {
 			fmt.Printf(" | %s", formatInline(responseData))
@@ -107,20 +96,16 @@ func logResponse(c *gin.Context, responseBody string, duration time.Duration) {
 	fmt.Printf("\n\n")
 }
 
-// cleanResponseData removes meta fields
 func cleanResponseData(data interface{}) interface{} {
 	if respMap, ok := data.(map[string]interface{}); ok {
-		// Create a clean copy
 		cleaned := make(map[string]interface{})
 		for k, v := range respMap {
-			// Skip meta fields
 			if k == "meta" || k == "requestId" || k == "timestamp" || k == "version" {
 				continue
 			}
 			cleaned[k] = v
 		}
 
-		// If only success/message remain, return nil
 		if len(cleaned) <= 2 {
 			hasOnlyBasic := true
 			for key := range cleaned {
@@ -139,19 +124,16 @@ func cleanResponseData(data interface{}) interface{} {
 	return data
 }
 
-// isSimpleBody checks if body can be printed inline
 func isSimpleBody(data interface{}) bool {
 	m, ok := data.(map[string]interface{})
 	if !ok {
 		return true
 	}
 
-	// If more than 3 fields, use multiline
 	if len(m) > 3 {
 		return false
 	}
 
-	// Check for nested structures
 	for _, v := range m {
 		switch v.(type) {
 		case map[string]interface{}, []interface{}:
@@ -162,7 +144,6 @@ func isSimpleBody(data interface{}) bool {
 	return true
 }
 
-// formatInline formats data for inline display
 func formatInline(data interface{}) string {
 	switch v := data.(type) {
 	case map[string]interface{}:
@@ -178,7 +159,6 @@ func formatInline(data interface{}) string {
 	}
 }
 
-// formatMultiline formats data for multiline display
 func formatMultiline(data interface{}, indent string) string {
 	var result strings.Builder
 
@@ -221,7 +201,6 @@ func formatMultiline(data interface{}, indent string) string {
 	return result.String()
 }
 
-// formatValue formats a value for display
 func formatValue(val interface{}) string {
 	switch v := val.(type) {
 	case string:
@@ -243,7 +222,6 @@ func formatValue(val interface{}) string {
 	}
 }
 
-// hasDataToShow checks if response has meaningful data to display
 func hasDataToShow(data interface{}) bool {
 	if data == nil {
 		return false
@@ -254,7 +232,6 @@ func hasDataToShow(data interface{}) bool {
 			return false
 		}
 
-		// Check if data field exists and has content
 		if dataField, exists := m["data"]; exists {
 			if dataField == nil {
 				return false
@@ -277,7 +254,6 @@ func hasDataToShow(data interface{}) bool {
 	return true
 }
 
-// maskAuth masks authorization token
 func maskAuth(auth string) string {
 	if auth == "" {
 		return "NoAuth"
@@ -291,7 +267,6 @@ func maskAuth(auth string) string {
 	return "Auth:***"
 }
 
-// bodyLogWriter captures response body
 type bodyLogWriter struct {
 	gin.ResponseWriter
 	body *bytes.Buffer
@@ -306,8 +281,6 @@ func (w bodyLogWriter) WriteString(s string) (int, error) {
 	w.body.WriteString(s)
 	return w.ResponseWriter.WriteString(s)
 }
-
-// Helper functions
 
 func shouldSkipLogging(path string) bool {
 	skipPaths := []string{
@@ -327,14 +300,14 @@ func shouldSkipLogging(path string) bool {
 func getStatusEmoji(statusCode int) string {
 	switch {
 	case statusCode >= 200 && statusCode < 300:
-		return "✅"
+		return ""
 	case statusCode >= 300 && statusCode < 400:
-		return "↩️"
+		return ""
 	case statusCode >= 400 && statusCode < 500:
-		return "⚠️"
+		return ""
 	case statusCode >= 500:
-		return "❌"
+		return ""
 	default:
-		return "📤"
+		return ""
 	}
 }

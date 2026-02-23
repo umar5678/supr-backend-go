@@ -28,7 +28,6 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		// Validate token
 		claims, err := jwt.ValidateToken(token, jwtSecret)
 		if err != nil {
 			logger.Warn("websocket authentication failed",

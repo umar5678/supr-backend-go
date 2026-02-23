@@ -670,7 +670,6 @@ func (h *Hub) BroadcastToRole(role string, msg *Message) {
 		"sentToDevices", sentCount,
 	)
 
-	// Publish to Redis for multi-server setup
 	ctx := context.Background()
 	cache.PublishMessage(ctx, "websocket:broadcast", msg)
 }
@@ -684,7 +683,6 @@ func (h *Hub) CheckInactiveConnections(timeout time.Duration) {
 
 	for userID, clients := range h.clients {
 		for _, client := range clients {
-			// Check if client hasn't sent heartbeat within timeout
 			if now.Sub(client.lastHeartbeat) > timeout {
 				logger.Info("Inactive WebSocket connection detected",
 					"userID", userID,
@@ -697,7 +695,6 @@ func (h *Hub) CheckInactiveConnections(timeout time.Duration) {
 		}
 	}
 
-	// Unregister inactive clients
 	h.mu.Unlock()
 	for _, client := range clientsToRemove {
 		h.unregisterClient(client)

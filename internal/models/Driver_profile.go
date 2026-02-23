@@ -10,9 +10,9 @@ type DriverProfile struct {
 	ID               string  `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	UserID           string  `gorm:"type:uuid;uniqueIndex;not null" json:"userId"`
 	LicenseNumber    string  `gorm:"type:varchar(100);uniqueIndex;not null" json:"licenseNumber"`
-	Status           string  `gorm:"type:varchar(50);default:'offline'" json:"status"` // offline, online, busy, on_trip
+	Status           string  `gorm:"type:varchar(50);default:'offline'" json:"status"` 
 	CurrentLocation  *string `gorm:"type:geometry(Point,4326)" json:"currentLocation"`
-	Heading          int     `gorm:"default:0" json:"heading"` // 0-360 degrees
+	Heading          int     `gorm:"default:0" json:"heading"`
 	Rating           float64 `gorm:"type:decimal(3,2);default:5.0" json:"rating"`
 	TotalTrips       int     `gorm:"default:0" json:"totalTrips"`
 	TotalEarnings    float64 `gorm:"type:decimal(10,2);default:0" json:"totalEarnings"`
@@ -21,18 +21,16 @@ type DriverProfile struct {
 	IsVerified       bool    `gorm:"default:true" json:"isVerified"`
 	WalletBalance    float64 `gorm:"type:decimal(10,2);default:0" json:"walletBalance"`
 
-	// ✅ Account restriction fields (for cash-based wallet model)
-	AccountStatus       string     `gorm:"type:varchar(50);default:'active'" json:"accountStatus"`         // active, suspended, disabled
-	IsRestricted        bool       `gorm:"default:false" json:"isRestricted"`                              // Flag for account restriction
-	RestrictedAt        *time.Time `json:"restrictedAt,omitempty"`                                         // When account was restricted
-	RestrictionReason   *string    `gorm:"type:varchar(255)" json:"restrictionReason,omitempty"`           // Why account was restricted
-	MinBalanceThreshold float64    `gorm:"type:decimal(10,2);default:-2000.00" json:"minBalanceThreshold"` // Threshold for auto-disable
+	AccountStatus       string     `gorm:"type:varchar(50);default:'active'" json:"accountStatus"`         
+	IsRestricted        bool       `gorm:"default:false" json:"isRestricted"`                              
+	RestrictedAt        *time.Time `json:"restrictedAt,omitempty"`                                         
+	RestrictionReason   *string    `gorm:"type:varchar(255)" json:"restrictionReason,omitempty"`           
+	MinBalanceThreshold float64    `gorm:"type:decimal(10,2);default:-2000.00" json:"minBalanceThreshold"` 
 
 	CreatedAt time.Time      `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	// Relations
 	User    User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Vehicle *Vehicle `gorm:"foreignKey:DriverID" json:"vehicle,omitempty"`
 }
@@ -56,7 +54,6 @@ type Vehicle struct {
 	UpdatedAt     time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 
-	// Relations
 	VehicleType VehicleType `gorm:"foreignKey:VehicleTypeID" json:"vehicleType,omitempty"`
 }
 

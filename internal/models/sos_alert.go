@@ -11,12 +11,12 @@ type SOSAlert struct {
     User                    User           `gorm:"foreignKey:UserID" json:"user,omitempty"`
     RideID                  *string        `gorm:"type:uuid;index" json:"rideId,omitempty"`
     Ride                    *Ride          `gorm:"foreignKey:RideID" json:"ride,omitempty"`
-    AlertType               string         `gorm:"type:varchar(50);not null" json:"alertType"` // 'manual', 'auto_triggered'
+    AlertType               string         `gorm:"type:varchar(50);not null" json:"alertType"`
     Latitude                float64        `gorm:"type:decimal(10,8);not null" json:"latitude"`
     Longitude               float64        `gorm:"type:decimal(11,8);not null" json:"longitude"`
-    Status                  string         `gorm:"type:varchar(50);default:'active'" json:"status"` // 'active', 'resolved', 'cancelled'
+    Status                  string         `gorm:"type:varchar(50);default:'active'" json:"status"`
     EmergencyContactsNotified bool         `gorm:"default:false" json:"emergencyContactsNotified"`
-    Severity                string         `gorm:"type:varchar(50);default:'low'" json:"severity"` // 'low', 'medium', 'high'
+    Severity                string         `gorm:"type:varchar(50);default:'low'" json:"severity"`
     TriggeredAt             time.Time      `gorm:"not null" json:"triggeredAt"`
     SafetyTeamNotifiedAt    *time.Time     `json:"safetyTeamNotifiedAt,omitempty"`
     ResolvedAt              *time.Time     `json:"resolvedAt,omitempty"`

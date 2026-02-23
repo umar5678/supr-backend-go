@@ -1,7 +1,5 @@
 package middleware
 
-// auth middleware, internal/middleware/auth.go
-
 import (
 	"strings"
 
@@ -14,7 +12,6 @@ import (
 
 func Auth(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract token from header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.Error(response.UnauthorizedError("Authorization header required"))
@@ -22,7 +19,6 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		// Check Bearer prefix
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.Error(response.UnauthorizedError("Invalid authorization header format"))
@@ -32,7 +28,6 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 
 		tokenString := parts[1]
 
-		// Validate token
 		claims, err := jwt.ValidateToken(tokenString, cfg.JWT.Secret)
 		if err != nil {
 			c.Error(response.UnauthorizedError("Invalid or expired token"))
@@ -40,7 +35,6 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		// Set user info in context
 		c.Set("userID", claims.UserID)
 		c.Set("role", claims.Role)
 
@@ -48,7 +42,6 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// RequireRole checks if user has required role
 func RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("role")
@@ -71,7 +64,6 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 	}
 }
 
-// OptionalAuth doesn't block the request but sets user info if token is valid
 func OptionalAuth(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")

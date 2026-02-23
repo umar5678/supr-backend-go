@@ -9,7 +9,7 @@ import (
 
 type FraudPattern struct {
 	ID            string         `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	PatternType   string         `gorm:"type:varchar(50);not null;index" json:"patternType"` // 'frequent_cancellation', 'same_rider_driver', 'location_gaming', 'fake_trips'
+	PatternType   string         `gorm:"type:varchar(50);not null;index" json:"patternType"`
 	UserID        *string        `gorm:"type:uuid;index" json:"userId,omitempty"`
 	User          *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	DriverID      *string        `gorm:"type:uuid;index" json:"driverId,omitempty"`
@@ -17,8 +17,8 @@ type FraudPattern struct {
 	RelatedUserID *string        `gorm:"type:uuid" json:"relatedUserId,omitempty"`
 	RideID        *string        `gorm:"type:uuid" json:"rideId,omitempty"`
 	Details       string         `gorm:"type:jsonb" json:"details"`
-	RiskScore     int            `gorm:"not null" json:"riskScore"`                        // 0-100
-	Status        string         `gorm:"type:varchar(50);default:'flagged'" json:"status"` // 'flagged', 'investigating', 'confirmed', 'dismissed'
+	RiskScore     int            `gorm:"not null" json:"riskScore"`                       
+	Status        string         `gorm:"type:varchar(50);default:'flagged'" json:"status"`
 	ReviewedBy    *string        `gorm:"type:uuid" json:"reviewedBy,omitempty"`
 	ReviewNotes   string         `gorm:"type:text" json:"reviewNotes,omitempty"`
 	ReviewedAt    *time.Time     `json:"reviewedAt,omitempty"`

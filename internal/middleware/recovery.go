@@ -8,7 +8,6 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
-// Recovery handles panics and converts them to proper error responses
 func Recovery() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -23,13 +22,11 @@ func Recovery() gin.HandlerFunc {
 					"stack", fmt.Sprintf("%v", err),
 				)
 
-				// Check if it's an AppError
 				if appErr, ok := err.(*response.AppError); ok {
 					response.SendError(c, appErr.StatusCode, appErr.Message, appErr.Errors, appErr.Code)
 					return
 				}
 
-				// Generic error
 				response.InternalError(c, "An unexpected error occurred")
 				c.Abort()
 			}
@@ -45,7 +42,6 @@ func ErrorHandler() gin.HandlerFunc {
 		c.Next()
 		logger.Info("ErrorHandler: after c.Next()", "path", c.Request.URL.Path, "method", c.Request.Method, "written", c.Writer.Written(), "statusCode", c.Writer.Status())
 
-		// Check if response already sent via Gin Writer or explicit flag set by response.Success
 		if c.Writer.Written() {
 			logger.Info("ErrorHandler: response already written (writer), skipping error handling", "statusCode", c.Writer.Status())
 			return
@@ -57,19 +53,16 @@ func ErrorHandler() gin.HandlerFunc {
 			}
 		}
 
-		// Check for errors in context
 		if len(c.Errors) > 0 {
 			logger.Error("ErrorHandler: errors found in context", "errorCount", len(c.Errors), "lastError", c.Errors.Last().Err)
 			err := c.Errors.Last().Err
 
-			// Handle AppError
 			if appErr, ok := err.(*response.AppError); ok {
 				logger.Info("ErrorHandler: AppError detected, sending error response", "statusCode", appErr.StatusCode, "message", appErr.Message)
 				response.SendError(c, appErr.StatusCode, appErr.Message, appErr.Errors, appErr.Code)
 				return
 			}
 
-			// Generic error
 			logger.Info("ErrorHandler: generic error, sending internal error response")
 			response.InternalError(c, "An error occurred")
 		}

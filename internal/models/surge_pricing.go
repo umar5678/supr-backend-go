@@ -35,7 +35,7 @@ type FareEstimate struct {
 	SubTotal          float64 `json:"subTotal"`
 	SurgeAmount       float64 `json:"surgeAmount"`
 	TotalFare         float64 `json:"totalFare"`
-	EstimatedDistance float64 `json:"estimatedDistance"` // km
-	EstimatedDuration int     `json:"estimatedDuration"` // seconds
+	EstimatedDistance float64 `json:"estimatedDistance"`
+	EstimatedDuration int     `json:"estimatedDuration"`
 	VehicleTypeName   string  `json:"vehicleTypeName"`
 }
