@@ -104,8 +104,8 @@ func LoadConfig() (*Config, error) {
 	}
 
 	cfg.JWT.Secret = v.GetString("JWT_SECRET")
-	cfg.JWT.AccessExpiry = v.GetDuration("JWT_ACCESS_EXPIRY") * time.Hour
-	cfg.JWT.RefreshExpiry = v.GetDuration("JWT_REFRESH_EXPIRY") * time.Hour
+	cfg.JWT.AccessExpiry = v.GetDuration("JWT_ACCESS_EXPIRY")
+	cfg.JWT.RefreshExpiry = v.GetDuration("JWT_REFRESH_EXPIRY")
 	cfg.JWT.Issuer = v.GetString("JWT_ISSUER")
 
 	cfg.Logger.Level = v.GetString("LOG_LEVEL")
