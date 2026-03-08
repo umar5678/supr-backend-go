@@ -429,7 +429,7 @@ func (s *service) generateAuthResponse(user *models.User) (*authdto.AuthResponse
 		user.ID,
 		string(user.Role),
 		s.cfg.JWT.Secret,
-		time.Duration(s.cfg.JWT.AccessExpiry)*7,
+		time.Duration(s.cfg.JWT.AccessExpiry)*time.Minute,
 	)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to generate access token", err)
@@ -439,7 +439,7 @@ func (s *service) generateAuthResponse(user *models.User) (*authdto.AuthResponse
 		user.ID,
 		string(user.Role),
 		s.cfg.JWT.Secret,
-		time.Duration(s.cfg.JWT.RefreshExpiry)*20,
+		time.Duration(s.cfg.JWT.RefreshExpiry)*time.Minute,
 	)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to generate refresh token", err)
