@@ -337,7 +337,7 @@ func (s *service) RefreshToken(ctx context.Context, refreshToken string) (*authd
 		return nil, err
 	}
 
-	cache.Set(ctx, "blacklist:"+refreshToken, "1", time.Duration(s.cfg.JWT.RefreshExpiry)*20)
+	cache.Set(ctx, "blacklist:"+refreshToken, "1", s.cfg.JWT.RefreshExpiry)
 
 	logger.Info("token refreshed", "userId", user.ID)
 
@@ -347,7 +347,7 @@ func (s *service) RefreshToken(ctx context.Context, refreshToken string) (*authd
 func (s *service) Logout(ctx context.Context, userID, refreshToken string) error {
 
 	if refreshToken != "" {
-		cache.Set(ctx, "blacklist:"+refreshToken, "1", time.Duration(s.cfg.JWT.RefreshExpiry)*20)
+		cache.Set(ctx, "blacklist:"+refreshToken, "1", s.cfg.JWT.RefreshExpiry)
 	}
 
 	cache.Delete(ctx, "user:profile:"+userID)
@@ -429,7 +429,7 @@ func (s *service) generateAuthResponse(user *models.User) (*authdto.AuthResponse
 		user.ID,
 		string(user.Role),
 		s.cfg.JWT.Secret,
-		time.Duration(s.cfg.JWT.AccessExpiry)*time.Minute,
+		s.cfg.JWT.AccessExpiry,
 	)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to generate access token", err)
@@ -439,7 +439,7 @@ func (s *service) generateAuthResponse(user *models.User) (*authdto.AuthResponse
 		user.ID,
 		string(user.Role),
 		s.cfg.JWT.Secret,
-		time.Duration(s.cfg.JWT.RefreshExpiry)*time.Minute,
+		s.cfg.JWT.RefreshExpiry,
 	)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to generate refresh token", err)
