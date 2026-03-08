@@ -24,6 +24,7 @@ type Repository interface {
 	UpdateRideRequestStatus(ctx context.Context, requestID, status string, rejectionReason *string) error
 	ExpireOldRequests(ctx context.Context) error
 	FindActiveRideByDriverID(ctx context.Context, driverID string) (*models.Ride, error)
+	FindActiveRideByRiderID(ctx context.Context, riderID string) (*models.Ride, error)
 
 	UpdateRideStatusAndDriver(ctx context.Context, rideID, newStatus, expectedStatus string, driverID string) error
 	CancelPendingRequestsExcept(ctx context.Context, rideID, acceptedDriverID string) error
@@ -114,9 +115,10 @@ func (r *repository) ListRides(ctx context.Context, userID string, filters map[s
 	query := r.db.WithContext(ctx).Model(&models.Ride{})
 
 	if role, ok := filters["role"].(string); ok {
-		if role == "rider" {
+		switch role {
+		case "rider":
 			query = query.Where("rider_id = ?", userID)
-		} else if role == "driver" {
+		case "driver":
 			query = query.Where("driver_id = ?", userID)
 		}
 	}
@@ -219,6 +221,18 @@ func (r *repository) FindActiveRideByDriverID(ctx context.Context, driverID stri
 	var ride models.Ride
 	err := r.db.WithContext(ctx).
 		Where("driver_id = ? AND status IN ?", driverID, []string{"accepted", "arrived", "started"}).
+		First(&ride).Error
+	return &ride, err
+}
+
+func (r *repository) FindActiveRideByRiderID(ctx context.Context, riderID string) (*models.Ride, error) {
+	var ride models.Ride
+	err := r.db.WithContext(ctx).
+		Preload("Rider").
+		Preload("Driver").
+		Preload("DriverProfile.Vehicle").
+		Preload("VehicleType").
+		Where("rider_id = ? AND status IN ?", riderID, []string{"searching", "waiting", "accepted", "arrived", "started"}).
 		First(&ride).Error
 	return &ride, err
 }

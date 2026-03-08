@@ -43,6 +43,7 @@ import (
 type Service interface {
 	CreateRide(ctx context.Context, riderID string, req dto.CreateRideRequest) (*dto.RideResponse, error)
 	GetRide(ctx context.Context, userID, rideID string) (*dto.RideResponse, error)
+	GetActiveRide(ctx context.Context, userID, role string) (*dto.RideResponse, error)
 	ListRides(ctx context.Context, userID string, role string, req dto.ListRidesRequest) ([]*dto.RideListResponse, int64, error)
 	CancelRide(ctx context.Context, userID, rideID string, req dto.CancelRideRequest) error
 
@@ -2128,6 +2129,41 @@ func (s *service) GetRide(ctx context.Context, userID, rideID string) (*dto.Ride
 
 	if ride.RiderID != userID && (ride.DriverID == nil || *ride.DriverID != userID) {
 		return nil, response.ForbiddenError("Not authorized to view this ride")
+	}
+
+	response := dto.ToRideResponse(ride)
+
+	if ride.Status == "accepted" && ride.DriverID != nil {
+		driverLocation, locErr := s.trackingService.GetDriverLocation(ctx, *ride.DriverID)
+		if locErr == nil && driverLocation != nil {
+			response.DriverLocation = &dto.LocationDTO{
+				Latitude:  driverLocation.Latitude,
+				Longitude: driverLocation.Longitude,
+			}
+		}
+	}
+
+	return response, nil
+}
+
+func (s *service) GetActiveRide(ctx context.Context, userID, role string) (*dto.RideResponse, error) {
+	var ride *models.Ride
+	var err error
+
+	switch role {
+	case "rider":
+		ride, err = s.repo.FindActiveRideByRiderID(ctx, userID)
+	case "driver":
+		ride, err = s.repo.FindActiveRideByDriverID(ctx, userID)
+	default:
+		return nil, response.BadRequest("Role must be 'rider' or 'driver'")
+	}
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NotFoundError("No active ride found")
+		}
+		return nil, response.InternalServerError("Failed to fetch active ride", err)
 	}
 
 	response := dto.ToRideResponse(ride)

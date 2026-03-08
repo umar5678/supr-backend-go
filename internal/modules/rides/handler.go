@@ -50,16 +50,35 @@ func (h *Handler) CreateRide(c *gin.Context) {
 }
 
 // GetRide godoc
-// @Summary Get ride details
+// @Summary Get ride details or active ride
 // @Tags rides
 // @Security BearerAuth
 // @Produce json
-// @Param id path string true "Ride ID"
+// @Param id path string true "Ride ID or 'active' to get current active ride"
+// @Param role query string false "User role (rider or driver) - required when id='active'"
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id} [get]
 func (h *Handler) GetRide(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	rideID := c.Param("id")
+
+	// Handle active ride request
+	if rideID == "active" {
+		role := c.Query("role")
+		if role != "rider" && role != "driver" {
+			c.Error(response.BadRequest("Role must be 'rider' or 'driver' when fetching active ride"))
+			return
+		}
+
+		ride, err := h.service.GetActiveRide(c.Request.Context(), userID.(string), role)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+
+		response.Success(c, ride, "Active ride retrieved successfully")
+		return
+	}
 
 	ride, err := h.service.GetRide(c.Request.Context(), userID.(string), rideID)
 	if err != nil {
@@ -163,7 +182,7 @@ func (h *Handler) RejectRide(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.RideResponse}
 // @Router /rides/{id}/arrived [post]
 func (h *Handler) MarkArrived(c *gin.Context) {
-	userID, _ := c.Get("userID") 
+	userID, _ := c.Get("userID")
 	rideID := c.Param("id")
 
 	ride, err := h.service.MarkArrived(c.Request.Context(), userID.(string), rideID)
