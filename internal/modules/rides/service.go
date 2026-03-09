@@ -1080,13 +1080,13 @@ func (s *service) MarkArrived(ctx context.Context, userID, rideID string) (*dto.
 		return nil, response.InternalServerError("Failed to update status", err)
 	}
 
-	if err := websocketutil.SendToUser(ride.RiderID, websocket.TypeRideStatusUpdate, map[string]interface{}{
+	if err := websocketutil.SendRideStatusUpdate(ride.RiderID, userID, map[string]interface{}{
 		"rideId":    rideID,
 		"status":    "arrived",
 		"message":   "Your driver has arrived at the pickup location",
 		"timestamp": time.Now().UTC(),
 	}); err != nil {
-		logger.Warn("failed to notify rider of arrival", "error", err, "rideID", rideID)
+		logger.Warn("failed to notify rider and driver of arrival", "error", err, "rideID", rideID)
 	}
 
 	logger.Info("driver arrived at pickup location",
