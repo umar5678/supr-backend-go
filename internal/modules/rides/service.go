@@ -1254,7 +1254,8 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
 	distanceKm := distanceToDropoff
-	const maxCompletionRadiusKm = 0.100
+	// const maxCompletionRadiusKm = 0.100
+	const maxCompletionRadiusKm = 100
 	const epsilon = 0.001
 
 	if distanceKm > maxCompletionRadiusKm+epsilon {
