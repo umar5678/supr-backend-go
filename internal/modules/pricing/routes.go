@@ -20,5 +20,6 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		pricing.GET("/demand", handler.GetCurrentDemand)
 		pricing.POST("/calculate-eta", handler.CalculateETA)
 		pricing.GET("/wait-time", handler.CalculateWaitTimeCharge)
+		pricing.GET("/fare-breakdown", handler.GetFareBreakdown)
 	}
 }
