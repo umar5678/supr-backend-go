@@ -48,22 +48,23 @@ type CreateSurgeZoneResponse struct {
 }
 
 type FareBreakdownResponse struct {
-	Components        []FareComponent `json:"components"`
-	BaseFare          float64         `json:"baseFare"`
-	DistanceCharge    float64         `json:"distanceCharge"`
-	TimeCharge        float64         `json:"timeCharge"`
-	BookingFee        float64         `json:"bookingFee"`
-	SurgeCharge       float64         `json:"surgeCharge"`
-	SurgeMultiplier   float64         `json:"surgeMultiplier"`
-	SubTotal          float64         `json:"subTotal"`
-	TotalFare         float64         `json:"totalFare"`
-	CustomerPrice     float64         `json:"customerPrice"`
-	DriverEarning     float64         `json:"driverEarning"`
-	PlatformFee       float64         `json:"platformFee"`
-	EstimatedDistance float64         `json:"estimatedDistance"`
-	EstimatedDuration int             `json:"estimatedDuration"`
-	PriceCapped       bool            `json:"priceCapped"`
-	PlatformAbsorbed  float64         `json:"platformAbsorbed"`
+	Components        []FareComponent       `json:"components"`
+	BaseFare          float64               `json:"baseFare"`
+	DistanceCharge    float64               `json:"distanceCharge"`
+	TimeCharge        float64               `json:"timeCharge"`
+	BookingFee        float64               `json:"bookingFee"`
+	SurgeCharge       float64               `json:"surgeCharge"`
+	SurgeMultiplier   float64               `json:"surgeMultiplier"`
+	SurgeDetails      *SurgeDetailsResponse `json:"surgeDetails,omitempty"`
+	SubTotal          float64               `json:"subTotal"`
+	TotalFare         float64               `json:"totalFare"`
+	CustomerPrice     float64               `json:"customerPrice"`
+	DriverEarning     float64               `json:"driverEarning"`
+	PlatformFee       float64               `json:"platformFee"`
+	EstimatedDistance float64               `json:"estimatedDistance"`
+	EstimatedDuration int                   `json:"estimatedDuration"`
+	PriceCapped       bool                  `json:"priceCapped"`
+	PlatformAbsorbed  float64               `json:"platformAbsorbed"`
 }
 
 type WaitTimeChargeResponse struct {

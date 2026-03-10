@@ -329,16 +329,33 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 
 	duration := int((distance / 30.0) * 60)
 
-	surgeMultiplier, err := s.surgeManager.GetSurgeMultiplier(ctx, req.PickupLat, req.PickupLon)
+	// Get combined surge with detailed breakdown
+	geohash := fmt.Sprintf("%.1f_%.1f", req.PickupLat, req.PickupLon)
+	combinedMultiplier, timeMultiplier, demandMultiplier, surgeReason, err := s.surgeManager.CalculateCombinedSurge(ctx, req.VehicleTypeID, geohash, req.PickupLat, req.PickupLon)
 	if err != nil {
-		logger.Warn("failed to get surge multiplier", "error", err, "lat", req.PickupLat, "lon", req.PickupLon)
-		surgeMultiplier = 1.0
+		logger.Warn("failed to calculate combined surge, using basic surge", "error", err)
+		combinedMultiplier = 1.0
+		timeMultiplier = 1.0
+		demandMultiplier = 1.0
+		surgeReason = "normal"
 	}
 
-	logger.Info("surge multiplier retrieved for fare breakdown",
+	// Also get zone-based surge if available
+	zoneMultiplier, _ := s.surgeManager.CalculateZoneBasedSurge(ctx, req.PickupLat, req.PickupLon)
+	if zoneMultiplier == 0 {
+		zoneMultiplier = 1.0
+	}
+
+	surgeMultiplier := combinedMultiplier
+
+	logger.Info("surge details retrieved for fare breakdown",
 		"lat", req.PickupLat,
 		"lon", req.PickupLon,
-		"surgeMultiplier", surgeMultiplier,
+		"combinedMultiplier", combinedMultiplier,
+		"timeMultiplier", timeMultiplier,
+		"demandMultiplier", demandMultiplier,
+		"zoneMultiplier", zoneMultiplier,
+		"surgeReason", surgeReason,
 	)
 
 	baseFare := vehicleType.BaseFare
@@ -400,6 +417,14 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 		BookingFee:        bookingFee,
 		SurgeCharge:       surgeCharge,
 		SurgeMultiplier:   surgeMultiplier,
+		SurgeDetails: &dto.SurgeDetailsResponse{
+			IsActive:              surgeMultiplier > 1.0,
+			AppliedMultiplier:     combinedMultiplier,
+			TimeBasedMultiplier:   timeMultiplier,
+			DemandBasedMultiplier: demandMultiplier,
+			ZoneBasedMultiplier:   zoneMultiplier,
+			Reason:                surgeReason,
+		},
 		SubTotal:          subTotal,
 		TotalFare:         totalFare,
 		EstimatedDistance: distance,
