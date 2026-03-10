@@ -75,7 +75,8 @@ func NewManager(cfg *Config, db *gorm.DB) *Manager {
 	m.reconnectionHandler = NewReconnectionHandler(m.sessionManager, m.messageStore, m.connectionMonitor)
 	m.reliableMessageQueue = NewReliableMessageQueue(m.messageStore)
 
-	clientLifecycle := NewClientLifecycle(m.sessionManager, m.messageStore)
+	// Initialize client lifecycle with database for driver online/offline status management
+	clientLifecycle := NewClientLifecycleWithDB(m.sessionManager, m.messageStore, db)
 	m.hub.SetClientLifecycle(clientLifecycle)
 	m.hub.SetSessionManager(m.sessionManager)
 

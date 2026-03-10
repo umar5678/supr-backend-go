@@ -12,11 +12,11 @@ type FareEstimateResponse struct {
 	SubTotal           float64               `json:"subTotal"`
 	SurgeAmount        float64               `json:"surgeAmount"`
 	TotalFare          float64               `json:"totalFare"`
-	DriverPayout       float64               `json:"driverPayout"`      
+	DriverPayout       float64               `json:"driverPayout"`
 	PlatformCommission float64               `json:"platformCommission"`
-	CommissionRate     float64               `json:"commissionRate"`    
-	EstimatedDistance  float64               `json:"estimatedDistance"` 
-	EstimatedDuration  int                   `json:"estimatedDuration"` 
+	CommissionRate     float64               `json:"commissionRate"`
+	EstimatedDistance  float64               `json:"estimatedDistance"`
+	EstimatedDuration  int                   `json:"estimatedDuration"`
 	VehicleTypeName    string                `json:"vehicleTypeName"`
 	Currency           string                `json:"currency"`
 	SurgeDetails       *SurgeDetailsResponse `json:"surgeDetails,omitempty"`

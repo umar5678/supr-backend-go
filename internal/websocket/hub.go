@@ -205,10 +205,6 @@ func (h *Hub) getTotalConnectionsUnsafe() int {
 }
 
 func (h *Hub) unregisterClient(client *Client) {
-	if h.clientLifecycle != nil {
-		h.clientLifecycle.OnClientDisconnect(client)
-	}
-
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -240,6 +236,7 @@ func (h *Hub) unregisterClient(client *Client) {
 			h.removeFromRoleMap(h.riders, client)
 		}
 
+		// Only call lifecycle handler when user completely goes offline (last device)
 		if len(h.clients[client.UserID]) == 0 {
 			delete(h.clients, client.UserID)
 
@@ -247,6 +244,11 @@ func (h *Hub) unregisterClient(client *Client) {
 				"userID", client.UserID,
 				"clientID", client.ID,
 			)
+
+			// Call lifecycle handler only for complete disconnect
+			if h.clientLifecycle != nil {
+				h.clientLifecycle.OnClientDisconnect(client)
+			}
 
 			ctx := context.Background()
 			cache.RemovePresence(ctx, client.UserID, client.ID)
@@ -712,6 +714,17 @@ func (h *Hub) CheckInactiveConnections(timeout time.Duration) {
 					"inactiveFor", now.Sub(client.lastHeartbeat).String(),
 					"timeout", timeout.String(),
 				)
+
+				// For drivers, mark them offline due to heartbeat timeout
+				if client.Role == models.RoleDriver && h.clientLifecycle != nil {
+					if err := h.markDriverOfflineByHeartbeatTimeout(client); err != nil {
+						logger.Warn("failed to mark driver offline due to heartbeat timeout",
+							"error", err,
+							"driverId", userID,
+						)
+					}
+				}
+
 				clientsToRemove = append(clientsToRemove, client)
 			}
 		}
@@ -722,4 +735,19 @@ func (h *Hub) CheckInactiveConnections(timeout time.Duration) {
 		h.unregisterClient(client)
 	}
 	h.mu.Lock()
+}
+
+// markDriverOfflineByHeartbeatTimeout marks a driver as offline when heartbeat times out
+// This is called when a driver hasn't sent any heartbeat for the configured timeout period
+func (h *Hub) markDriverOfflineByHeartbeatTimeout(client *Client) error {
+	if h.clientLifecycle == nil {
+		return nil
+	}
+
+	logger.Warn("⏰ Driver heartbeat timeout - marking offline",
+		"driverId", client.UserID,
+		"clientId", client.ID,
+	)
+
+	return h.clientLifecycle.markDriverOffline(client.UserID)
 }

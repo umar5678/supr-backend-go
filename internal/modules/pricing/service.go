@@ -410,13 +410,13 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 	}
 
 	breakdown := &dto.FareBreakdownResponse{
-		Components:        components,
-		BaseFare:          baseFare,
-		DistanceCharge:    distanceCharge,
-		TimeCharge:        timeCharge,
-		BookingFee:        bookingFee,
-		SurgeCharge:       surgeCharge,
-		SurgeMultiplier:   surgeMultiplier,
+		Components:      components,
+		BaseFare:        baseFare,
+		DistanceCharge:  distanceCharge,
+		TimeCharge:      timeCharge,
+		BookingFee:      bookingFee,
+		SurgeCharge:     surgeCharge,
+		SurgeMultiplier: surgeMultiplier,
 		SurgeDetails: &dto.SurgeDetailsResponse{
 			IsActive:              surgeMultiplier > 1.0,
 			AppliedMultiplier:     combinedMultiplier,
