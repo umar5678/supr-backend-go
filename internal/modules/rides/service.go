@@ -1166,7 +1166,7 @@ func (s *service) StartRide(ctx context.Context, userID, rideID string, req dto.
 	if ride.ArrivedAt != nil {
 		waitMinutes := int(now.Sub(*ride.ArrivedAt).Minutes())
 		if waitMinutes > 3 {
-			waitCharge := float64(waitMinutes-3) * 0.50
+			waitCharge := float64(waitMinutes-3) * 1.0
 			ride.WaitTimeCharge = &waitCharge
 			logger.Info("wait time charge applied", "rideID", rideID, "waitMinutes", waitMinutes, "charge", waitCharge)
 		}
