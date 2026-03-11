@@ -1118,6 +1118,12 @@ func (s *service) MarkArrived(ctx context.Context, userID, rideID string) (*dto.
 		return dto.ToRideResponse(ride), nil
 	}
 
+	// Invalidate ride cache to ensure fresh data on next GetRide call
+	rideCacheKey := fmt.Sprintf("ride:active:%s", rideID)
+	if err := cache.Delete(ctx, rideCacheKey); err != nil {
+		logger.Warn("failed to clear ride cache after status update", "error", err, "rideCacheKey", rideCacheKey)
+	}
+
 	return dto.ToRideResponse(freshRide), nil
 }
 
