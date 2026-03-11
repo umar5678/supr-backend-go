@@ -309,7 +309,8 @@ func (r *repository) GetAvailableOrders(ctx context.Context, providerID string, 
 		Where("category_slug IN ?", categorySlugs).
 		Where("assigned_provider_id IS NULL").
 		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
-		Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID)
+		Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID).
+		Where("NOT EXISTS (SELECT 1 FROM service_orders so WHERE so.assigned_provider_id = ? AND so.status IN ?)", providerID, []string{shared.OrderStatusAssigned, shared.OrderStatusAccepted, shared.OrderStatusInProgress})
 
 	logger.Info("GetAvailableOrders query filters", "categorySlugs", categorySlugs, "statusFilters", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider}, "providerID", providerID)
 
@@ -332,7 +333,8 @@ func (r *repository) GetAvailableOrders(ctx context.Context, providerID string, 
 		Where("category_slug IN ?", categorySlugs).
 		Where("provider_id IS NULL").
 		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
-		Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID)
+		Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID).
+		Where("NOT EXISTS (SELECT 1 FROM laundry_orders lo WHERE lo.provider_id = ? AND lo.status IN ?)", providerID, []string{"assigned", "accepted", "in_progress"})
 
 	if query.CategorySlug != "" {
 		laundryDb = laundryDb.Where("category_slug = ?", query.CategorySlug)
@@ -454,6 +456,7 @@ func (r *repository) GetAvailableOrderByID(ctx context.Context, providerID, orde
 		Where("assigned_provider_id IS NULL").
 		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
 		Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID).
+		Where("NOT EXISTS (SELECT 1 FROM service_orders so WHERE so.assigned_provider_id = ? AND so.status IN ?)", providerID, []string{shared.OrderStatusAssigned, shared.OrderStatusAccepted, shared.OrderStatusInProgress}).
 		First(&order).Error
 
 	if err == nil {
@@ -470,6 +473,7 @@ func (r *repository) GetAvailableOrderByID(ctx context.Context, providerID, orde
 			Where("provider_id IS NULL").
 			Where("expires_at IS NULL OR expires_at > ?", time.Now()).
 			Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID).
+			Where("NOT EXISTS (SELECT 1 FROM laundry_orders lo WHERE lo.provider_id = ? AND lo.status IN ?)", providerID, []string{"assigned", "accepted", "in_progress"}).
 			First(&laundryOrder).Error
 
 		if err == nil {

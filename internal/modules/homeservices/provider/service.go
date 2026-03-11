@@ -361,8 +361,8 @@ func (s *service) AcceptOrder(ctx context.Context, providerID, orderID string) (
 	if err != nil {
 		return nil, response.InternalServerError("Failed to accept order", err)
 	}
-	if activeCount >= 5 {
-		return nil, response.BadRequest("You have too many active orders. Complete some orders before accepting new ones.")
+	if activeCount >= 1 {
+		return nil, response.BadRequest("You already have an active order. Complete it before accepting another one.")
 	}
 
 	categorySlugs, err := s.repo.GetProviderCategorySlugs(ctx, providerID)
