@@ -95,13 +95,6 @@ definitions:
     - platform
     - service_provider
     type: string
-    x-enum-comments:
-      WalletTypeServiceProvider: ✅ For handyman, delivery_person, service_provider
-    x-enum-descriptions:
-    - ""
-    - ""
-    - ""
-    - ✅ For handyman, delivery_person, service_provider
     x-enum-varnames:
     - WalletTypeRider
     - WalletTypeDriver
@@ -257,6 +250,16 @@ definitions:
         type: string
       password:
         type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+        enum:
+        - rider
+        - driver
+        - service_provider
+        - handyman
+        - delivery_person
+        - admin
     required:
     - email
     - password
@@ -284,6 +287,16 @@ definitions:
     properties:
       phone:
         type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
+        enum:
+        - rider
+        - driver
+        - service_provider
+        - handyman
+        - delivery_person
+        - admin
     required:
     - phone
     type: object
@@ -3423,7 +3436,6 @@ definitions:
       price:
         type: number
       productSlug:
-        description: Changed from ItemType
         type: string
       quantity:
         type: integer
@@ -3495,7 +3507,6 @@ definitions:
       specialNotes:
         type: string
       tip:
-        description: Optional tip for delivery person
         type: number
     required:
     - address
@@ -3769,7 +3780,6 @@ definitions:
         minimum: 1
         type: integer
       weight:
-        description: Optional, can be calculated from product
         type: number
     required:
     - productSlug
@@ -3862,7 +3872,6 @@ definitions:
   github_com_umar5678_go-backend_internal_modules_pricing_dto.CalculateWaitTimeRequest:
     properties:
       arrivedAt:
-        description: ISO 8601 timestamp
         type: string
       rideId:
         type: string
@@ -3929,10 +3938,8 @@ definitions:
   github_com_umar5678_go-backend_internal_modules_pricing_dto.CreateSurgeZoneRequest:
     properties:
       activeFrom:
-        description: ISO 8601 timestamp
         type: string
       activeUntil:
-        description: ISO 8601 timestamp
         type: string
       areaGeohash:
         maxLength: 12
@@ -4096,6 +4103,8 @@ definitions:
         type: number
       surgeCharge:
         type: number
+      surgeDetails:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetailsResponse'
       surgeMultiplier:
         type: number
       timeCharge:
@@ -4110,7 +4119,6 @@ definitions:
       name:
         type: string
       type:
-        description: base, distance, duration, surge, booking_fee
         type: string
     type: object
   github_com_umar5678_go-backend_internal_modules_pricing_dto.FareEstimateRequest:
@@ -4147,25 +4155,20 @@ definitions:
       bookingFee:
         type: number
       commissionRate:
-        description: Percentage (e.g., 5.0 for 5%)
         type: number
       currency:
         type: string
       distanceFare:
         type: number
       driverPayout:
-        description: What driver receives (after commission)
         type: number
       durationFare:
         type: number
       estimatedDistance:
-        description: km
         type: number
       estimatedDuration:
-        description: seconds
         type: integer
       platformCommission:
-        description: Platform fee
         type: number
       subTotal:
         type: number
@@ -4206,7 +4209,6 @@ definitions:
       details:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetails'
       reason:
-        description: '''normal'', ''time_based'', ''demand_based'', ''combined'''
         type: string
       surgeAmount:
         type: number
@@ -4222,14 +4224,12 @@ definitions:
       availableDrivers:
         type: integer
       dayType:
-        description: '"weekday" or "weekend"'
         type: string
       demandSupplyRatio:
         type: number
       pendingRequests:
         type: integer
       timeOfDay:
-        description: '"peak" or "off-peak"'
         type: string
       trafficCondition:
         type: string
@@ -4291,6 +4291,12 @@ definitions:
   github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeZoneResponse:
     properties:
       areaName:
+        type: string
+      centerLat:
+        type: number
+      centerLon:
+        type: number
+      geohash:
         type: string
       id:
         type: string
@@ -4760,7 +4766,6 @@ definitions:
       longitude:
         type: number
       radiusKm:
-        description: Default 5 km, Max 50 km
         maximum: 50
         minimum: 0.1
         type: number
@@ -4772,77 +4777,56 @@ definitions:
   github_com_umar5678_go-backend_internal_modules_rides_dto.AvailableCarResponse:
     properties:
       acceptanceRate:
-        description: Driver acceptance rate
         type: number
       cancellationRate:
-        description: Driver cancellation rate
         type: number
       capacity:
-        description: Passenger capacity
         type: integer
       color:
-        description: e.g., "Silver"
         type: string
       currentLatitude:
-        description: Current location
         type: number
       currentLongitude:
         type: number
       distanceKm:
-        description: Distance from rider
         type: number
       driverId:
-        description: Driver ID
         type: string
       driverImage:
         type: string
       driverName:
-        description: Driver name
         type: string
       driverRating:
-        description: Driver rating (0-5)
         type: number
       estimatedFare:
-        description: Estimated ride fare
         type: number
       etaMinutes:
-        description: ETA in minutes
         type: integer
       etaSeconds:
-        description: ETA in seconds
         type: integer
       heading:
-        description: Direction (0-360)
         type: integer
       id:
-        description: Car/Vehicle ID
         type: string
       isVerified:
         type: boolean
       licensePlate:
-        description: e.g., "DHA-1234"
         type: string
       make:
-        description: e.g., "Toyota"
         type: string
       model:
-        description: e.g., "Corolla"
         type: string
       status:
-        description: '"online", "busy", etc.'
         type: string
       surgeMultiplier:
-        description: Current surge pricing multiplier
         type: number
       totalTrips:
-        description: Driver total trips
         type: integer
       updatedAt:
         type: string
       vehicleDisplayName:
         type: string
       vehicleType:
-        description: e.g., "economy", "comfort", "premium", "xl"
         type: string
       vehicleTypeId:
         type: string
@@ -4854,7 +4838,6 @@ definitions:
           $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.AvailableCarResponse'
         type: array
       carsCount:
-        description: Number of cars in response
         type: integer
       radiusKm:
         type: number
@@ -4865,7 +4848,6 @@ definitions:
       timestamp:
         type: string
       totalCount:
-        description: Total available cars found
         type: integer
     type: object
   github_com_umar5678_go-backend_internal_modules_rides_dto.CancelRideRequest:
@@ -4886,14 +4868,11 @@ definitions:
         type: number
       driverLon:
         type: number
-      riderPin:
-        type: string
     required:
     - actualDistance
     - actualDuration
     - driverLat
     - driverLon
-    - riderPin
     type: object
   github_com_umar5678_go-backend_internal_modules_rides_dto.CreateRideRequest:
     properties:
@@ -4931,7 +4910,6 @@ definitions:
       savedLocationId:
         type: string
       scheduledAt:
-        description: 'Optional RFC3339 scheduled time for later rides. Example: 2026-01-11T15:04:05Z'
         type: string
       useSavedAs:
         enum:
@@ -5006,8 +4984,6 @@ definitions:
       driver:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.DriverResponse'
       driverFare:
-        description: Driver and Rider Fares - Both see the same amount (with promo
-          discount applied if used)
         type: number
       driverId:
         type: string
@@ -5044,7 +5020,6 @@ definitions:
       rider:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse'
       riderFare:
-        description: What rider pays (with discount applied)
         type: number
       riderId:
         type: string
@@ -5072,7 +5047,6 @@ definitions:
   github_com_umar5678_go-backend_internal_modules_rides_dto.StartRideRequest:
     properties:
       riderPin:
-        description: 'NEW: 4-digit PIN'
         type: string
     required:
     - riderPin
@@ -5094,7 +5068,6 @@ definitions:
       pickupLon:
         type: number
       radiusKm:
-        description: Optional, defaults to 5km
         maximum: 50
         minimum: 0.1
         type: number
@@ -5109,129 +5082,89 @@ definitions:
   github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleWithDetailsResponse:
     properties:
       acceptanceRate:
-        description: Driver acceptance rate %
         type: number
       availableDrivers:
-        description: Available drivers in zone
         type: integer
       baseFare:
-        description: Pricing Information
         type: number
       cancellationRate:
-        description: Driver cancellation rate %
         type: number
       capacity:
-        description: Passenger capacity
         type: integer
       color:
-        description: e.g., "Silver"
         type: string
       currentLatitude:
-        description: Location & Distance
         type: number
       currentLongitude:
-        description: Driver current longitude
         type: number
       demand:
-        description: 'Demand level: "low", "normal", "high", "extreme"'
         type: string
       distanceKm:
-        description: Distance from pickup
         type: number
       driverId:
-        description: Driver Profile ID
         type: string
       driverImage:
         type: string
       driverName:
-        description: Driver name
         type: string
       driverRating:
-        description: Driver rating (0-5)
         type: number
       estimatedDistance:
-        description: Estimated trip distance
         type: number
       estimatedDuration:
-        description: Estimated trip duration in seconds
         type: integer
       estimatedDurationMins:
-        description: Estimated duration in minutes
         type: integer
       estimatedFare:
-        description: Estimated fare for trip
         type: number
       etaFormatted:
-        description: Formatted ETA string e.g., "4 min"
         type: string
       etaMinutes:
-        description: ETA in minutes
         type: integer
       etaSeconds:
-        description: ETA Information
         type: integer
       heading:
-        description: Direction 0-360
         type: integer
       id:
-        description: Vehicle Information
         type: string
       isVerified:
-        description: Is driver verified
         type: boolean
       licensePlate:
-        description: e.g., "DHA-1234"
         type: string
       make:
-        description: e.g., "Toyota"
         type: string
       model:
-        description: e.g., "Corolla"
         type: string
       pendingRequests:
-        description: Demand Information
         type: integer
       perKmRate:
-        description: Rate per km
         type: number
       perMinRate:
-        description: Rate per minute
         type: number
       status:
-        description: 'Driver status: online, busy'
         type: string
       surgeMultiplier:
-        description: Surge Pricing
         type: number
       surgeReason:
-        description: 'Why surge is active: "peak_hours", "high_demand", etc.'
         type: string
       timestamp:
-        description: Response timestamp
         type: string
       totalTrips:
-        description: Driver total trips
         type: integer
       updatedAt:
-        description: Timestamps
         type: string
       vehicleDisplayName:
-        description: e.g., "Economy"
         type: string
       vehicleType:
-        description: e.g., "economy", "comfort"
         type: string
       vehicleTypeId:
-        description: Vehicle Details
         type: string
       year:
-        description: Year of manufacture
         type: integer
     type: object
   github_com_umar5678_go-backend_internal_modules_rides_dto.VehiclesWithDetailsListResponse:
     properties:
       carsCount:
-        description: Number of vehicles in response
         type: integer
       dropoffAddress:
         type: string
@@ -5242,29 +5175,22 @@ definitions:
       pickupAddress:
         type: string
       pickupLat:
-        description: Trip Information
         type: number
       pickupLon:
         type: number
       radiusKm:
         type: number
       timestamp:
-        description: Metadata
         type: string
       totalCount:
-        description: Vehicles List
         type: integer
       tripDistance:
-        description: Trip Estimates (applies to all vehicles)
         type: number
       tripDuration:
-        description: Total trip duration in seconds
         type: integer
       tripDurationMins:
-        description: Trip duration in minutes
         type: integer
       vehicles:
-        description: List of vehicles
         items:
           $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleWithDetailsResponse'
         type: array
@@ -5337,17 +5263,29 @@ definitions:
     - latitude
     - longitude
     type: object
+  github_com_umar5678_go-backend_internal_modules_sos_dto.UpdateSOSLocationRequest:
+    properties:
+      latitude:
+        maximum: 90
+        minimum: -90
+        type: number
+      longitude:
+        maximum: 180
+        minimum: -180
+        type: number
+    required:
+    - latitude
+    - longitude
+    type: object
   github_com_umar5678_go-backend_internal_modules_tracking_dto.DriverLocationResponse:
     properties:
       distance:
-        description: km from search point
         type: number
       driver:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverProfileResponse'
       driverId:
         type: string
       eta:
-        description: seconds
         type: integer
       location:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_tracking_dto.LocationResponse'
@@ -5543,7 +5481,6 @@ definitions:
       processedAt:
         type: string
       referenceId:
-        description: now varchar instead of uuid
         type: string
       referenceType:
         type: string
@@ -5647,7 +5584,6 @@ definitions:
         type: string
       data: {}
       errors:
-        description: Use ErrorDetail
         items:
           $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.ErrorDetail'
         type: array
@@ -10590,10 +10526,14 @@ paths:
   /rides/{id}:
     get:
       parameters:
-      - description: Ride ID
+      - description: Ride ID or 'active' to get current active ride
         in: path
         name: id
         required: true
+        type: string
+      - description: User role (rider or driver) - required when id='active'
+        in: query
+        name: role
         type: string
       produces:
       - application/json
@@ -10609,7 +10549,7 @@ paths:
               type: object
       security:
       - BearerAuth: []
-      summary: Get ride details
+      summary: Get ride details or active ride
       tags:
       - rides
   /rides/{id}/accept:
@@ -11652,6 +11592,34 @@ paths:
       security:
       - BearerAuth: []
       summary: Cancel SOS alert
+      tags:
+      - sos
+  /sos/{id}/location:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Alert ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Location data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.UpdateSOSLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update SOS alert location with live tracking
       tags:
       - sos
   /sos/{id}/resolve:

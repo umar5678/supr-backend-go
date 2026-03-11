@@ -8294,14 +8294,20 @@ const docTemplate = `{
                 "tags": [
                     "rides"
                 ],
-                "summary": "Get ride details",
+                "summary": "Get ride details or active ride",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Ride ID",
+                        "description": "Ride ID or 'active' to get current active ride",
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User role (rider or driver) - required when id='active'",
+                        "name": "role",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -10057,6 +10063,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/sos/{id}/location": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sos"
+                ],
+                "summary": "Update SOS alert location with live tracking",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Alert ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Location data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_sos_dto.UpdateSOSLocationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/sos/{id}/resolve": {
             "post": {
                 "security": [
@@ -11048,15 +11099,6 @@ const docTemplate = `{
                 "platform",
                 "service_provider"
             ],
-            "x-enum-comments": {
-                "WalletTypeServiceProvider": "✅ For handyman, delivery_person, service_provider"
-            },
-            "x-enum-descriptions": [
-                "",
-                "",
-                "",
-                "✅ For handyman, delivery_person, service_provider"
-            ],
             "x-enum-varnames": [
                 "WalletTypeRider",
                 "WalletTypeDriver",
@@ -11294,6 +11336,21 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
+                },
+                "role": {
+                    "enum": [
+                        "rider",
+                        "driver",
+                        "service_provider",
+                        "handyman",
+                        "delivery_person",
+                        "admin"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserRole"
+                        }
+                    ]
                 }
             }
         },
@@ -11331,6 +11388,21 @@ const docTemplate = `{
             "properties": {
                 "phone": {
                     "type": "string"
+                },
+                "role": {
+                    "enum": [
+                        "rider",
+                        "driver",
+                        "service_provider",
+                        "handyman",
+                        "delivery_person",
+                        "admin"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserRole"
+                        }
+                    ]
                 }
             }
         },
@@ -15995,7 +16067,6 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "productSlug": {
-                    "description": "Changed from ItemType",
                     "type": "string"
                 },
                 "quantity": {
@@ -16104,7 +16175,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "tip": {
-                    "description": "Optional tip for delivery person",
                     "type": "number"
                 }
             }
@@ -16511,7 +16581,6 @@ const docTemplate = `{
                     "minimum": 1
                 },
                 "weight": {
-                    "description": "Optional, can be calculated from product",
                     "type": "number"
                 }
             }
@@ -16641,7 +16710,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "arrivedAt": {
-                    "description": "ISO 8601 timestamp",
                     "type": "string"
                 },
                 "rideId": {
@@ -16741,11 +16809,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "activeFrom": {
-                    "description": "ISO 8601 timestamp",
                     "type": "string"
                 },
                 "activeUntil": {
-                    "description": "ISO 8601 timestamp",
                     "type": "string"
                 },
                 "areaGeohash": {
@@ -16974,6 +17040,9 @@ const docTemplate = `{
                 "surgeCharge": {
                     "type": "number"
                 },
+                "surgeDetails": {
+                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetailsResponse"
+                },
                 "surgeMultiplier": {
                     "type": "number"
                 },
@@ -16995,7 +17064,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "description": "base, distance, duration, surge, booking_fee",
                     "type": "string"
                 }
             }
@@ -17045,7 +17113,6 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "commissionRate": {
-                    "description": "Percentage (e.g., 5.0 for 5%)",
                     "type": "number"
                 },
                 "currency": {
@@ -17055,22 +17122,18 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "driverPayout": {
-                    "description": "What driver receives (after commission)",
                     "type": "number"
                 },
                 "durationFare": {
                     "type": "number"
                 },
                 "estimatedDistance": {
-                    "description": "km",
                     "type": "number"
                 },
                 "estimatedDuration": {
-                    "description": "seconds",
                     "type": "integer"
                 },
                 "platformCommission": {
-                    "description": "Platform fee",
                     "type": "number"
                 },
                 "subTotal": {
@@ -17131,7 +17194,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_pricing_dto.SurgeDetails"
                 },
                 "reason": {
-                    "description": "'normal', 'time_based', 'demand_based', 'combined'",
                     "type": "string"
                 },
                 "surgeAmount": {
@@ -17155,7 +17217,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "dayType": {
-                    "description": "\"weekday\" or \"weekend\"",
                     "type": "string"
                 },
                 "demandSupplyRatio": {
@@ -17165,7 +17226,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "timeOfDay": {
-                    "description": "\"peak\" or \"off-peak\"",
                     "type": "string"
                 },
                 "trafficCondition": {
@@ -17259,6 +17319,15 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "areaName": {
+                    "type": "string"
+                },
+                "centerLat": {
+                    "type": "number"
+                },
+                "centerLon": {
+                    "type": "number"
+                },
+                "geohash": {
                     "type": "string"
                 },
                 "id": {
@@ -17949,7 +18018,6 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "radiusKm": {
-                    "description": "Default 5 km, Max 50 km",
                     "type": "number",
                     "maximum": 50,
                     "minimum": 0.1
@@ -17960,92 +18028,72 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "acceptanceRate": {
-                    "description": "Driver acceptance rate",
                     "type": "number"
                 },
                 "cancellationRate": {
-                    "description": "Driver cancellation rate",
                     "type": "number"
                 },
                 "capacity": {
-                    "description": "Passenger capacity",
                     "type": "integer"
                 },
                 "color": {
-                    "description": "e.g., \"Silver\"",
                     "type": "string"
                 },
                 "currentLatitude": {
-                    "description": "Current location",
                     "type": "number"
                 },
                 "currentLongitude": {
                     "type": "number"
                 },
                 "distanceKm": {
-                    "description": "Distance from rider",
                     "type": "number"
                 },
                 "driverId": {
-                    "description": "Driver ID",
                     "type": "string"
                 },
                 "driverImage": {
                     "type": "string"
                 },
                 "driverName": {
-                    "description": "Driver name",
                     "type": "string"
                 },
                 "driverRating": {
-                    "description": "Driver rating (0-5)",
                     "type": "number"
                 },
                 "estimatedFare": {
-                    "description": "Estimated ride fare",
                     "type": "number"
                 },
                 "etaMinutes": {
-                    "description": "ETA in minutes",
                     "type": "integer"
                 },
                 "etaSeconds": {
-                    "description": "ETA in seconds",
                     "type": "integer"
                 },
                 "heading": {
-                    "description": "Direction (0-360)",
                     "type": "integer"
                 },
                 "id": {
-                    "description": "Car/Vehicle ID",
                     "type": "string"
                 },
                 "isVerified": {
                     "type": "boolean"
                 },
                 "licensePlate": {
-                    "description": "e.g., \"DHA-1234\"",
                     "type": "string"
                 },
                 "make": {
-                    "description": "e.g., \"Toyota\"",
                     "type": "string"
                 },
                 "model": {
-                    "description": "e.g., \"Corolla\"",
                     "type": "string"
                 },
                 "status": {
-                    "description": "\"online\", \"busy\", etc.",
                     "type": "string"
                 },
                 "surgeMultiplier": {
-                    "description": "Current surge pricing multiplier",
                     "type": "number"
                 },
                 "totalTrips": {
-                    "description": "Driver total trips",
                     "type": "integer"
                 },
                 "updatedAt": {
@@ -18055,7 +18103,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "vehicleType": {
-                    "description": "e.g., \"economy\", \"comfort\", \"premium\", \"xl\"",
                     "type": "string"
                 },
                 "vehicleTypeId": {
@@ -18073,7 +18120,6 @@ const docTemplate = `{
                     }
                 },
                 "carsCount": {
-                    "description": "Number of cars in response",
                     "type": "integer"
                 },
                 "radiusKm": {
@@ -18089,7 +18135,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "totalCount": {
-                    "description": "Total available cars found",
                     "type": "integer"
                 }
             }
@@ -18109,8 +18154,7 @@ const docTemplate = `{
                 "actualDistance",
                 "actualDuration",
                 "driverLat",
-                "driverLon",
-                "riderPin"
+                "driverLon"
             ],
             "properties": {
                 "actualDistance": {
@@ -18126,9 +18170,6 @@ const docTemplate = `{
                 },
                 "driverLon": {
                     "type": "number"
-                },
-                "riderPin": {
-                    "type": "string"
                 }
             }
         },
@@ -18188,7 +18229,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "scheduledAt": {
-                    "description": "Optional RFC3339 scheduled time for later rides. Example: 2026-01-11T15:04:05Z",
                     "type": "string"
                 },
                 "useSavedAs": {
@@ -18289,7 +18329,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.DriverResponse"
                 },
                 "driverFare": {
-                    "description": "Driver and Rider Fares - Both see the same amount (with promo discount applied if used)",
                     "type": "number"
                 },
                 "driverId": {
@@ -18344,7 +18383,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.UserResponse"
                 },
                 "riderFare": {
-                    "description": "What rider pays (with discount applied)",
                     "type": "number"
                 },
                 "riderId": {
@@ -18389,7 +18427,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "riderPin": {
-                    "description": "NEW: 4-digit PIN",
                     "type": "string"
                 }
             }
@@ -18426,7 +18463,6 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "radiusKm": {
-                    "description": "Optional, defaults to 5km",
                     "type": "number",
                     "maximum": 50,
                     "minimum": 0.1
@@ -18437,162 +18473,123 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "acceptanceRate": {
-                    "description": "Driver acceptance rate %",
                     "type": "number"
                 },
                 "availableDrivers": {
-                    "description": "Available drivers in zone",
                     "type": "integer"
                 },
                 "baseFare": {
-                    "description": "Pricing Information",
                     "type": "number"
                 },
                 "cancellationRate": {
-                    "description": "Driver cancellation rate %",
                     "type": "number"
                 },
                 "capacity": {
-                    "description": "Passenger capacity",
                     "type": "integer"
                 },
                 "color": {
-                    "description": "e.g., \"Silver\"",
                     "type": "string"
                 },
                 "currentLatitude": {
-                    "description": "Location \u0026 Distance",
                     "type": "number"
                 },
                 "currentLongitude": {
-                    "description": "Driver current longitude",
                     "type": "number"
                 },
                 "demand": {
-                    "description": "Demand level: \"low\", \"normal\", \"high\", \"extreme\"",
                     "type": "string"
                 },
                 "distanceKm": {
-                    "description": "Distance from pickup",
                     "type": "number"
                 },
                 "driverId": {
-                    "description": "Driver Profile ID",
                     "type": "string"
                 },
                 "driverImage": {
                     "type": "string"
                 },
                 "driverName": {
-                    "description": "Driver name",
                     "type": "string"
                 },
                 "driverRating": {
-                    "description": "Driver rating (0-5)",
                     "type": "number"
                 },
                 "estimatedDistance": {
-                    "description": "Estimated trip distance",
                     "type": "number"
                 },
                 "estimatedDuration": {
-                    "description": "Estimated trip duration in seconds",
                     "type": "integer"
                 },
                 "estimatedDurationMins": {
-                    "description": "Estimated duration in minutes",
                     "type": "integer"
                 },
                 "estimatedFare": {
-                    "description": "Estimated fare for trip",
                     "type": "number"
                 },
                 "etaFormatted": {
-                    "description": "Formatted ETA string e.g., \"4 min\"",
                     "type": "string"
                 },
                 "etaMinutes": {
-                    "description": "ETA in minutes",
                     "type": "integer"
                 },
                 "etaSeconds": {
-                    "description": "ETA Information",
                     "type": "integer"
                 },
                 "heading": {
-                    "description": "Direction 0-360",
                     "type": "integer"
                 },
                 "id": {
-                    "description": "Vehicle Information",
                     "type": "string"
                 },
                 "isVerified": {
-                    "description": "Is driver verified",
                     "type": "boolean"
                 },
                 "licensePlate": {
-                    "description": "e.g., \"DHA-1234\"",
                     "type": "string"
                 },
                 "make": {
-                    "description": "e.g., \"Toyota\"",
                     "type": "string"
                 },
                 "model": {
-                    "description": "e.g., \"Corolla\"",
                     "type": "string"
                 },
                 "pendingRequests": {
-                    "description": "Demand Information",
                     "type": "integer"
                 },
                 "perKmRate": {
-                    "description": "Rate per km",
                     "type": "number"
                 },
                 "perMinRate": {
-                    "description": "Rate per minute",
                     "type": "number"
                 },
                 "status": {
-                    "description": "Driver status: online, busy",
                     "type": "string"
                 },
                 "surgeMultiplier": {
-                    "description": "Surge Pricing",
                     "type": "number"
                 },
                 "surgeReason": {
-                    "description": "Why surge is active: \"peak_hours\", \"high_demand\", etc.",
                     "type": "string"
                 },
                 "timestamp": {
-                    "description": "Response timestamp",
                     "type": "string"
                 },
                 "totalTrips": {
-                    "description": "Driver total trips",
                     "type": "integer"
                 },
                 "updatedAt": {
-                    "description": "Timestamps",
                     "type": "string"
                 },
                 "vehicleDisplayName": {
-                    "description": "e.g., \"Economy\"",
                     "type": "string"
                 },
                 "vehicleType": {
-                    "description": "e.g., \"economy\", \"comfort\"",
                     "type": "string"
                 },
                 "vehicleTypeId": {
-                    "description": "Vehicle Details",
                     "type": "string"
                 },
                 "year": {
-                    "description": "Year of manufacture",
                     "type": "integer"
                 }
             }
@@ -18601,7 +18598,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "carsCount": {
-                    "description": "Number of vehicles in response",
                     "type": "integer"
                 },
                 "dropoffAddress": {
@@ -18617,7 +18613,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "pickupLat": {
-                    "description": "Trip Information",
                     "type": "number"
                 },
                 "pickupLon": {
@@ -18627,27 +18622,21 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "timestamp": {
-                    "description": "Metadata",
                     "type": "string"
                 },
                 "totalCount": {
-                    "description": "Vehicles List",
                     "type": "integer"
                 },
                 "tripDistance": {
-                    "description": "Trip Estimates (applies to all vehicles)",
                     "type": "number"
                 },
                 "tripDuration": {
-                    "description": "Total trip duration in seconds",
                     "type": "integer"
                 },
                 "tripDurationMins": {
-                    "description": "Trip duration in minutes",
                     "type": "integer"
                 },
                 "vehicles": {
-                    "description": "List of vehicles",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.VehicleWithDetailsResponse"
@@ -18756,11 +18745,29 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_umar5678_go-backend_internal_modules_sos_dto.UpdateSOSLocationRequest": {
+            "type": "object",
+            "required": [
+                "latitude",
+                "longitude"
+            ],
+            "properties": {
+                "latitude": {
+                    "type": "number",
+                    "maximum": 90,
+                    "minimum": -90
+                },
+                "longitude": {
+                    "type": "number",
+                    "maximum": 180,
+                    "minimum": -180
+                }
+            }
+        },
         "github_com_umar5678_go-backend_internal_modules_tracking_dto.DriverLocationResponse": {
             "type": "object",
             "properties": {
                 "distance": {
-                    "description": "km from search point",
                     "type": "number"
                 },
                 "driver": {
@@ -18770,7 +18777,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "eta": {
-                    "description": "seconds",
                     "type": "integer"
                 },
                 "location": {
@@ -19058,7 +19064,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "referenceId": {
-                    "description": "now varchar instead of uuid",
                     "type": "string"
                 },
                 "referenceType": {
@@ -19216,7 +19221,6 @@ const docTemplate = `{
                 },
                 "data": {},
                 "errors": {
-                    "description": "Use ErrorDetail",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.ErrorDetail"
