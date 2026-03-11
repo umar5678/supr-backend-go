@@ -629,7 +629,7 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 }
 
 func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error) {
-	// First try to find in ServiceOrderNew table (assigned orders)
+	// First try to find assigned ServiceOrderNew (assigned_provider_id = providerID)
 	var order models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND assigned_provider_id = ?", orderID, providerID).
@@ -637,6 +637,17 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 
 	if err == nil {
 		return &order, nil
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		// Try to find unassigned ServiceOrderNew (available order, assigned_provider_id = NULL)
+		err = r.db.WithContext(ctx).
+			Where("id = ? AND assigned_provider_id IS NULL", orderID).
+			First(&order).Error
+
+		if err == nil {
+			return &order, nil
+		}
 	}
 
 	if err == gorm.ErrRecordNotFound {
