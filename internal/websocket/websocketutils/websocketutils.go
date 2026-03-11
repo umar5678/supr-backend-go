@@ -3,6 +3,7 @@ package websocketutils
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/websocket"
@@ -56,6 +57,49 @@ func GetOnlineUsers() (int, int) {
 	}
 	stats := wsManager.GetStats()
 	return stats.ConnectedUsers, stats.TotalConnections
+}
+
+// Send a chat message from any role to admin support channel
+func SendAdminSupportChat(senderID string, senderRole string, content string, metadata map[string]interface{}) error {
+	if wsManager == nil {
+		logger.Warn("websocket manager not initialized")
+		return nil
+	}
+	if metadata == nil {
+		metadata = make(map[string]interface{})
+	}
+	msg := websocket.NewMessage(websocket.TypeChatMessage, map[string]interface{}{
+		"senderId":     senderID,
+		"senderRole":   senderRole,
+		"content":      content,
+		"metadata":     metadata,
+		"timestamp":    time.Now(),
+		"adminSupport": true,
+	})
+	wsManager.Hub().BroadcastToRole("admin", msg)
+	logger.Info("admin support chat sent", "senderId", senderID, "role", senderRole)
+	return nil
+}
+
+// Send SOS live location updates to admin until resolved
+func SendSOSLocationUpdate(userID string, location map[string]interface{}, sosActive bool) error {
+	if wsManager == nil {
+		logger.Warn("websocket manager not initialized")
+		return nil
+	}
+	if location == nil {
+		logger.Error("SOS location update: location missing")
+		return errors.New("location missing")
+	}
+	msg := websocket.NewMessage(websocket.TypeSOSAlert, map[string]interface{}{
+		"userId":    userID,
+		"location":  location,
+		"timestamp": time.Now(),
+		"sosActive": sosActive,
+	})
+	wsManager.Hub().BroadcastToRole("admin", msg)
+	logger.Info("SOS location update sent to admin", "userId", userID, "sosActive", sosActive)
+	return nil
 }
 
 func SendRideLocationUpdate(riderID string, locationData map[string]interface{}) error {

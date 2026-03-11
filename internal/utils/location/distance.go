@@ -96,10 +96,6 @@ func CalculateETA(distance, speed float64) int {
 	return int(math.Round(seconds))
 }
 
-func toRadians(degrees float64) float64 {
-	return degrees * math.Pi / 180
-}
-
 func EncodePolyline(points []Point) string {
 	if len(points) == 0 {
 		return ""

@@ -411,9 +411,10 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 	total = int64(len(allOrders))
 
 	orderClause := query.SortBy
-	if orderClause == "booking_date" {
+	switch orderClause {
+	case "booking_date":
 		orderClause = "created_at" 
-	} else if orderClause == "price" {}
+	case "price":}
 
 	if query.SortDesc {
 	}
@@ -626,6 +627,7 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 }
 
 func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error) {
+	// First try to find in ServiceOrderNew table
 	var order models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND assigned_provider_id = ?", orderID, providerID).
@@ -636,13 +638,19 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 	}
 
 	if err == gorm.ErrRecordNotFound {
+		// Try to find in LaundryOrder table
 		var laundryOrder models.LaundryOrder
 		err = r.db.WithContext(ctx).
-			Where("id = ? AND provider_id = ?", orderID, providerID).
+			Where("id = ?", orderID).
 			First(&laundryOrder).Error
 
 		if err == nil {
-			return r.convertLaundryOrderToServiceOrder(ctx, orderID)
+			// If LaundryOrder is found, check if provider_id matches or is assigned to this provider
+			if laundryOrder.ProviderID != nil && *laundryOrder.ProviderID == providerID {
+				return r.convertLaundryOrderToServiceOrder(ctx, orderID)
+			}
+			// If provider_id doesn't match, return not found error instead of nil entry
+			return nil, gorm.ErrRecordNotFound
 		}
 	}
 

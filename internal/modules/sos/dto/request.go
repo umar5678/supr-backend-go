@@ -33,3 +33,8 @@ func (r *ListSOSRequest) SetDefaults() {
         r.Limit = 20
     }
 }
+
+type UpdateSOSLocationRequest struct {
+    Latitude  float64 `json:"latitude" binding:"required,min=-90,max=90"`
+    Longitude float64 `json:"longitude" binding:"required,min=-180,max=180"`
+}

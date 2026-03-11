@@ -14,5 +14,6 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
         sos.GET("/:id", handler.GetSOS)
         sos.POST("/:id/resolve", handler.ResolveSOS)
         sos.POST("/:id/cancel", handler.CancelSOS)
+        sos.POST("/:id/location", handler.UpdateSOSLocation)
     }
 }

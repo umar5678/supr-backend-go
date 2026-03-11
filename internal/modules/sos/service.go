@@ -21,6 +21,7 @@ type Service interface {
 	ListSOS(ctx context.Context, userID string, req dto.ListSOSRequest) ([]*dto.SOSAlertListResponse, int64, error)
 	ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) error
 	CancelSOS(ctx context.Context, userID, alertID string) error
+	UpdateSOSLocation(ctx context.Context, userID, alertID string, latitude, longitude float64) error
 }
 
 type service struct {
@@ -164,6 +165,44 @@ func (s *service) CancelSOS(ctx context.Context, userID, alertID string) error {
 	}
 
 	logger.Info("SOS alert cancelled", "alertID", alertID, "userID", userID)
+	return nil
+}
+
+// UpdateSOSLocation updates the location of an active SOS alert and broadcasts to admin
+func (s *service) UpdateSOSLocation(ctx context.Context, userID, alertID string, latitude, longitude float64) error {
+	alert, err := s.repo.FindByID(ctx, alertID)
+	if err != nil {
+		return response.NotFoundError("SOS alert")
+	}
+
+	if alert.UserID != userID {
+		return response.ForbiddenError("You can only update your own alerts")
+	}
+
+	if alert.Status != "active" {
+		return response.BadRequest("Alert is not active")
+	}
+
+	// Update location in the database
+	if err := s.repo.UpdateLocation(ctx, alertID, latitude, longitude); err != nil {
+		logger.Error("failed to update SOS location", "error", err, "alertID", alertID)
+		return response.InternalServerError("Failed to update SOS location", err)
+	}
+
+	// Broadcast updated location to admin
+	websocketutil.SendSOSLocationUpdate(userID, map[string]interface{}{
+		"alertId":   alertID,
+		"rideId":    alert.RideID,
+		"latitude":  latitude,
+		"longitude": longitude,
+	}, true)
+
+	logger.Info("SOS location updated and broadcasted to admin",
+		"alertID", alertID,
+		"userID", userID,
+		"latitude", latitude,
+		"longitude", longitude,
+	)
 	return nil
 }
 

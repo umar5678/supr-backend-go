@@ -155,3 +155,31 @@ func (h *Handler) CancelSOS(c *gin.Context) {
 
 	response.Success(c, nil, "SOS alert cancelled successfully")
 }
+
+// UpdateSOSLocation godoc
+// @Summary Update SOS alert location with live tracking
+// @Tags sos
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Alert ID"
+// @Param request body dto.UpdateSOSLocationRequest true "Location data"
+// @Success 200 {object} response.Response
+// @Router /sos/{id}/location [post]
+func (h *Handler) UpdateSOSLocation(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	alertID := c.Param("id")
+
+	var req dto.UpdateSOSLocationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body"))
+		return
+	}
+
+	if err := h.service.UpdateSOSLocation(c.Request.Context(), userID.(string), alertID, req.Latitude, req.Longitude); err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, nil, "SOS location updated and broadcast to admin")
+}

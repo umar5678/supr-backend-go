@@ -14,6 +14,7 @@ type Repository interface {
     List(ctx context.Context, filters map[string]interface{}, page, limit int) ([]*models.SOSAlert, int64, error)
     Resolve(ctx context.Context, alertID, resolvedBy, notes string) error
     Cancel(ctx context.Context, alertID string) error
+    UpdateLocation(ctx context.Context, alertID string, latitude, longitude float64) error
     MarkEmergencyContactsNotified(ctx context.Context, alertID string) error
     MarkSafetyTeamNotified(ctx context.Context, alertID string) error
 }
@@ -94,6 +95,17 @@ func (r *repository) Cancel(ctx context.Context, alertID string) error {
         Model(&models.SOSAlert{}).
         Where("id = ?", alertID).
         Update("status", "cancelled").Error
+}
+
+func (r *repository) UpdateLocation(ctx context.Context, alertID string, latitude, longitude float64) error {
+    return r.db.WithContext(ctx).
+        Model(&models.SOSAlert{}).
+        Where("id = ?", alertID).
+        Updates(map[string]interface{}{
+            "latitude":   latitude,
+            "longitude":  longitude,
+            "updated_at": time.Now(),
+        }).Error
 }
 
 func (r *repository) MarkEmergencyContactsNotified(ctx context.Context, alertID string) error {
