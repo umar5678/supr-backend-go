@@ -98,7 +98,7 @@ func (LaundryOrderItem) TableName() string {
 type LaundryPickup struct {
 	ID          string     `gorm:"type:uuid;primaryKey" json:"id"`
 	OrderID     string     `gorm:"type:uuid;uniqueIndex" json:"orderId"`
-	ProviderID  *string    `gorm:"type:uuid;index" json:"providerId,omitempty"` 
+	ProviderID  *string    `gorm:"type:uuid;index" json:"providerId,omitempty"`
 	ScheduledAt time.Time  `gorm:"not null" json:"scheduledAt"`
 	ArrivedAt   *time.Time `json:"arrivedAt,omitempty"`
 	PickedUpAt  *time.Time `json:"pickedUpAt,omitempty"`
@@ -154,10 +154,10 @@ type LaundryIssue struct {
 	OrderID          string     `gorm:"type:uuid;not null" json:"orderId"`
 	CustomerID       string     `gorm:"type:uuid;not null" json:"customerId"`
 	ProviderID       string     `gorm:"type:uuid;not null" json:"providerId"`
-	IssueType        string     `gorm:"type:varchar(100)" json:"issueType"` 
+	IssueType        string     `gorm:"type:varchar(100)" json:"issueType"`
 	Description      string     `gorm:"type:text" json:"description"`
-	Priority         string     `gorm:"type:varchar(20);default:'medium'" json:"priority"` 
-	Status           string     `gorm:"type:varchar(50);default:'open'" json:"status"`     
+	Priority         string     `gorm:"type:varchar(20);default:'medium'" json:"priority"`
+	Status           string     `gorm:"type:varchar(50);default:'open'" json:"status"`
 	Resolution       *string    `gorm:"type:text" json:"resolution,omitempty"`
 	RefundAmount     *float64   `gorm:"type:decimal(10,2)" json:"refundAmount,omitempty"`
 	CompensationType *string    `gorm:"type:varchar(100)" json:"compensationType,omitempty"`
@@ -192,8 +192,8 @@ type LaundryOrder struct {
 
 	ServiceDate *time.Time `json:"serviceDate,omitempty"`
 	Total       float64    `gorm:"type:decimal(10,2);not null" json:"total"`
-	Tip         *float64   `gorm:"type:decimal(10,2)" json:"tip,omitempty"`     
-	IsExpress   bool       `gorm:"type:boolean;default:false" json:"isExpress"` 
+	Tip         *float64   `gorm:"type:decimal(10,2)" json:"tip,omitempty"`
+	IsExpress   bool       `gorm:"type:boolean;default:false" json:"isExpress"`
 
 	ProviderID *string `gorm:"type:uuid;index" json:"providerId,omitempty"`
 

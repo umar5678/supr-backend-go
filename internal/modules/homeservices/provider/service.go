@@ -21,7 +21,6 @@ type WalletService interface {
 }
 
 type Service interface {
-
 	GetProviderIDByUserID(ctx context.Context, userID string) (string, error)
 	CreateProviderOnFirstCategory(ctx context.Context, userID string) string
 
@@ -289,7 +288,7 @@ func (s *service) GetAvailableOrders(ctx context.Context, providerID string, que
 
 	query.SetDefaults()
 
-	orders, total, err := s.repo.GetAvailableOrders(ctx, categorySlugs, query)
+	orders, total, err := s.repo.GetAvailableOrders(ctx, providerID, categorySlugs, query)
 	if err != nil {
 		logger.Error("failed to get available orders", "error", err, "providerID", providerID)
 		return nil, nil, response.InternalServerError("Failed to get available orders", err)
@@ -314,7 +313,7 @@ func (s *service) GetAvailableOrderDetail(ctx context.Context, providerID, order
 		return nil, response.ForbiddenError("You have no active service categories")
 	}
 
-	order, err := s.repo.GetAvailableOrderByID(ctx, orderID, categorySlugs)
+	order, err := s.repo.GetAvailableOrderByID(ctx, providerID, orderID, categorySlugs)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, response.NotFoundError("Order")
@@ -370,7 +369,7 @@ func (s *service) AcceptOrder(ctx context.Context, providerID, orderID string) (
 	if err != nil {
 		return nil, response.InternalServerError("Failed to accept order", err)
 	}
-	order, err := s.repo.GetAvailableOrderByID(ctx, orderID, categorySlugs)
+	order, err := s.repo.GetAvailableOrderByID(ctx, providerID, orderID, categorySlugs)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, response.NotFoundError("Order not available")
@@ -444,7 +443,7 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 	}
 
 	previousStatus := order.Status
-	
+
 	// For assigned orders: unassign and return to searching status
 	// For available/unassigned orders: keep searching status (provider is just declining the offer)
 	if order.Status == shared.OrderStatusAssigned {
@@ -467,6 +466,12 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 		nil,
 	)
 	s.repo.CreateStatusHistory(ctx, history)
+
+	// Record the rejection so the provider doesn't see this order again
+	if err := s.repo.RecordRejection(ctx, orderID, providerID, req.Reason); err != nil {
+		logger.Error("failed to record rejection", "error", err, "orderID", orderID, "providerID", providerID)
+		// Don't fail the operation if recording rejection fails
+	}
 
 	logger.Info("order rejected", "orderID", orderID, "providerID", providerID, "reason", req.Reason, "status", order.Status)
 

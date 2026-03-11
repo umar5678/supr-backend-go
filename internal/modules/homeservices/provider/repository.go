@@ -14,7 +14,6 @@ import (
 )
 
 type Repository interface {
-
 	GetProvider(ctx context.Context, providerID string) (*models.ServiceProviderProfile, error)
 	GetProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error)
 	CreateProvider(ctx context.Context, provider *models.ServiceProviderProfile) error
@@ -26,8 +25,8 @@ type Repository interface {
 	DeleteProviderCategory(ctx context.Context, providerID, categorySlug string) error
 	GetProviderCategorySlugs(ctx context.Context, providerID string) ([]string, error)
 
-	GetAvailableOrders(ctx context.Context, categorySlugs []string, query dto.ListAvailableOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
-	GetAvailableOrderByID(ctx context.Context, orderID string, categorySlugs []string) (*models.ServiceOrderNew, error)
+	GetAvailableOrders(ctx context.Context, providerID string, categorySlugs []string, query dto.ListAvailableOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
+	GetAvailableOrderByID(ctx context.Context, providerID, orderID string, categorySlugs []string) (*models.ServiceOrderNew, error)
 
 	GetProviderOrders(ctx context.Context, providerID string, query dto.ListMyOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
 	GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error)
@@ -42,6 +41,10 @@ type Repository interface {
 	GetCategoryEarnings(ctx context.Context, providerID string, fromDate, toDate time.Time) ([]CategoryEarningsData, error)
 
 	CreateStatusHistory(ctx context.Context, history *models.OrderStatusHistory) error
+
+	// Rejection tracking
+	RecordRejection(ctx context.Context, orderID, providerID, reason string) error
+	HasProviderRejected(ctx context.Context, orderID, providerID string) (bool, error)
 }
 
 type ProviderStats struct {
@@ -271,11 +274,11 @@ func (r *repository) convertLaundryOrderToServiceOrder(ctx context.Context, orde
 		OrderNumber:        laundryOrder.OrderNumber,
 		CustomerID:         customerID,
 		CategorySlug:       laundryOrder.CategorySlug,
-		ServicesTotal:      laundryOrder.Total, 
-		Subtotal:           laundryOrder.Total, 
-		TotalPrice:         totalPrice,         
-		PlatformCommission: 0,                  
-		AddonsTotal:        0,                  
+		ServicesTotal:      laundryOrder.Total,
+		Subtotal:           laundryOrder.Total,
+		TotalPrice:         totalPrice,
+		PlatformCommission: 0,
+		AddonsTotal:        0,
 		Status:             laundryOrder.Status,
 		AssignedProviderID: laundryOrder.ProviderID,
 		CreatedAt:          laundryOrder.CreatedAt,
@@ -296,7 +299,7 @@ func (r *repository) convertLaundryOrderToServiceOrder(ctx context.Context, orde
 	return order, nil
 }
 
-func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []string, query dto.ListAvailableOrdersQuery) ([]*models.ServiceOrderNew, int64, error) {
+func (r *repository) GetAvailableOrders(ctx context.Context, providerID string, categorySlugs []string, query dto.ListAvailableOrdersQuery) ([]*models.ServiceOrderNew, int64, error) {
 	var allOrders []*models.ServiceOrderNew
 	var total int64
 
@@ -305,9 +308,10 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 		Where("status IN ?", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider}).
 		Where("category_slug IN ?", categorySlugs).
 		Where("assigned_provider_id IS NULL").
-		Where("expires_at IS NULL OR expires_at > ?", time.Now())
+		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
+		Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID)
 
-	logger.Info("GetAvailableOrders query filters", "categorySlugs", categorySlugs, "statusFilters", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider})
+	logger.Info("GetAvailableOrders query filters", "categorySlugs", categorySlugs, "statusFilters", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider}, "providerID", providerID)
 
 	if query.CategorySlug != "" {
 		db = db.Where("category_slug = ?", query.CategorySlug)
@@ -327,7 +331,8 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 		Where("status IN ?", []string{"pending", "searching_provider"}).
 		Where("category_slug IN ?", categorySlugs).
 		Where("provider_id IS NULL").
-		Where("expires_at IS NULL OR expires_at > ?", time.Now())
+		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
+		Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID)
 
 	if query.CategorySlug != "" {
 		laundryDb = laundryDb.Where("category_slug = ?", query.CategorySlug)
@@ -384,9 +389,9 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 			CategorySlug:       laundryOrder.CategorySlug,
 			ServicesTotal:      laundryOrder.Total,
 			Subtotal:           laundryOrder.Total,
-			TotalPrice:         totalPrice,        
-			PlatformCommission: 0,                 
-			AddonsTotal:        0,                 
+			TotalPrice:         totalPrice,
+			PlatformCommission: 0,
+			AddonsTotal:        0,
 			Status:             laundryOrder.Status,
 			AssignedProviderID: laundryOrder.ProviderID,
 			CreatedAt:          laundryOrder.CreatedAt,
@@ -414,8 +419,9 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 	orderClause := query.SortBy
 	switch orderClause {
 	case "booking_date":
-		orderClause = "created_at" 
-	case "price":}
+		orderClause = "created_at"
+	case "price":
+	}
 
 	if query.SortDesc {
 	}
@@ -439,7 +445,7 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 	return paginatedOrders, total, nil
 }
 
-func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, categorySlugs []string) (*models.ServiceOrderNew, error) {
+func (r *repository) GetAvailableOrderByID(ctx context.Context, providerID, orderID string, categorySlugs []string) (*models.ServiceOrderNew, error) {
 	var order models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Where("id = ?", orderID).
@@ -447,6 +453,7 @@ func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, 
 		Where("category_slug IN ?", categorySlugs).
 		Where("assigned_provider_id IS NULL").
 		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
+		Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID).
 		First(&order).Error
 
 	if err == nil {
@@ -462,6 +469,7 @@ func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, 
 			Where("category_slug IN ?", categorySlugs).
 			Where("provider_id IS NULL").
 			Where("expires_at IS NULL OR expires_at > ?", time.Now()).
+			Where("id NOT IN (SELECT order_id FROM order_rejections WHERE provider_id = ?)", providerID).
 			First(&laundryOrder).Error
 
 		if err == nil {
@@ -563,11 +571,11 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 			OrderNumber:        laundryOrder.OrderNumber,
 			CustomerID:         customerID,
 			CategorySlug:       laundryOrder.CategorySlug,
-			ServicesTotal:      laundryOrder.Total, 
-			Subtotal:           laundryOrder.Total, 
-			TotalPrice:         totalPrice,         
-			PlatformCommission: 0,                  
-			AddonsTotal:        0,                  
+			ServicesTotal:      laundryOrder.Total,
+			Subtotal:           laundryOrder.Total,
+			TotalPrice:         totalPrice,
+			PlatformCommission: 0,
+			AddonsTotal:        0,
 			Status:             laundryOrder.Status,
 			AssignedProviderID: laundryOrder.ProviderID,
 			CreatedAt:          laundryOrder.CreatedAt,
@@ -662,13 +670,13 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 			if laundryOrder.ProviderID != nil && *laundryOrder.ProviderID == providerID {
 				return r.convertLaundryOrderToServiceOrder(ctx, orderID)
 			}
-			
+
 			// If not assigned to this provider but order exists, check if it's available (unassigned)
 			// This allows providers to reject available orders shown to them
 			if laundryOrder.ProviderID == nil {
 				return r.convertLaundryOrderToServiceOrder(ctx, orderID)
 			}
-			
+
 			// If provider_id doesn't match and order is assigned, return not found error
 			return nil, gorm.ErrRecordNotFound
 		}
@@ -726,7 +734,8 @@ func (r *repository) UpdateOrder(ctx context.Context, order *models.ServiceOrder
 	var laundryOrder models.LaundryOrder
 	err := r.db.WithContext(ctx).Where("id = ?", order.ID).First(&laundryOrder).Error
 
-	if err == nil {
+	switch err {
+	case nil:
 		updates := map[string]interface{}{
 			"status":     order.Status,
 			"updated_at": time.Now(),
@@ -746,7 +755,7 @@ func (r *repository) UpdateOrder(ctx context.Context, order *models.ServiceOrder
 		}
 
 		return nil
-	} else if err == gorm.ErrRecordNotFound {
+	case gorm.ErrRecordNotFound:
 		return r.db.WithContext(ctx).Save(order).Error
 	}
 
@@ -881,4 +890,31 @@ func (r *repository) GetCategoryEarnings(ctx context.Context, providerID string,
 
 func (r *repository) CreateStatusHistory(ctx context.Context, history *models.OrderStatusHistory) error {
 	return r.db.WithContext(ctx).Create(history).Error
+}
+
+// RecordRejection records that a provider has rejected an order
+func (r *repository) RecordRejection(ctx context.Context, orderID, providerID, reason string) error {
+	rejection := &models.OrderRejection{
+		OrderID:    orderID,
+		ProviderID: providerID,
+		Reason:     reason,
+	}
+	logger.Info("recording order rejection", "orderID", orderID, "providerID", providerID, "reason", reason)
+	return r.db.WithContext(ctx).Create(rejection).Error
+}
+
+// HasProviderRejected checks if a provider has already rejected an order
+func (r *repository) HasProviderRejected(ctx context.Context, orderID, providerID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.OrderRejection{}).
+		Where("order_id = ? AND provider_id = ?", orderID, providerID).
+		Count(&count).Error
+
+	if err != nil {
+		logger.Error("failed to check rejection history", "error", err, "orderID", orderID, "providerID", providerID)
+		return false, err
+	}
+
+	return count > 0, nil
 }
