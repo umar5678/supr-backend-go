@@ -71,6 +71,10 @@ func (r *RejectOrderRequest) Validate() error {
 	return nil
 }
 
+type StartOrderRequest struct {
+	CustomerPIN string `json:"customerPin" binding:"required,len=4"`
+}
+
 type CompleteOrderRequest struct {
 	CustomerPIN string `json:"customerPin" binding:"required,len=4"`
 	Notes       string `json:"notes" binding:"omitempty,max=1000"`

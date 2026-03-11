@@ -37,7 +37,7 @@ type Service interface {
 	GetMyOrderDetail(ctx context.Context, providerID, orderID string) (*dto.ProviderOrderResponse, error)
 	AcceptOrder(ctx context.Context, providerID, orderID string) (*dto.ProviderOrderResponse, error)
 	RejectOrder(ctx context.Context, providerID, orderID string, req dto.RejectOrderRequest) error
-	StartOrder(ctx context.Context, providerID, orderID string) (*dto.ProviderOrderResponse, error)
+	StartOrder(ctx context.Context, providerID, orderID string, req dto.StartOrderRequest) (*dto.ProviderOrderResponse, error)
 	CompleteOrder(ctx context.Context, providerID, orderID string, req dto.CompleteOrderRequest) (*dto.ProviderOrderResponse, error)
 	RateCustomer(ctx context.Context, providerID, orderID string, req dto.RateCustomerRequest) (*dto.ProviderOrderResponse, error)
 
@@ -478,7 +478,7 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 	return nil
 }
 
-func (s *service) StartOrder(ctx context.Context, providerID, orderID string) (*dto.ProviderOrderResponse, error) {
+func (s *service) StartOrder(ctx context.Context, providerID, orderID string, req dto.StartOrderRequest) (*dto.ProviderOrderResponse, error) {
 	order, err := s.repo.GetProviderOrderByID(ctx, providerID, orderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -490,6 +490,17 @@ func (s *service) StartOrder(ctx context.Context, providerID, orderID string) (*
 	if order.Status != shared.OrderStatusAccepted {
 		return nil, response.BadRequest(fmt.Sprintf("Cannot start order in '%s' status", order.Status))
 	}
+
+	// Verify customer PIN
+	logger.Info("verifying customer PIN for order start", "orderID", orderID, "customerID", order.CustomerID)
+	if err := s.ridePINService.VerifyRidePIN(ctx, order.CustomerID, req.CustomerPIN); err != nil {
+		logger.Warn("invalid customer PIN attempt at order start",
+			"orderID", orderID,
+			"customerID", order.CustomerID)
+		return nil, response.BadRequest("Invalid Customer PIN. Please enter your 4-digit PIN.")
+	}
+
+	logger.Info("customer PIN verified at order start", "orderID", orderID)
 
 	now := time.Now()
 	previousStatus := order.Status

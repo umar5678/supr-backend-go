@@ -446,7 +446,13 @@ func (h *Handler) StartOrder(c *gin.Context) {
 	}
 	orderID := c.Param("id")
 
-	order, err := h.service.StartOrder(c.Request.Context(), providerID, orderID)
+	var req dto.StartOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body: " + err.Error()))
+		return
+	}
+
+	order, err := h.service.StartOrder(c.Request.Context(), providerID, orderID, req)
 	if err != nil {
 		c.Error(err)
 		return

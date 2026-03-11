@@ -196,7 +196,13 @@ func (h *Handler) InitiatePickup(c *gin.Context) {
 
 	providerID := userID.(string)
 
-	pickup, err := h.service.InitiatePickup(c, orderID, providerID)
+	var req dto.InitiatePickupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body: " + err.Error()))
+		return
+	}
+
+	pickup, err := h.service.InitiatePickup(c, orderID, providerID, req)
 	if err != nil {
 		c.Error(response.InternalServerError("Failed to initiate pickup", err))
 		return
@@ -342,7 +348,13 @@ func (h *Handler) InitiateDelivery(c *gin.Context) {
 
 	providerID := userID.(string)
 
-	delivery, err := h.service.InitiateDelivery(c, orderID, providerID)
+	var req dto.InitiateDeliveryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(response.BadRequest("Invalid request body: " + err.Error()))
+		return
+	}
+
+	delivery, err := h.service.InitiateDelivery(c, orderID, providerID, req)
 	if err != nil {
 		c.Error(response.InternalServerError("Failed to initiate delivery", err))
 		return

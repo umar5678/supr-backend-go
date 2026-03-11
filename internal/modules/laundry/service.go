@@ -26,7 +26,7 @@ type Service interface {
 	GetOrderWithDetails(ctx context.Context, orderID string) (*models.LaundryOrder, error)
 	GetAvailableOrders(ctx context.Context, providerID string) ([]*models.LaundryOrder, error)
 
-	InitiatePickup(ctx context.Context, orderID string, providerID string) (*models.LaundryPickup, error)
+	InitiatePickup(ctx context.Context, orderID string, providerID string, req dto.InitiatePickupRequest) (*models.LaundryPickup, error)
 	CompletePickup(ctx context.Context, orderID string, req *dto.CompletePickupRequest) error
 	GetProviderPickups(ctx context.Context, providerID string) ([]*models.LaundryPickup, error)
 
@@ -34,7 +34,7 @@ type Service interface {
 	UpdateItemStatus(ctx context.Context, qrCode, status string) (*models.LaundryOrderItem, error)
 	GetOrderItems(ctx context.Context, orderID string) ([]*models.LaundryOrderItem, error)
 
-	InitiateDelivery(ctx context.Context, orderID string, providerID string) (*models.LaundryDelivery, error)
+	InitiateDelivery(ctx context.Context, orderID string, providerID string, req dto.InitiateDeliveryRequest) (*models.LaundryDelivery, error)
 	CompleteDelivery(ctx context.Context, orderID string, req *dto.CompleteDeliveryRequest) error
 	GetProviderDeliveries(ctx context.Context, providerID string) ([]*models.LaundryDelivery, error)
 
@@ -536,7 +536,22 @@ func (s *service) GetAvailableOrders(ctx context.Context, providerID string) ([]
 	return orders, nil
 }
 
-func (s *service) InitiatePickup(ctx context.Context, orderID string, providerID string) (*models.LaundryPickup, error) {
+func (s *service) InitiatePickup(ctx context.Context, orderID string, providerID string, req dto.InitiatePickupRequest) (*models.LaundryPickup, error) {
+	// Get order to find user/rider
+	order, err := s.GetOrderWithDetails(ctx, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get order: %w", err)
+	}
+
+	if order.UserID == nil {
+		return nil, errors.New("order user ID is not set")
+	}
+
+	// Verify rider PIN
+	if err := s.ridePINService.VerifyRidePIN(ctx, *order.UserID, req.RiderPIN); err != nil {
+		return nil, errors.New("invalid rider PIN for pickup initiation")
+	}
+
 	pickup, err := s.repo.GetPickupByOrder(ctx, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pickup: %w", err)
@@ -686,7 +701,22 @@ func (s *service) GetOrderItems(ctx context.Context, orderID string) ([]*models.
 	return s.repo.GetOrderItems(ctx, orderID)
 }
 
-func (s *service) InitiateDelivery(ctx context.Context, orderID string, providerID string) (*models.LaundryDelivery, error) {
+func (s *service) InitiateDelivery(ctx context.Context, orderID string, providerID string, req dto.InitiateDeliveryRequest) (*models.LaundryDelivery, error) {
+	// Get order to find user/rider
+	order, err := s.GetOrderWithDetails(ctx, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get order: %w", err)
+	}
+
+	if order.UserID == nil {
+		return nil, errors.New("order user ID is not set")
+	}
+
+	// Verify rider PIN
+	if err := s.ridePINService.VerifyRidePIN(ctx, *order.UserID, req.RiderPIN); err != nil {
+		return nil, errors.New("invalid rider PIN for delivery initiation")
+	}
+
 	delivery, err := s.repo.GetDeliveryByOrder(ctx, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get delivery: %w", err)

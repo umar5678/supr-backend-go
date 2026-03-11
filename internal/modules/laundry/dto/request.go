@@ -58,6 +58,14 @@ func (r *CreateLaundryOrderRequest) Validate() error {
 	return nil
 }
 
+type InitiatePickupRequest struct {
+	RiderPIN string `json:"riderPin" binding:"required,len=4"`
+}
+
+type InitiateDeliveryRequest struct {
+	RiderPIN string `json:"riderPin" binding:"required,len=4"`
+}
+
 type CompletePickupRequest struct {
 	RiderPIN string `json:"riderPin" binding:"required,len=4"`
 	BagCount int    `json:"bagCount" binding:"required,gt=0"`
