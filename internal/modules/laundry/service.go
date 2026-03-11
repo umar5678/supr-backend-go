@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/laundry/dto"
+	"github.com/umar5678/go-backend/internal/modules/ridepin"
+	"github.com/umar5678/go-backend/internal/modules/wallet"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"gorm.io/gorm"
 )
@@ -42,12 +44,19 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
-	db   *gorm.DB
+	repo           Repository
+	db             *gorm.DB
+	walletService  wallet.Service
+	ridePINService ridepin.Service
 }
 
-func NewService(repo Repository, db *gorm.DB) Service {
-	return &service{repo: repo, db: db}
+func NewService(repo Repository, db *gorm.DB, walletService wallet.Service, ridePINService ridepin.Service) Service {
+	return &service{
+		repo:           repo,
+		db:             db,
+		walletService:  walletService,
+		ridePINService: ridePINService,
+	}
 }
 
 func (s *service) GetServiceCatalog(ctx context.Context) ([]*models.LaundryServiceCatalog, error) {
@@ -556,6 +565,29 @@ func (s *service) CompletePickup(ctx context.Context, orderID string, req *dto.C
 		return errors.New("request is required")
 	}
 
+	// Get order to find customer
+	order, err := s.GetOrderWithDetails(ctx, orderID)
+	if err != nil {
+		return fmt.Errorf("failed to get order: %w", err)
+	}
+
+	if order.UserID == nil || *order.UserID == "" {
+		return errors.New("no customer assigned to this order")
+	}
+
+	customerID := *order.UserID
+
+	// Verify customer PIN
+	logger.Info("verifying customer PIN for pickup completion", "orderID", orderID, "customerID", customerID)
+	if err := s.ridePINService.VerifyRidePIN(ctx, customerID, req.RiderPIN); err != nil {
+		logger.Warn("invalid customer PIN attempt at pickup completion",
+			"orderID", orderID,
+			"customerID", customerID)
+		return fmt.Errorf("invalid customer PIN: %w", err)
+	}
+
+	logger.Info("customer PIN verified at pickup completion", "orderID", orderID)
+
 	now := time.Now()
 	if err := s.repo.UpdatePickupStatus(ctx, orderID, "completed", &now); err != nil {
 		return fmt.Errorf("failed to complete pickup: %w", err)
@@ -683,6 +715,34 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 		return errors.New("request is required")
 	}
 
+	// Get order to find customer and provider
+	order, err := s.GetOrderWithDetails(ctx, orderID)
+	if err != nil {
+		return fmt.Errorf("failed to get order: %w", err)
+	}
+
+	if order.UserID == nil || *order.UserID == "" {
+		return errors.New("no customer assigned to this order")
+	}
+
+	if order.ProviderID == nil || *order.ProviderID == "" {
+		return errors.New("no provider assigned to this order")
+	}
+
+	customerID := *order.UserID
+	providerID := *order.ProviderID
+
+	// Verify customer PIN
+	logger.Info("verifying customer PIN for delivery completion", "orderID", orderID, "customerID", customerID)
+	if err := s.ridePINService.VerifyRidePIN(ctx, customerID, req.RiderPIN); err != nil {
+		logger.Warn("invalid customer PIN attempt at delivery completion",
+			"orderID", orderID,
+			"customerID", customerID)
+		return fmt.Errorf("invalid customer PIN: %w", err)
+	}
+
+	logger.Info("customer PIN verified at delivery completion", "orderID", orderID)
+
 	now := time.Now()
 	if err := s.repo.UpdateDeliveryStatus(ctx, orderID, "completed", &now); err != nil {
 		return fmt.Errorf("failed to complete delivery: %w", err)
@@ -706,6 +766,34 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 		}).Error; err != nil {
 		return fmt.Errorf("failed to update order status: %w", err)
 	}
+
+	// Credit provider wallet with earnings
+	providerEarnings := order.Total * 0.90 // Provider gets 90% of the order amount
+	metadata := map[string]interface{}{
+		"order_id":   orderID,
+		"service":    "laundry",
+		"total":      order.Total,
+		"commission": order.Total * 0.10,
+	}
+
+	if _, err := s.walletService.CreditWallet(
+		ctx,
+		providerID,
+		providerEarnings,
+		"laundry_delivery",
+		orderID,
+		fmt.Sprintf("Laundry delivery payment for order %s", orderID),
+		metadata,
+	); err != nil {
+		logger.Error("failed to credit provider wallet for laundry delivery", "error", err, "orderID", orderID, "providerID", providerID)
+		// Don't fail the entire operation if wallet credit fails
+	}
+
+	logger.Info("laundry delivery completed and provider wallet credited",
+		"orderID", orderID,
+		"providerID", providerID,
+		"earnings", providerEarnings,
+	)
 
 	return nil
 }

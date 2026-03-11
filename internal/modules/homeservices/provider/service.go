@@ -11,14 +11,12 @@ import (
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/homeservices/provider/dto"
 	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
+	"github.com/umar5678/go-backend/internal/modules/ridepin"
+	"github.com/umar5678/go-backend/internal/modules/wallet"
+	walletdto "github.com/umar5678/go-backend/internal/modules/wallet/dto"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
-
-type WalletService interface {
-	Credit(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string) error
-	CaptureHold(ctx context.Context, holdID string, amount float64, description string) error
-}
 
 type Service interface {
 	GetProviderIDByUserID(ctx context.Context, userID string) (string, error)
@@ -48,14 +46,16 @@ type Service interface {
 }
 
 type service struct {
-	repo          Repository
-	walletService WalletService
+	repo            Repository
+	walletService   wallet.Service
+	ridePINService  ridepin.Service
 }
 
-func NewService(repo Repository, walletService WalletService) Service {
+func NewService(repo Repository, walletService wallet.Service, ridePINService ridepin.Service) Service {
 	return &service{
-		repo:          repo,
-		walletService: walletService,
+		repo:           repo,
+		walletService:  walletService,
+		ridePINService: ridePINService,
 	}
 }
 
@@ -388,12 +388,12 @@ func (s *service) AcceptOrder(ctx context.Context, providerID, orderID string) (
 	}
 
 	if order.WalletHoldID != nil {
-		if err := s.walletService.CaptureHold(
-			ctx,
-			*order.WalletHoldID,
-			order.TotalPrice,
-			fmt.Sprintf("Payment for order %s", order.OrderNumber),
-		); err != nil {
+		captureReq := walletdto.CaptureHoldRequest{
+			HoldID:      *order.WalletHoldID,
+			Amount:      &order.TotalPrice,
+			Description: fmt.Sprintf("Payment for order %s", order.OrderNumber),
+		}
+		if _, err := s.walletService.CaptureHold(ctx, order.CustomerID, captureReq); err != nil {
 			logger.Error("failed to capture wallet hold", "error", err, "orderID", orderID)
 		}
 	}
@@ -529,15 +529,33 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 		return nil, response.BadRequest(fmt.Sprintf("Cannot complete order in '%s' status", order.Status))
 	}
 
+	// Verify customer PIN
+	logger.Info("verifying customer PIN for order completion", "orderID", orderID, "customerID", order.CustomerID)
+	if err := s.ridePINService.VerifyRidePIN(ctx, order.CustomerID, req.CustomerPIN); err != nil {
+		logger.Warn("invalid customer PIN attempt at order completion",
+			"orderID", orderID,
+			"customerID", order.CustomerID)
+		return nil, response.BadRequest("Invalid Customer PIN. Please enter your 4-digit PIN.")
+	}
+
+	logger.Info("customer PIN verified at order completion", "orderID", orderID)
+
 	providerPayout := dto.CalculateProviderPayout(order.TotalPrice)
 
-	if err := s.walletService.Credit(
+	walletMetadata := map[string]interface{}{
+		"order_id":    order.ID,
+		"order_number": order.OrderNumber,
+		"service": "homeservice",
+	}
+
+	if _, err := s.walletService.CreditWallet(
 		ctx,
 		providerID,
 		providerPayout,
 		"service_payment",
 		order.ID,
 		fmt.Sprintf("Payment for order %s", order.OrderNumber),
+		walletMetadata,
 	); err != nil {
 		logger.Error("failed to credit provider wallet", "error", err, "orderID", orderID)
 		return nil, response.InternalServerError("Failed to process payment", err)
@@ -563,11 +581,11 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 		s.repo.UpdateProviderCategory(ctx, category)
 	}
 
-	metadata := models.StatusHistoryMetadata{
+	statusMetadata := models.StatusHistoryMetadata{
 		"providerPayout": providerPayout,
 	}
 	if req.Notes != "" {
-		metadata["completionNotes"] = req.Notes
+		statusMetadata["completionNotes"] = req.Notes
 	}
 	history := models.NewOrderStatusHistory(
 		order.ID,
@@ -576,7 +594,7 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 		&providerID,
 		shared.RoleProvider,
 		"Service completed",
-		metadata,
+		statusMetadata,
 	)
 	s.repo.CreateStatusHistory(ctx, history)
 

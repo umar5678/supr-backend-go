@@ -11,6 +11,8 @@ import (
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/homeservices/admin/dto"
 	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
+	"github.com/umar5678/go-backend/internal/modules/wallet"
+	walletdto "github.com/umar5678/go-backend/internal/modules/wallet/dto"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -58,20 +60,13 @@ type Service interface {
 	GetDashboard(ctx context.Context) (*dto.DashboardResponse, error)
 }
 
-// WalletService interface for wallet operations
-type WalletService interface {
-	Credit(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string) error
-	Debit(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string) error
-	ReleaseHold(ctx context.Context, holdID string) error
-}
-
 type service struct {
 	repo          Repository
-	walletService WalletService
+	walletService wallet.Service
 }
 
 // NewService creates a new admin service instance
-func NewService(repo Repository, walletService WalletService) Service {
+func NewService(repo Repository, walletService wallet.Service) Service {
 	return &service{
 		repo:          repo,
 		walletService: walletService,
@@ -860,20 +855,26 @@ func (s *service) CancelOrder(ctx context.Context, orderID string, req dto.Admin
 	// Process refund if wallet payment
 	if order.WalletHoldID != nil && refundAmount > 0 {
 		// Release hold
-		if err := s.walletService.ReleaseHold(ctx, *order.WalletHoldID); err != nil {
+		releaseReq := walletdto.ReleaseHoldRequest{HoldID: *order.WalletHoldID}
+		if err := s.walletService.ReleaseHold(ctx, order.CustomerID, releaseReq); err != nil {
 			logger.Error("failed to release wallet hold", "error", err, "holdID", *order.WalletHoldID)
 			// Continue with cancellation
 		}
 
 		// Debit cancellation fee if applicable
 		if cancellationFee > 0 {
-			if err := s.walletService.Debit(
+			metadata := map[string]interface{}{
+				"order_id":     order.ID,
+				"order_number": order.OrderNumber,
+			}
+			if _, err := s.walletService.DebitWallet(
 				ctx,
 				order.CustomerID,
 				cancellationFee,
 				"admin_cancellation_fee",
 				order.ID,
 				fmt.Sprintf("Cancellation fee for order %s (cancelled by admin)", order.OrderNumber),
+				metadata,
 			); err != nil {
 				logger.Error("failed to debit cancellation fee", "error", err, "orderID", orderID)
 				// Continue with cancellation

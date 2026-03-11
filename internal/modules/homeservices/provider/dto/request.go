@@ -72,7 +72,8 @@ func (r *RejectOrderRequest) Validate() error {
 }
 
 type CompleteOrderRequest struct {
-	Notes string `json:"notes" binding:"omitempty,max=1000"`
+	CustomerPIN string `json:"customerPin" binding:"required,len=4"`
+	Notes       string `json:"notes" binding:"omitempty,max=1000"`
 }
 
 type RateCustomerRequest struct {

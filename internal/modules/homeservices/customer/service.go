@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
-	"gorm.io/gorm"
-
 	"github.com/umar5678/go-backend/internal/modules/homeservices/customer/dto"
 	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
+	"github.com/umar5678/go-backend/internal/modules/wallet"
+	walletdto "github.com/umar5678/go-backend/internal/modules/wallet/dto"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
+	"gorm.io/gorm"
 )
 
 type CategoryConfig struct {
@@ -95,10 +96,10 @@ type Service interface {
 type service struct {
 	repo          Repository
 	serviceRepo   Repository
-	walletService WalletService
+	walletService wallet.Service
 }
 
-func NewService(repo Repository, serviceRepo Repository, walletService WalletService) Service {
+func NewService(repo Repository, serviceRepo Repository, walletService wallet.Service) Service {
 	return &service{
 		repo:          repo,
 		serviceRepo:   serviceRepo,
@@ -344,17 +345,6 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req dto.Cr
 	platformCommission := shared.CalculatePlatformCommission(subtotal)
 	totalPrice := subtotal
 
-	if req.PaymentMethod == "wallet" {
-		balance, err := s.walletService.GetBalance(ctx, customerID)
-		if err != nil {
-			logger.Error("failed to get wallet balance", "error", err, "customerID", customerID)
-			return nil, response.InternalServerError("Failed to check wallet balance", err)
-		}
-		if balance < totalPrice {
-			return nil, response.BadRequest(fmt.Sprintf("Insufficient wallet balance. Required: $%.2f, Available: $%.2f", totalPrice, balance))
-		}
-	}
-
 	var preferredTime time.Time
 	if req.BookingInfo.PreferredTime != "" {
 		pt, err := time.Parse(time.RFC3339, req.BookingInfo.PreferredTime)
@@ -409,32 +399,25 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req dto.Cr
 	}
 
 	if req.PaymentMethod == "wallet" {
-		holdID, err := s.walletService.HoldFunds(
-			ctx,
-			customerID,
-			totalPrice,
-			"service_order",
-			order.ID,
-			"Hold for order booking",
-		)
+		holdReq := walletdto.HoldFundsRequest{
+			Amount:        totalPrice,
+			ReferenceType: "service_order",
+			ReferenceID:   order.ID,
+			HoldDuration:  1800, // 30 minutes
+		}
+		holdResp, err := s.walletService.HoldFunds(ctx, customerID, holdReq)
 		if err != nil {
 			logger.Error("failed to hold wallet funds", "error", err, "customerID", customerID, "amount", totalPrice)
-
 			s.repo.Delete(ctx, order.ID)
 			return nil, response.InternalServerError("Failed to process payment", err)
 		}
 
-		actualHoldID := holdID
-		if len(holdID) > 5 && holdID[:5] == "hold_" {
-			actualHoldID = holdID[5:]
-		}
-
-		order.WalletHoldID = &actualHoldID
+		order.WalletHoldID = &holdResp.ID
 		if err := s.repo.Update(ctx, order); err != nil {
-
-			s.walletService.ReleaseHold(ctx, holdID)
+			// Release hold if update fails
+			releaseReq := walletdto.ReleaseHoldRequest{HoldID: holdResp.ID}
+			s.walletService.ReleaseHold(ctx, customerID, releaseReq)
 			s.repo.Delete(ctx, order.ID)
-
 			logger.Error("failed to update order with hold ID", "error", err, "orderID", order.ID)
 			return nil, response.InternalServerError("Failed to create order", err)
 		}
@@ -638,19 +621,25 @@ func (s *service) CancelOrder(ctx context.Context, customerID, orderID string, r
 
 	if order.WalletHoldID != nil {
 		if refundAmount > 0 {
-			if err := s.walletService.ReleaseHold(ctx, *order.WalletHoldID); err != nil {
+			releaseReq := walletdto.ReleaseHoldRequest{HoldID: *order.WalletHoldID}
+			if err := s.walletService.ReleaseHold(ctx, customerID, releaseReq); err != nil {
 				logger.Error("failed to release wallet hold", "error", err, "holdID", *order.WalletHoldID)
 				return nil, response.InternalServerError("Failed to process refund", err)
 			}
 
 			if cancellationFee > 0 {
-				if err := s.walletService.Debit(
+				metadata := map[string]interface{}{
+					"order_id":     order.ID,
+					"order_number": order.OrderNumber,
+				}
+				if _, err := s.walletService.DebitWallet(
 					ctx,
 					customerID,
 					cancellationFee,
 					"cancellation_fee",
 					order.ID,
 					fmt.Sprintf("Cancellation fee for order %s", order.OrderNumber),
+					metadata,
 				); err != nil {
 					logger.Error("failed to debit cancellation fee", "error", err, "orderID", order.ID)
 				}

@@ -59,8 +59,9 @@ func (r *CreateLaundryOrderRequest) Validate() error {
 }
 
 type CompletePickupRequest struct {
-	BagCount int     `json:"bagCount" binding:"required,gt=0"`
-	Notes    string  `json:"notes"`
+	RiderPIN string `json:"riderPin" binding:"required,len=4"`
+	BagCount int    `json:"bagCount" binding:"required,gt=0"`
+	Notes    string `json:"notes"`
 	PhotoURL *string `json:"photoUrl"`
 }
 
@@ -179,6 +180,7 @@ func (r *ResolveIssueRequest) Validate() error {
 }
 
 type CompleteDeliveryRequest struct {
+	RiderPIN           string  `json:"riderPin" binding:"required,len=4"`
 	RecipientName      string  `json:"recipientName" binding:"required"`
 	RecipientSignature *string `json:"recipientSignature"`
 	Notes              string  `json:"notes"`

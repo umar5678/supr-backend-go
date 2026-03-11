@@ -4,12 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/umar5678/go-backend/internal/config"
 	"github.com/umar5678/go-backend/internal/middleware"
+	"github.com/umar5678/go-backend/internal/modules/ridepin"
+	"github.com/umar5678/go-backend/internal/modules/wallet"
 	"gorm.io/gorm"
 )
 
-func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
+func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, walletService wallet.Service, ridePinService ridepin.Service) {
 	repo := NewRepository(db)
-	service := NewService(repo, db)
+	service := NewService(repo, db, walletService, ridePinService)
 	handler := NewHandler(service)
 
 	public := router.Group("/api/v1/laundry")

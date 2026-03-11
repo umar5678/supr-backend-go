@@ -126,15 +126,12 @@ func main() {
 		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
 
-		for {
-			select {
-			case <-ticker.C:
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				if err := orderExpirationService.ExpireUnacceptedOrders(ctx); err != nil {
-					logger.Error("order expiration job failed", "error", err)
-				}
-				cancel()
+		for range ticker.C {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			if err := orderExpirationService.ExpireUnacceptedOrders(ctx); err != nil {
+				logger.Error("order expiration job failed", "error", err)
 			}
+			cancel()
 		}
 	}()
 
@@ -164,8 +161,6 @@ func main() {
 	v1 := router.Group("/api/v1")
 	{
 		v1.Use(middleware.RateLimit(cfg.Server.RateLimit))
-
-		mockWalletService := homeservicesCustomer.NewMockWalletService()
 
 		ridersRepo := riders.NewRepository(db)
 		ridersService := riders.NewService(ridersRepo)
@@ -283,7 +278,7 @@ func main() {
 		websocket.RegisterRoutes(router, cfg, wsServer)
 
 		homeservicesAdminRepo := homeservicesAdmin.NewRepository(db)
-		homeservicesAdminService := homeservicesAdmin.NewService(homeservicesAdminRepo, mockWalletService)
+		homeservicesAdminService := homeservicesAdmin.NewService(homeservicesAdminRepo, walletService)
 		homeservicesAdminHandler := homeservicesAdmin.NewHandler(homeservicesAdminService)
 		adminGroup := v1.Group("/admin")
 		homeservicesAdmin.RegisterRoutes(
@@ -293,7 +288,7 @@ func main() {
 		)
 
 		homeservicesCustomerRepo := homeservicesCustomer.NewRepository(db)
-		homeservicesCustomerService := homeservicesCustomer.NewService(homeservicesCustomerRepo, homeservicesCustomerRepo, mockWalletService)
+		homeservicesCustomerService := homeservicesCustomer.NewService(homeservicesCustomerRepo, homeservicesCustomerRepo, walletService)
 		homeservicesCustomerHandler := homeservicesCustomer.NewHandler(homeservicesCustomerService)
 
 		homeservicesCustomer.RegisterRoutes(v1, homeservicesCustomerHandler, authMiddleware)
@@ -301,7 +296,8 @@ func main() {
 		homeservicesProviderRepo := homeservicesProvider.NewRepository(db)
 		homeservicesProviderService := homeservicesProvider.NewService(
 			homeservicesProviderRepo,
-			mockWalletService,
+			walletService,
+			ridePinService,
 		)
 		homeservicesProviderHandler := homeservicesProvider.NewHandler(homeservicesProviderService)
 
@@ -311,7 +307,7 @@ func main() {
 			authMiddleware,
 		)
 
-		laundry.RegisterRoutes(router, db, cfg)
+		laundry.RegisterRoutes(router, db, cfg, walletService, ridePinService)
 
 		// Add other modules here...
 	}
