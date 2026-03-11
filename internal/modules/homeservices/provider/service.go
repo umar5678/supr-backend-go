@@ -429,13 +429,29 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 		return response.InternalServerError("Failed to reject order", err)
 	}
 
-	if order.Status != shared.OrderStatusAssigned {
+	// Allow rejection for assigned orders AND available orders (unassigned)
+	allowedStatuses := []string{shared.OrderStatusAssigned, shared.OrderStatusPending, shared.OrderStatusSearchingProvider}
+	statusAllowed := false
+	for _, status := range allowedStatuses {
+		if order.Status == status {
+			statusAllowed = true
+			break
+		}
+	}
+
+	if !statusAllowed {
 		return response.BadRequest(fmt.Sprintf("Cannot reject order in '%s' status", order.Status))
 	}
 
 	previousStatus := order.Status
-	order.AssignedProviderID = nil
-	order.Status = shared.OrderStatusSearchingProvider
+	
+	// For assigned orders: unassign and return to searching status
+	// For available/unassigned orders: keep searching status (provider is just declining the offer)
+	if order.Status == shared.OrderStatusAssigned {
+		order.AssignedProviderID = nil
+		order.Status = shared.OrderStatusSearchingProvider
+	}
+	// For pending/searching orders: status remains unchanged (provider is declining available offer)
 
 	if err := s.repo.UpdateOrder(ctx, order); err != nil {
 		return response.InternalServerError("Failed to reject order", err)
@@ -444,7 +460,7 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 	history := models.NewOrderStatusHistory(
 		order.ID,
 		previousStatus,
-		shared.OrderStatusSearchingProvider,
+		order.Status,
 		&providerID,
 		shared.RoleProvider,
 		fmt.Sprintf("Rejected by provider: %s", req.Reason),
@@ -452,7 +468,7 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 	)
 	s.repo.CreateStatusHistory(ctx, history)
 
-	logger.Info("order rejected", "orderID", orderID, "providerID", providerID, "reason", req.Reason)
+	logger.Info("order rejected", "orderID", orderID, "providerID", providerID, "reason", req.Reason, "status", order.Status)
 
 	return nil
 }

@@ -627,7 +627,7 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 }
 
 func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error) {
-	// First try to find in ServiceOrderNew table
+	// First try to find in ServiceOrderNew table (assigned orders)
 	var order models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND assigned_provider_id = ?", orderID, providerID).
@@ -638,18 +638,25 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 	}
 
 	if err == gorm.ErrRecordNotFound {
-		// Try to find in LaundryOrder table
+		// Try to find in LaundryOrder table (assigned orders)
 		var laundryOrder models.LaundryOrder
 		err = r.db.WithContext(ctx).
 			Where("id = ?", orderID).
 			First(&laundryOrder).Error
 
 		if err == nil {
-			// If LaundryOrder is found, check if provider_id matches or is assigned to this provider
+			// If LaundryOrder is found, check if provider_id matches (assigned to this provider)
 			if laundryOrder.ProviderID != nil && *laundryOrder.ProviderID == providerID {
 				return r.convertLaundryOrderToServiceOrder(ctx, orderID)
 			}
-			// If provider_id doesn't match, return not found error instead of nil entry
+			
+			// If not assigned to this provider but order exists, check if it's available (unassigned)
+			// This allows providers to reject available orders shown to them
+			if laundryOrder.ProviderID == nil {
+				return r.convertLaundryOrderToServiceOrder(ctx, orderID)
+			}
+			
+			// If provider_id doesn't match and order is assigned, return not found error
 			return nil, gorm.ErrRecordNotFound
 		}
 	}
