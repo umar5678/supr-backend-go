@@ -187,6 +187,7 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 
 	orderID := uuid.New().String()
 	now := time.Now()
+	expiresAt := now.Add(10 * time.Minute)
 	order := &models.LaundryOrder{
 		ID:           orderID,
 		OrderNumber:  fmt.Sprintf("LDY-%d", time.Now().Unix()),
@@ -203,6 +204,7 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req *dto.C
 		ProviderID:   nil,           
 		CreatedAt:    now,
 		UpdatedAt:    now,
+		ExpiresAt:    &expiresAt,
 	}
 
 	if err := s.db.WithContext(ctx).Create(order).Error; err != nil {

@@ -197,8 +197,9 @@ type LaundryOrder struct {
 
 	ProviderID *string `gorm:"type:uuid;index" json:"providerId,omitempty"`
 
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
+	CreatedAt time.Time  `gorm:"autoCreateTime" json:"createdAt"`
+	UpdatedAt time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
 }
 
 func (LaundryOrder) TableName() string {

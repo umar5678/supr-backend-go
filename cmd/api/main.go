@@ -120,6 +120,26 @@ func main() {
 
 	logger.Info("websocket system initialized successfully")
 
+	// Start order expiration background job
+	orderExpirationService := homeservices.NewOrderExpirationService(db)
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				if err := orderExpirationService.ExpireUnacceptedOrders(ctx); err != nil {
+					logger.Error("order expiration job failed", "error", err)
+				}
+				cancel()
+			}
+		}
+	}()
+
+	logger.Info("order expiration job started")
+
 	// Setup Gin
 	if cfg.App.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)

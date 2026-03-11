@@ -123,7 +123,7 @@ const (
 
 // Order Expiration Constants
 const (
-	OrderExpirationMinutes = 30 // Orders expire after 30 minutes if no provider found
+	OrderExpirationMinutes = 10 // Orders expire after 10 minutes if no provider found
 )
 
 // Pagination Defaults

@@ -326,7 +326,8 @@ func (r *repository) GetAvailableOrders(ctx context.Context, categorySlugs []str
 	laundryDb := r.db.WithContext(ctx).Model(&models.LaundryOrder{}).
 		Where("status IN ?", []string{"pending", "searching_provider"}).
 		Where("category_slug IN ?", categorySlugs).
-		Where("provider_id IS NULL")
+		Where("provider_id IS NULL").
+		Where("expires_at IS NULL OR expires_at > ?", time.Now())
 
 	if query.CategorySlug != "" {
 		laundryDb = laundryDb.Where("category_slug = ?", query.CategorySlug)
@@ -460,6 +461,7 @@ func (r *repository) GetAvailableOrderByID(ctx context.Context, orderID string, 
 			Where("status IN ?", []string{"pending", "searching_provider"}).
 			Where("category_slug IN ?", categorySlugs).
 			Where("provider_id IS NULL").
+			Where("expires_at IS NULL OR expires_at > ?", time.Now()).
 			First(&laundryOrder).Error
 
 		if err == nil {
