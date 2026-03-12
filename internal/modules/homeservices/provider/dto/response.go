@@ -84,6 +84,8 @@ type OrderBookingInfo struct {
 	PreferredTime string `json:"preferredTime,omitempty"`
 	FormattedDate string `json:"formattedDate"`
 	FormattedTime string `json:"formattedTime"`
+	ToolsRequired bool   `json:"toolsRequired"`
+	PersonCount   int    `json:"personCount"`
 }
 
 type OrderServiceItem struct {
@@ -252,6 +254,8 @@ func ToOrderBookingInfo(info models.BookingInfo) OrderBookingInfo {
 		PreferredTime: preferred,
 		FormattedDate: FormatDate(info.Date),
 		FormattedTime: FormatTime(info.Time),
+		ToolsRequired: info.ToolsRequired,
+		PersonCount:   info.PersonCount,
 	}
 }
 

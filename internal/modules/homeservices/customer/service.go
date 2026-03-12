@@ -374,6 +374,8 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req dto.Cr
 			Time:           req.BookingInfo.Time,
 			PreferredTime:  preferredTime,
 			QuantityOfPros: req.BookingInfo.QuantityOfPros,
+			ToolsRequired:  req.BookingInfo.ToolsRequired,
+			PersonCount:    req.BookingInfo.PersonCount,
 		},
 		CategorySlug:       req.CategorySlug,
 		SelectedServices:   selectedServices,

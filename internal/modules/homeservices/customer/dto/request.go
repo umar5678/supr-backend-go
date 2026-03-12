@@ -79,6 +79,8 @@ type BookingInfoRequest struct {
 	Time           string `json:"time" binding:"required"`           // HH:MM
 	PreferredTime  string `json:"preferredTime" binding:"omitempty"` // optional specific time HH:MM
 	QuantityOfPros int    `json:"quantityOfPros" binding:"required,min=1,max=5"`
+	ToolsRequired  bool   `json:"toolsRequired" binding:"omitempty"`
+	PersonCount    int    `json:"personCount" binding:"omitempty,min=1,max=20"`
 }
 
 func (b *BookingInfoRequest) Validate() error {

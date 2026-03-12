@@ -355,6 +355,8 @@ type OrderBookingInfo struct {
 	FormattedDate  string `json:"formattedDate"` // e.g., "Monday, January 15, 2024"
 	FormattedTime  string `json:"formattedTime"` // e.g., "2:30 PM"
 	QuantityOfPros int    `json:"quantityOfPros"`
+	ToolsRequired  bool   `json:"toolsRequired"`
+	PersonCount    int    `json:"personCount"`
 }
 
 type OrderPricing struct {
@@ -527,6 +529,8 @@ func ToOrderBookingInfo(info models.BookingInfo) OrderBookingInfo {
 		FormattedDate:  FormatOrderDate(dateStr),
 		FormattedTime:  FormatOrderTime(timeStr),
 		QuantityOfPros: info.QuantityOfPros,
+		ToolsRequired:  info.ToolsRequired,
+		PersonCount:    info.PersonCount,
 	}
 }
 

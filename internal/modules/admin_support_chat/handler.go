@@ -123,6 +123,13 @@ func (h *Handler) SendMessage(c *gin.Context) {
 // @Router /admin-support-chat/conversations/:conversationId [get]
 func (h *Handler) GetConversationMessages(c *gin.Context) {
 	conversationID := c.Param("conversationId")
+	
+	// Validate conversationId is not empty and not malformed
+	if conversationID == "" || conversationID == "[object Object]" {
+		c.Error(response.BadRequest("Invalid conversationId parameter"))
+		return
+	}
+	
 	page := 1
 	limit := 50
 
@@ -211,6 +218,12 @@ func (h *Handler) GetUserConversations(c *gin.Context) {
 // @Router /admin-support-chat/:messageId/read [post]
 func (h *Handler) MarkAsRead(c *gin.Context) {
 	messageID := c.Param("messageId")
+	
+	// Validate messageId is not empty and not malformed
+	if messageID == "" || messageID == "[object Object]" {
+		c.Error(response.BadRequest("Invalid messageId parameter"))
+		return
+	}
 
 	if err := h.service.MarkAsRead(c.Request.Context(), messageID); err != nil {
 		c.Error(err)

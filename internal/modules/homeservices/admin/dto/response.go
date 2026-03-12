@@ -197,6 +197,8 @@ type AdminBookingInfo struct {
 	FormattedTime string `json:"formattedTime"`
 	IsPast        bool   `json:"isPast"`
 	IsToday       bool   `json:"isToday"`
+	ToolsRequired bool   `json:"toolsRequired"`
+	PersonCount   int    `json:"personCount"`
 }
 
 type AdminOrderServiceItem struct {
@@ -608,6 +610,8 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 		FormattedTime: FormatTime(order.BookingInfo.Time),
 		IsPast:        bookingDate.Before(today),
 		IsToday:       bookingDate.Equal(today),
+		ToolsRequired: order.BookingInfo.ToolsRequired,
+		PersonCount:   order.BookingInfo.PersonCount,
 	}
 
 	// Build status history
