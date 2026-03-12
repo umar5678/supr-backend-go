@@ -100,6 +100,9 @@ func (h *Handler) ListSOS(c *gin.Context) {
 		return
 	}
 
+	// Set defaults for pagination
+	req.SetDefaults()
+
 	alerts, total, err := h.service.ListSOS(c.Request.Context(), userID.(string), req)
 	if err != nil {
 		c.Error(err)
