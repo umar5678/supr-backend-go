@@ -553,6 +553,13 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 
 	providerPayout := dto.CalculateProviderPayout(order.TotalPrice)
 
+	// Get provider profile to get the user ID for wallet credit
+	provider, err := s.repo.GetProvider(ctx, providerID)
+	if err != nil {
+		logger.Error("failed to get provider profile for wallet credit", "error", err, "providerID", providerID)
+		return nil, response.InternalServerError("Failed to process payment", err)
+	}
+
 	walletMetadata := map[string]interface{}{
 		"order_id":    order.ID,
 		"order_number": order.OrderNumber,
@@ -561,7 +568,7 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 
 	if _, err := s.walletService.CreditServiceProviderWallet(
 		ctx,
-		providerID,
+		provider.UserID,
 		providerPayout,
 		"service_payment",
 		order.ID,
