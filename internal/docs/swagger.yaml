@@ -17,6 +17,39 @@ definitions:
       updatedAt:
         type: string
     type: object
+  github_com_umar5678_go-backend_internal_models.AdminSupportChat:
+    properties:
+      content:
+        type: string
+      conversationId:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isRead:
+        type: boolean
+      metadata:
+        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChatMetadata'
+      parentMessageId:
+        type: string
+      readByAdminAt:
+        type: string
+      senderId:
+        type: string
+      senderRole:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_models.AdminSupportChatMetadata:
+    properties:
+      extra:
+        additionalProperties: true
+        type: object
+      messageId:
+        type: string
+    type: object
   github_com_umar5678_go-backend_internal_models.TransactionStatus:
     enum:
     - pending
@@ -3107,9 +3140,13 @@ definitions:
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.CompleteOrderRequest:
     properties:
+      customerPin:
+        type: string
       notes:
         maxLength: 1000
         type: string
+    required:
+    - customerPin
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.EarningsBreakdown:
     properties:
@@ -3470,8 +3507,11 @@ definitions:
         type: string
       recipientSignature:
         type: string
+      riderPin:
+        type: string
     required:
     - recipientName
+    - riderPin
     type: object
   github_com_umar5678_go-backend_internal_modules_laundry_dto.CompletePickupRequest:
     properties:
@@ -3481,8 +3521,11 @@ definitions:
         type: string
       photoUrl:
         type: string
+      riderPin:
+        type: string
     required:
     - bagCount
+    - riderPin
     type: object
   github_com_umar5678_go-backend_internal_modules_laundry_dto.CreateLaundryOrderRequest:
     properties:
@@ -5594,6 +5637,20 @@ definitions:
       success:
         type: boolean
     type: object
+  internal_modules_admin_support_chat.SendMessageRequest:
+    properties:
+      content:
+        minLength: 1
+        type: string
+      conversationId:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+    required:
+    - content
+    - conversationId
+    type: object
   internal_modules_messages.SendMessageRequest:
     properties:
       content:
@@ -5613,6 +5670,157 @@ info:
   title: supr booking server in go
   version: "1.0"
 paths:
+  /admin-support-chat/:messageId/read:
+    post:
+      consumes:
+      - application/json
+      description: Mark a message as read by admin
+      parameters:
+      - description: Message ID
+        in: path
+        name: messageId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Mark message as read
+      tags:
+      - Admin Support Chat
+  /admin-support-chat/conversations:
+    get:
+      description: Retrieve all conversations for a user
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get user conversations
+      tags:
+      - Admin Support Chat
+  /admin-support-chat/conversations/:conversationId:
+    get:
+      description: Retrieve all messages in a conversation
+      parameters:
+      - description: Conversation ID
+        in: query
+        name: conversationId
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChat'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get conversation messages
+      tags:
+      - Admin Support Chat
+  /admin-support-chat/send:
+    post:
+      consumes:
+      - application/json
+      description: Send a message in admin support chat
+      parameters:
+      - description: Message details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_admin_support_chat.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChat'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Send admin support chat message
+      tags:
+      - Admin Support Chat
   /admin/dashboard/stats:
     get:
       consumes:
