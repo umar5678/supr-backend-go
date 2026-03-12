@@ -108,6 +108,13 @@ func (h *Hub) registerClient(client *Client) {
 
 	h.clients[client.UserID] = append(h.clients[client.UserID], client)
 	switch client.Role {
+	case models.RoleAdmin:
+		h.adminClients = append(h.adminClients, client)
+		logger.Info("admin registered",
+			"adminID", client.UserID,
+			"clientID", client.ID,
+			"totalAdmins", len(h.adminClients),
+		)
 	case models.RoleDriver:
 		h.drivers[client.UserID] = append(h.drivers[client.UserID], client)
 		logger.Info("driver registered",
@@ -230,6 +237,8 @@ func (h *Hub) unregisterClient(client *Client) {
 		}
 
 		switch client.Role {
+		case models.RoleAdmin:
+			h.removeFromAdminClients(client)
 		case models.RoleDriver:
 			h.removeFromRoleMap(h.drivers, client)
 		case models.RoleRider:
@@ -291,6 +300,20 @@ func (h *Hub) removeFromRoleMap(roleMap map[string][]*Client, client *Client) {
 		}
 		if len(roleMap[client.UserID]) == 0 {
 			delete(roleMap, client.UserID)
+		}
+	}
+}
+
+func (h *Hub) removeFromAdminClients(client *Client) {
+	for i, c := range h.adminClients {
+		if c.ID == client.ID {
+			h.adminClients = append(h.adminClients[:i], h.adminClients[i+1:]...)
+			logger.Info("admin unregistered",
+				"adminID", client.UserID,
+				"clientID", client.ID,
+				"remainingAdmins", len(h.adminClients),
+			)
+			break
 		}
 	}
 }

@@ -67,9 +67,9 @@ type InitiateDeliveryRequest struct {
 }
 
 type CompletePickupRequest struct {
-	RiderPIN string `json:"riderPin" binding:"required,len=4"`
-	BagCount int    `json:"bagCount" binding:"required,gt=0"`
-	Notes    string `json:"notes"`
+	RiderPIN string  `json:"riderPin" binding:"required,len=4"`
+	BagCount int     `json:"bagCount" binding:"required,gt=0"`
+	Notes    string  `json:"notes"`
 	PhotoURL *string `json:"photoUrl"`
 }
 

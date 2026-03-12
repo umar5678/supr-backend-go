@@ -46,9 +46,9 @@ type Service interface {
 }
 
 type service struct {
-	repo            Repository
-	walletService   wallet.Service
-	ridePINService  ridepin.Service
+	repo           Repository
+	walletService  wallet.Service
+	ridePINService ridepin.Service
 }
 
 func NewService(repo Repository, walletService wallet.Service, ridePINService ridepin.Service) Service {
@@ -561,9 +561,9 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 	}
 
 	walletMetadata := map[string]interface{}{
-		"order_id":    order.ID,
+		"order_id":     order.ID,
 		"order_number": order.OrderNumber,
-		"service": "homeservice",
+		"service":      "homeservice",
 	}
 
 	if _, err := s.walletService.CreditServiceProviderWallet(

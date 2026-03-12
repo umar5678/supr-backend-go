@@ -7,7 +7,6 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
 )
 
-
 type UpdateProviderProfileRequest struct {
 	Bio               *string  `json:"bio" binding:"omitempty,max=1000"`
 	YearsOfExperience *int     `json:"yearsOfExperience" binding:"omitempty,min=0,max=50"`

@@ -452,7 +452,7 @@ func (s *service) CaptureHold(ctx context.Context, userID string, req dto.Captur
 		ReferenceType: &hold.ReferenceType,
 		ReferenceID:   &hold.ReferenceID,
 		Description:   &req.Description,
-		PaymentMethod: "cash",        
+		PaymentMethod: "cash",
 		BalanceAfter:  wallet.Balance,
 	}
 

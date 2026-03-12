@@ -3,7 +3,7 @@ package provider
 import (
 	"github.com/gin-gonic/gin"
 
-   	"github.com/umar5678/go-backend/internal/models"
+	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/homeservices/provider/dto"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
