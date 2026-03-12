@@ -82,9 +82,9 @@ func ToRideResponse(ride *models.Ride) *RideResponse {
 		ID:                 ride.ID,
 		RiderID:            ride.RiderID,
 		DriverID:           ride.DriverID,
-		DriverRating:       ride.DriverRating,
+		DriverRating:       getDriverRating(ride.DriverProfile),
 		VehicleTypeID:      ride.VehicleTypeID,
-		VehicleName:        ride.DriverProfile.Vehicle.Make,
+		VehicleName:        getVehicleName(ride.DriverProfile),
 		Status:             ride.Status,
 		PickupLat:          ride.PickupLat,
 		PickupLon:          ride.PickupLon,
@@ -262,4 +262,19 @@ type VehiclesWithDetailsListResponse struct {
 	Vehicles   []*VehicleWithDetailsResponse `json:"vehicles"`
 
 	Timestamp time.Time `json:"timestamp"`
+}
+
+// Helper functions to safely handle nil DriverProfile
+func getDriverRating(profile *models.DriverProfile) *float64 {
+	if profile == nil {
+		return nil
+	}
+	return &profile.Rating
+}
+
+func getVehicleName(profile *models.DriverProfile) string {
+	if profile == nil || profile.Vehicle == nil {
+		return ""
+	}
+	return profile.Vehicle.Make
 }
