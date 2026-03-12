@@ -234,10 +234,10 @@ func (s *service) GetUserConversationsWithDetails(ctx context.Context, userID, r
 				"timestamp":  latestMsg.CreatedAt,
 				"isRead":     latestMsg.IsRead,
 			},
-			"unreadCount":    unreadCount,
-			"totalMessages":  msgTotal,
-			"preview":        latestMsg.Content,
-			"participantId":  conversationID, // For non-admins, conversationID is the other participant's ID
+			"unreadCount":   unreadCount,
+			"totalMessages": msgTotal,
+			"preview":       latestMsg.Content,
+			"participantId": conversationID, // For non-admins, conversationID is the other participant's ID
 		}
 
 		conversations = append(conversations, conv)

@@ -14,8 +14,10 @@ type RideResponse struct {
 	Rider         *authdto.UserResponse           `json:"rider,omitempty"`
 	DriverID      *string                         `json:"driverId"`
 	Driver        *authdto.DriverResponse         `json:"driver,omitempty"`
+	DriverRating  *float64                        `json:"driverRating,omitempty"`
 	VehicleTypeID string                          `json:"vehicleTypeId"`
 	VehicleType   *vehicledto.VehicleTypeResponse `json:"vehicleType,omitempty"`
+	VehicleName   string                          `json:"vehicleName"`
 	Status        string                          `json:"status"`
 
 	PickupLat      float64 `json:"pickupLat"`
@@ -36,7 +38,7 @@ type RideResponse struct {
 	WaitTimeCharge *float64 `json:"waitTimeCharge,omitempty"`
 
 	DriverFare *float64 `json:"driverFare,omitempty"`
-	RiderFare  *float64 `json:"riderFare,omitempty"` 
+	RiderFare  *float64 `json:"riderFare,omitempty"`
 
 	SurgeMultiplier    float64 `json:"surgeMultiplier"`
 	RiderNotes         string  `json:"riderNotes,omitempty"`
@@ -80,7 +82,9 @@ func ToRideResponse(ride *models.Ride) *RideResponse {
 		ID:                 ride.ID,
 		RiderID:            ride.RiderID,
 		DriverID:           ride.DriverID,
+		DriverRating:       ride.DriverRating,
 		VehicleTypeID:      ride.VehicleTypeID,
+		VehicleName:        ride.DriverProfile.Vehicle.Make,
 		Status:             ride.Status,
 		PickupLat:          ride.PickupLat,
 		PickupLon:          ride.PickupLon,
@@ -144,38 +148,38 @@ type LocationDTO struct {
 }
 
 type AvailableCarResponse struct {
-	ID                 string    `json:"id"`          
-	DriverID           string    `json:"driverId"`    
-	DriverName         string    `json:"driverName"`  
+	ID                 string    `json:"id"`
+	DriverID           string    `json:"driverId"`
+	DriverName         string    `json:"driverName"`
 	DriverRating       float64   `json:"driverRating"`
 	DriverImage        *string   `json:"driverImage,omitempty"`
 	VehicleTypeID      string    `json:"vehicleTypeId"`
 	VehicleType        string    `json:"vehicleType"`
 	VehicleDisplayName string    `json:"vehicleDisplayName"`
-	Make               string    `json:"make"`           
-	Model              string    `json:"model"`          
-	Color              string    `json:"color"`          
-	LicensePlate       string    `json:"licensePlate"`   
-	Capacity           int       `json:"capacity"`       
+	Make               string    `json:"make"`
+	Model              string    `json:"model"`
+	Color              string    `json:"color"`
+	LicensePlate       string    `json:"licensePlate"`
+	Capacity           int       `json:"capacity"`
 	CurrentLatitude    float64   `json:"currentLatitude"`
 	CurrentLongitude   float64   `json:"currentLongitude"`
-	Heading            int       `json:"heading"`          
-	DistanceKm         float64   `json:"distanceKm"`       
-	ETASeconds         int       `json:"etaSeconds"`       
-	ETAMinutes         int       `json:"etaMinutes"`       
-	EstimatedFare      float64   `json:"estimatedFare"`    
-	SurgeMultiplier    float64   `json:"surgeMultiplier"`  
-	AcceptanceRate     float64   `json:"acceptanceRate"`   
-	CancellationRate   float64   `json:"cancellationRate"` 
-	TotalTrips         int       `json:"totalTrips"`       
-	Status             string    `json:"status"`           
+	Heading            int       `json:"heading"`
+	DistanceKm         float64   `json:"distanceKm"`
+	ETASeconds         int       `json:"etaSeconds"`
+	ETAMinutes         int       `json:"etaMinutes"`
+	EstimatedFare      float64   `json:"estimatedFare"`
+	SurgeMultiplier    float64   `json:"surgeMultiplier"`
+	AcceptanceRate     float64   `json:"acceptanceRate"`
+	CancellationRate   float64   `json:"cancellationRate"`
+	TotalTrips         int       `json:"totalTrips"`
+	Status             string    `json:"status"`
 	IsVerified         bool      `json:"isVerified"`
 	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
 type AvailableCarsListResponse struct {
-	TotalCount int                     `json:"totalCount"` 
-	CarsCount  int                     `json:"carsCount"`  
+	TotalCount int                     `json:"totalCount"`
+	CarsCount  int                     `json:"carsCount"`
 	RiderLat   float64                 `json:"riderLat"`
 	RiderLon   float64                 `json:"riderLon"`
 	RadiusKm   float64                 `json:"radiusKm"`
@@ -191,53 +195,53 @@ type WebSocketAvailableCarsMessage struct {
 }
 
 type VehicleWithDetailsResponse struct {
-	ID               string  `json:"id"`          
-	DriverID         string  `json:"driverId"`    
-	DriverName       string  `json:"driverName"`  
+	ID               string  `json:"id"`
+	DriverID         string  `json:"driverId"`
+	DriverName       string  `json:"driverName"`
 	DriverRating     float64 `json:"driverRating"`
 	DriverImage      *string `json:"driverImage,omitempty"`
-	AcceptanceRate   float64 `json:"acceptanceRate"`   
-	CancellationRate float64 `json:"cancellationRate"` 
-	TotalTrips       int     `json:"totalTrips"`       
-	IsVerified       bool    `json:"isVerified"`       
-	Status           string  `json:"status"`           
+	AcceptanceRate   float64 `json:"acceptanceRate"`
+	CancellationRate float64 `json:"cancellationRate"`
+	TotalTrips       int     `json:"totalTrips"`
+	IsVerified       bool    `json:"isVerified"`
+	Status           string  `json:"status"`
 
-	VehicleTypeID      string `json:"vehicleTypeId"`      
-	VehicleType        string `json:"vehicleType"`        
-	VehicleDisplayName string `json:"vehicleDisplayName"` 
-	Make               string `json:"make"`               
-	Model              string `json:"model"`              
-	Year               int    `json:"year"`               
-	Color              string `json:"color"`              
-	LicensePlate       string `json:"licensePlate"`       
-	Capacity           int    `json:"capacity"`           
+	VehicleTypeID      string `json:"vehicleTypeId"`
+	VehicleType        string `json:"vehicleType"`
+	VehicleDisplayName string `json:"vehicleDisplayName"`
+	Make               string `json:"make"`
+	Model              string `json:"model"`
+	Year               int    `json:"year"`
+	Color              string `json:"color"`
+	LicensePlate       string `json:"licensePlate"`
+	Capacity           int    `json:"capacity"`
 
-	CurrentLatitude  float64 `json:"currentLatitude"` 
+	CurrentLatitude  float64 `json:"currentLatitude"`
 	CurrentLongitude float64 `json:"currentLongitude"`
-	Heading          int     `json:"heading"`         
-	DistanceKm       float64 `json:"distanceKm"`      
+	Heading          int     `json:"heading"`
+	DistanceKm       float64 `json:"distanceKm"`
 
-	ETASeconds   int    `json:"etaSeconds"`  
-	ETAMinutes   int    `json:"etaMinutes"`  
+	ETASeconds   int    `json:"etaSeconds"`
+	ETAMinutes   int    `json:"etaMinutes"`
 	ETAFormatted string `json:"etaFormatted"`
 
-	BaseFare              float64 `json:"baseFare"`              
-	PerKmRate             float64 `json:"perKmRate"`             
-	PerMinRate            float64 `json:"perMinRate"`            
-	EstimatedFare         float64 `json:"estimatedFare"`         
-	EstimatedDistance     float64 `json:"estimatedDistance"`     
-	EstimatedDuration     int     `json:"estimatedDuration"`     
-	EstimatedDurationMins int     `json:"estimatedDurationMins"` 
+	BaseFare              float64 `json:"baseFare"`
+	PerKmRate             float64 `json:"perKmRate"`
+	PerMinRate            float64 `json:"perMinRate"`
+	EstimatedFare         float64 `json:"estimatedFare"`
+	EstimatedDistance     float64 `json:"estimatedDistance"`
+	EstimatedDuration     int     `json:"estimatedDuration"`
+	EstimatedDurationMins int     `json:"estimatedDurationMins"`
 
-	SurgeMultiplier float64 `json:"surgeMultiplier"` 
-	SurgeReason     string  `json:"surgeReason"`     
+	SurgeMultiplier float64 `json:"surgeMultiplier"`
+	SurgeReason     string  `json:"surgeReason"`
 
-	PendingRequests  int    `json:"pendingRequests"` 
+	PendingRequests  int    `json:"pendingRequests"`
 	AvailableDrivers int    `json:"availableDrivers"`
-	Demand           string `json:"demand"`          
+	Demand           string `json:"demand"`
 
-	UpdatedAt time.Time `json:"updatedAt"` 
-	Timestamp time.Time `json:"timestamp"` 
+	UpdatedAt time.Time `json:"updatedAt"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 type VehiclesWithDetailsListResponse struct {
@@ -249,13 +253,13 @@ type VehiclesWithDetailsListResponse struct {
 	DropoffAddress string  `json:"dropoffAddress"`
 	RadiusKm       float64 `json:"radiusKm"`
 
-	TripDistance     float64 `json:"tripDistance"`     
-	TripDuration     int     `json:"tripDuration"`     
-	TripDurationMins int     `json:"tripDurationMins"` 
+	TripDistance     float64 `json:"tripDistance"`
+	TripDuration     int     `json:"tripDuration"`
+	TripDurationMins int     `json:"tripDurationMins"`
 
 	TotalCount int                           `json:"totalCount"`
-	CarsCount  int                           `json:"carsCount"` 
-	Vehicles   []*VehicleWithDetailsResponse `json:"vehicles"`  
+	CarsCount  int                           `json:"carsCount"`
+	Vehicles   []*VehicleWithDetailsResponse `json:"vehicles"`
 
 	Timestamp time.Time `json:"timestamp"`
 }
