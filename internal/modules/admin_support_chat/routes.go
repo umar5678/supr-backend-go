@@ -7,7 +7,16 @@ import (
 )
 
 func RegisterRoutes(router *gin.RouterGroup, cfg *config.Config, service Service) {
+	RegisterRoutesWithBroadcast(router, cfg, service, nil)
+}
+
+func RegisterRoutesWithBroadcast(router *gin.RouterGroup, cfg *config.Config, service Service, broadcastFunc func(map[string]interface{}) error) {
 	handler := NewHandler(service)
+	
+	// Set the broadcast function if provided
+	if broadcastFunc != nil {
+		handler.SetBroadcastFunc(broadcastFunc)
+	}
 
 	chat := router.Group("/admin-support-chat")
 	chat.Use(middleware.Auth(cfg))

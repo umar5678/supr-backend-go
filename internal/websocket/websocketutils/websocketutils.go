@@ -267,3 +267,22 @@ func ReplyToAdminSupportChat(senderID string, senderRole string, conversationID 
 
 	return nil
 }
+
+// BroadcastAdminSupportMessage broadcasts a saved admin support message via WebSocket
+func BroadcastAdminSupportMessage(messageData map[string]interface{}) error {
+	if wsManager == nil {
+		logger.Warn("websocket manager not initialized - cannot broadcast message")
+		return nil
+	}
+
+	if messageData == nil {
+		messageData = make(map[string]interface{})
+	}
+
+	// Broadcast to all clients (both admins and the user in conversation)
+	msg := websocket.NewMessage(websocket.TypeChatMessage, messageData)
+	wsManager.Hub().BroadcastToAll(msg)
+
+	logger.Info("admin support message broadcasted via websocket", "conversationId", messageData["conversationId"])
+	return nil
+}

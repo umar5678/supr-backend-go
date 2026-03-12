@@ -4,15 +4,25 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
 type Handler struct {
-	service Service
+	service         Service
+	broadcastFunc   func(map[string]interface{}) error
 }
 
 func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+	return &Handler{
+		service:       service,
+		broadcastFunc: nil,
+	}
+}
+
+// SetBroadcastFunc sets the WebSocket broadcast function for real-time messaging
+func (h *Handler) SetBroadcastFunc(fn func(map[string]interface{}) error) {
+	h.broadcastFunc = fn
 }
 
 type SendMessageRequest struct {
@@ -73,6 +83,26 @@ func (h *Handler) SendMessage(c *gin.Context) {
 	if err != nil {
 		c.Error(err)
 		return
+	}
+
+	// Broadcast message via WebSocket to all clients if broadcast function is configured
+	if h.broadcastFunc != nil {
+		broadcastData := map[string]interface{}{
+			"id":             message.ID,
+			"conversationId": conversationID,
+			"senderId":       userID,
+			"senderRole":     role,
+			"content":        req.Content,
+			"metadata":       req.Metadata,
+			"isRead":         message.IsRead,
+			"createdAt":      message.CreatedAt,
+			"timestamp":      message.CreatedAt,
+		}
+
+		if err := h.broadcastFunc(broadcastData); err != nil {
+			logger.Warn("failed to broadcast admin support message via websocket", "error", err, "messageId", message.ID)
+			// Don't return error - message was saved successfully even if broadcast failed
+		}
 	}
 
 	response.Success(c, message, "Message sent successfully")
