@@ -2,6 +2,7 @@ package admin_support_chat
 
 import (
 	"context"
+	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
 	"gorm.io/gorm"
@@ -109,11 +110,15 @@ func (r *repository) GetUnreadCount(ctx context.Context, conversationID string) 
 }
 
 func (r *repository) ResolveConversation(ctx context.Context, conversationID string) error {
-	// Update metadata to mark conversation as resolved
+	// Update all messages in the conversation to mark as resolved
+	now := time.Now()
 	return r.db.WithContext(ctx).
 		Where("conversation_id = ?", conversationID).
 		Model(&models.AdminSupportChat{}).
-		Update("metadata", gorm.Expr("jsonb_set(metadata, '{status}', '\"resolved\"')")).
+		Updates(map[string]interface{}{
+			"is_resolved": true,
+			"resolved_at": now,
+		}).
 		Error
 }
 

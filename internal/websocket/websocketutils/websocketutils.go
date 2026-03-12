@@ -260,7 +260,7 @@ func ReplyToAdminSupportChat(senderID string, senderRole string, conversationID 
 		content,
 		make(map[string]interface{}),
 	)
-	if err != nil{
+	if err != nil {
 		logger.Error("failed to create admin support reply", "error", err, "conversationId", conversationID)
 		return err
 	}

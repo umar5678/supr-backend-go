@@ -22,6 +22,8 @@ type AdminSupportChat struct {
 	Metadata AdminSupportChatMetadata `gorm:"type:jsonb;default:'{}'" json:"metadata,omitempty"`
 
 	IsRead        bool       `gorm:"default:false" json:"isRead"`
+	IsResolved    bool       `gorm:"default:false" json:"isResolved"`
+	ResolvedAt     *time.Time `json:"resolvedAt,omitempty"`
 	ReadByAdminAt *time.Time `json:"readByAdminAt,omitempty"`
 
 	CreatedAt time.Time      `gorm:"autoCreateTime" json:"createdAt"`

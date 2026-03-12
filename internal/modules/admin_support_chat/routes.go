@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/umar5678/go-backend/internal/config"
 	"github.com/umar5678/go-backend/internal/middleware"
-	"github.com/umar5678/go-backend/internal/websocket"
 )
 
 func RegisterRoutes(router *gin.RouterGroup, cfg *config.Config, service Service) {
@@ -17,22 +16,6 @@ func RegisterRoutes(router *gin.RouterGroup, cfg *config.Config, service Service
 		chat.GET("/conversations", handler.GetUserConversations)
 		chat.GET("/conversations/:conversationId", handler.GetConversationMessages)
 		chat.POST("/:messageId/read", handler.MarkAsRead)
-		chat.POST("/conversations/:conversationId/resolve", handler.ResolveConversation, middleware.RequireAdmin())
-		chat.DELETE("/conversations/:conversationId", handler.DeleteConversation, middleware.RequireAdmin())
-	}
-}
-
-func RegisterRoutesWithWebSocket(router *gin.RouterGroup, cfg *config.Config, service Service, wsManager *websocket.Manager) {
-	handler := NewHandlerWithWebSocket(service, wsManager.Hub())
-
-	chat := router.Group("/admin-support-chat")
-	chat.Use(middleware.Auth(cfg))
-	{
-		chat.POST("/send", handler.SendMessage)
-		chat.GET("/conversations", handler.GetUserConversations)
-		chat.GET("/conversations/:conversationId", handler.GetConversationMessages)
-		chat.POST("/:messageId/read", handler.MarkAsRead)
-		// Admin endpoints
 		chat.POST("/conversations/:conversationId/resolve", handler.ResolveConversation)
 		chat.DELETE("/conversations/:conversationId", handler.DeleteConversation)
 	}

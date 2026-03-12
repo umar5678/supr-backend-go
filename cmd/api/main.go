@@ -313,8 +313,8 @@ func main() {
 
 		laundry.RegisterRoutes(router, db, cfg, walletService, ridePinService)
 
-		// Register admin support chat routes with WebSocket for real-time broadcasting
-		admin_support_chat.RegisterRoutesWithWebSocket(v1, cfg, adminSupportService, wsManager)
+		// Register admin support chat routes
+		admin_support_chat.RegisterRoutes(v1, cfg, adminSupportService)
 
 		// Add other modules here...
 	}

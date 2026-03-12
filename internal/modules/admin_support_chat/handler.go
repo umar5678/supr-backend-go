@@ -5,23 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/umar5678/go-backend/internal/utils/response"
-	"github.com/umar5678/go-backend/internal/websocket"
 )
 
 type Handler struct {
 	service Service
-	wsHub   *websocket.Hub
 }
 
 func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
-}
-
-func NewHandlerWithWebSocket(service Service, wsHub *websocket.Hub) *Handler {
-	return &Handler{
-		service: service,
-		wsHub:   wsHub,
-	}
 }
 
 type SendMessageRequest struct {
@@ -84,27 +75,6 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	// Broadcast message to conversation owner and admins in real-time if WebSocket hub is available
-	if h.wsHub != nil {
-		broadcastData := map[string]interface{}{
-			"senderId":       userID,
-			"senderRole":     role,
-			"content":        req.Content,
-			"metadata":       req.Metadata,
-			"conversationId": conversationID,
-			"messageId":      message.ID,
-			"timestamp":      message.CreatedAt,
-		}
-
-		// Send to the user in the conversation (they will see the admin reply)
-		msg := websocket.NewTargetedMessage(websocket.TypeChatMessage, conversationID, broadcastData)
-		h.wsHub.SendToUser(conversationID, msg)
-
-		// Also broadcast to all admins so they see the sent message
-		broadcastMsg := websocket.NewMessage(websocket.TypeChatMessage, broadcastData)
-		h.wsHub.BroadcastToAll(broadcastMsg)
-	}
-
 	response.Success(c, message, "Message sent successfully")
 }
 
@@ -151,13 +121,8 @@ func (h *Handler) GetConversationMessages(c *gin.Context) {
 		return
 	}
 
-	totalPages := int((total + int64(limit) - 1) / int64(limit))
-	response.Paginated(c, messages, response.PaginationMeta{
-		Page:       page,
-		Limit:      limit,
-		Total:      total,
-		TotalPages: totalPages,
-	}, "Messages retrieved successfully")
+	pagination := response.NewPaginationMeta(total, page, limit)
+	response.Paginated(c, messages, pagination, "Messages retrieved successfully")
 }
 
 // GetUserConversations godoc
@@ -195,13 +160,8 @@ func (h *Handler) GetUserConversations(c *gin.Context) {
 		return
 	}
 
-	totalPages := int((total + int64(limit) - 1) / int64(limit))
-	response.Paginated(c, conversations, response.PaginationMeta{
-		Page:       page,
-		Limit:      limit,
-		Total:      total,
-		TotalPages: totalPages,
-	}, "Conversations retrieved successfully")
+	pagination := response.NewPaginationMeta(total, page, limit)
+	response.Paginated(c, conversations, pagination, "Conversations retrieved successfully")
 }
 
 // MarkAsRead godoc
