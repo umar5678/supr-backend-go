@@ -19,7 +19,7 @@ import (
 	_ "github.com/umar5678/go-backend/internal/docs"
 	"github.com/umar5678/go-backend/internal/middleware"
 	"github.com/umar5678/go-backend/internal/modules/admin"
-	"github.com/umar5678/go-backend/internal/modules/adminsupport"
+	"github.com/umar5678/go-backend/internal/modules/admin_support_chat"
 	"github.com/umar5678/go-backend/internal/modules/auth"
 	"github.com/umar5678/go-backend/internal/modules/batching"
 	"github.com/umar5678/go-backend/internal/modules/drivers"
@@ -111,12 +111,10 @@ func main() {
 	wsManager := websocket.NewManager(wsConfig, db)
 	wsServer := websocket.NewServer(wsManager)
 
-	websocketutils.Initialize(wsManager)
-
 	// Initialize admin support chat service
-	adminSupportRepo := adminsupport.NewRepository(db)
-	adminSupportService := adminsupport.NewService(adminSupportRepo)
-	websocketutils.InitializeAdminSupportService(adminSupportService)
+	adminSupportRepo := admin_support_chat.NewRepository(db)
+	adminSupportService := admin_support_chat.NewService(adminSupportRepo)
+	websocketutils.Initialize(wsManager, adminSupportService)
 
 	handlers.RegisterAllHandlers(wsManager)
 
@@ -314,6 +312,9 @@ func main() {
 		)
 
 		laundry.RegisterRoutes(router, db, cfg, walletService, ridePinService)
+
+		// Register admin support chat routes
+		admin_support_chat.RegisterRoutes(router, cfg, adminSupportService)
 
 		// Add other modules here...
 	}

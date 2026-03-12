@@ -5,24 +5,20 @@ import (
 	"errors"
 	"time"
 
-	"github.com/umar5678/go-backend/internal/modules/adminsupport"
+	"github.com/umar5678/go-backend/internal/modules/admin_support_chat"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/websocket"
 )
 
 var (
 	wsManager           *websocket.Manager
-	adminSupportService adminsupport.Service
+	adminSupportService admin_support_chat.Service
 )
 
-func Initialize(manager *websocket.Manager) {
+func Initialize(manager *websocket.Manager, adminChatService admin_support_chat.Service) {
 	wsManager = manager
+	adminSupportService = adminChatService
 	logger.Info("websocket utility initialized")
-}
-
-func InitializeAdminSupportService(service adminsupport.Service) {
-	adminSupportService = service
-	logger.Info("admin support service initialized for websocket")
 }
 
 func BroadcastToAll(messageType websocket.MessageType, data map[string]interface{}) error {
@@ -90,6 +86,7 @@ func SendAdminSupportChat(senderID string, senderRole string, content string, me
 			senderID,
 			senderRole,
 			content,
+			metadata,
 		)
 		if err != nil {
 			logger.Error("failed to save admin support chat to database", "error", err, "senderId", senderID)
@@ -261,6 +258,7 @@ func ReplyToAdminSupportChat(senderID string, senderRole string, conversationID 
 		senderID,
 		senderRole,
 		content,
+		make(map[string]interface{}),
 	)
 	if err != nil{
 		logger.Error("failed to create admin support reply", "error", err, "conversationId", conversationID)
