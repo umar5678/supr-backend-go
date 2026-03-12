@@ -19,6 +19,7 @@ import (
 	_ "github.com/umar5678/go-backend/internal/docs"
 	"github.com/umar5678/go-backend/internal/middleware"
 	"github.com/umar5678/go-backend/internal/modules/admin"
+	"github.com/umar5678/go-backend/internal/modules/adminsupport"
 	"github.com/umar5678/go-backend/internal/modules/auth"
 	"github.com/umar5678/go-backend/internal/modules/batching"
 	"github.com/umar5678/go-backend/internal/modules/drivers"
@@ -111,6 +112,11 @@ func main() {
 	wsServer := websocket.NewServer(wsManager)
 
 	websocketutils.Initialize(wsManager)
+
+	// Initialize admin support chat service
+	adminSupportRepo := adminsupport.NewRepository(db)
+	adminSupportService := adminsupport.NewService(adminSupportRepo)
+	websocketutils.InitializeAdminSupportService(adminSupportService)
 
 	handlers.RegisterAllHandlers(wsManager)
 

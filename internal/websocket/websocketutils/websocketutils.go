@@ -5,17 +5,24 @@ import (
 	"errors"
 	"time"
 
+	"github.com/umar5678/go-backend/internal/modules/adminsupport"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/websocket"
 )
 
 var (
-	wsManager *websocket.Manager
+	wsManager           *websocket.Manager
+	adminSupportService adminsupport.Service
 )
 
 func Initialize(manager *websocket.Manager) {
 	wsManager = manager
 	logger.Info("websocket utility initialized")
+}
+
+func InitializeAdminSupportService(service adminsupport.Service) {
+	adminSupportService = service
+	logger.Info("admin support service initialized for websocket")
 }
 
 func BroadcastToAll(messageType websocket.MessageType, data map[string]interface{}) error {
@@ -68,16 +75,40 @@ func SendAdminSupportChat(senderID string, senderRole string, content string, me
 	if metadata == nil {
 		metadata = make(map[string]interface{})
 	}
+
+	// Use user ID as conversation ID (one conversation per user with admins)
+	conversationID := senderID
+
+	// Save message to database if service is available
+	if adminSupportService != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		_, err := adminSupportService.SendMessage(
+			ctx,
+			conversationID,
+			senderID,
+			senderRole,
+			content,
+		)
+		if err != nil {
+			logger.Error("failed to save admin support chat to database", "error", err, "senderId", senderID)
+			// Don't block the real-time message if persistence fails
+		}
+	}
+
+	// Broadcast real-time message to admins
 	msg := websocket.NewMessage(websocket.TypeChatMessage, map[string]interface{}{
-		"senderId":     senderID,
-		"senderRole":   senderRole,
-		"content":      content,
-		"metadata":     metadata,
-		"timestamp":    time.Now(),
-		"adminSupport": true,
+		"senderId":       senderID,
+		"senderRole":     senderRole,
+		"content":        content,
+		"metadata":       metadata,
+		"timestamp":      time.Now(),
+		"adminSupport":   true,
+		"conversationId": conversationID,
 	})
 	wsManager.Hub().BroadcastToRole("admin", msg)
-	logger.Info("admin support chat sent", "senderId", senderID, "role", senderRole)
+	logger.Info("admin support chat sent", "senderId", senderID, "role", senderRole, "conversationId", conversationID)
 	return nil
 }
 
@@ -195,4 +226,46 @@ func SendToUserWithContext(ctx context.Context, userID string, messageType webso
 
 func SendRideLocationUpdateWithContext(ctx context.Context, riderID string, locationData map[string]interface{}) error {
 	return SendRideLocationUpdate(riderID, locationData)
+}
+
+// GetAdminSupportChatHistory retrieves persisted chat messages for a conversation
+func GetAdminSupportChatHistory(ctx context.Context, conversationID string, limit, offset int) (interface{}, error) {
+	if adminSupportService == nil {
+		logger.Warn("admin support service not initialized")
+		return nil, errors.New("admin support service not initialized")
+	}
+
+	messages, err := adminSupportService.GetConversation(ctx, conversationID, limit, offset)
+	if err != nil {
+		logger.Error("failed to retrieve conversation history", "error", err, "conversationId", conversationID)
+		return nil, err
+	}
+
+	return messages, nil
+}
+
+// ReplyToAdminSupportChat creates a reply to an admin support message (threading)
+func ReplyToAdminSupportChat(senderID string, senderRole string, conversationID string, parentMessageID string, content string) error {
+	if adminSupportService == nil {
+		logger.Warn("admin support service not initialized")
+		return errors.New("admin support service not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := adminSupportService.ReplyToMessage(
+		ctx,
+		conversationID,
+		parentMessageID,
+		senderID,
+		senderRole,
+		content,
+	)
+	if err != nil{
+		logger.Error("failed to create admin support reply", "error", err, "conversationId", conversationID)
+		return err
+	}
+
+	return nil
 }
