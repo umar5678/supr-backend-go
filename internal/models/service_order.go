@@ -40,6 +40,8 @@ type BookingInfo struct {
 	Time           string    `json:"time"`                      
 	PreferredTime  time.Time `json:"prefferedTime"`             
 	QuantityOfPros int       `json:"quantityOfPros" default:"1"`
+	ToolsRequired   bool      `json:"toolsRequired"`
+	PersonCount     int       `json:"personCount" default:"1"`
 }
 
 func (b BookingInfo) Value() (driver.Value, error) {

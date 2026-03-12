@@ -58,9 +58,22 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		return
 	}
 
+	// Enforce conversation ID logic:
+	// - Non-admins (riders, drivers, service providers, etc.) MUST use their userID as conversationID
+	// - Admins reply to existing conversations and should pass the user's ID as conversationID
+	conversationID := req.ConversationID
+	if role != "admin" {
+		// For non-admin users, conversation is always with themselves (1-to-1 with admins)
+		conversationID = userID.(string)
+	} else if req.ConversationID == "" {
+		// Admin must specify which user's conversation to reply to
+		c.Error(response.BadRequest("Admin must specify conversationId (user ID) to reply to"))
+		return
+	}
+
 	message, err := h.service.SendMessage(
 		c.Request.Context(),
-		req.ConversationID,
+		conversationID,
 		userID.(string),
 		role.(string),
 		req.Content,
@@ -78,14 +91,14 @@ func (h *Handler) SendMessage(c *gin.Context) {
 			"senderRole":     role,
 			"content":        req.Content,
 			"metadata":       req.Metadata,
-			"conversationId": req.ConversationID,
+			"conversationId": conversationID,
 			"messageId":      message.ID,
 			"timestamp":      message.CreatedAt,
 		}
 
 		// Send to the user in the conversation (they will see the admin reply)
-		msg := websocket.NewTargetedMessage(websocket.TypeChatMessage, req.ConversationID, broadcastData)
-		h.wsHub.SendToUser(req.ConversationID, msg)
+		msg := websocket.NewTargetedMessage(websocket.TypeChatMessage, conversationID, broadcastData)
+		h.wsHub.SendToUser(conversationID, msg)
 
 		// Also broadcast to all admins so they see the sent message
 		broadcastMsg := websocket.NewMessage(websocket.TypeChatMessage, broadcastData)
@@ -141,18 +154,19 @@ func (h *Handler) GetConversationMessages(c *gin.Context) {
 }
 
 // GetUserConversations godoc
-// @Summary Get user conversations
-// @Description Retrieve all conversations for a user
+// @Summary Get user conversations with latest message
+// @Description Retrieve all conversations for a user with preview of latest message
 // @Tags Admin Support Chat
 // @Produce json
 // @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(50)
-// @Success 200 {object} response.Response{data=[]string}
+// @Success 200 {object} response.Response{data=[]map[string]interface{}}
 // @Failure 401 {object} response.Response
 // @Router /admin-support-chat/conversations [get]
 func (h *Handler) GetUserConversations(c *gin.Context) {
 	userID, _ := c.Get("userID")
+	role, _ := c.Get("role")
 	page := 1
 	limit := 50
 
@@ -168,14 +182,14 @@ func (h *Handler) GetUserConversations(c *gin.Context) {
 		}
 	}
 
-	conversationIDs, total, err := h.service.GetUserConversations(c.Request.Context(), userID.(string), page, limit)
+	conversations, total, err := h.service.GetUserConversationsWithDetails(c.Request.Context(), userID.(string), role.(string), page, limit)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
 	totalPages := int((total + int64(limit) - 1) / int64(limit))
-	response.Paginated(c, conversationIDs, response.PaginationMeta{
+	response.Paginated(c, conversations, response.PaginationMeta{
 		Page:       page,
 		Limit:      limit,
 		Total:      total,

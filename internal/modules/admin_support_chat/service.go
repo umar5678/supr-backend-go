@@ -14,6 +14,7 @@ type Service interface {
 	SendMessage(ctx context.Context, conversationID, senderID, senderRole, content string, metadata map[string]interface{}) (*models.AdminSupportChat, error)
 	GetConversationMessages(ctx context.Context, conversationID string, page, limit int) ([]*models.AdminSupportChat, int64, error)
 	GetUserConversations(ctx context.Context, userID string, page, limit int) ([]string, int64, error)
+	GetUserConversationsWithDetails(ctx context.Context, userID, role string, page, limit int) ([]map[string]interface{}, int64, error)
 	MarkAsRead(ctx context.Context, messageID string) error
 	GetUnreadCount(ctx context.Context, conversationID string) (int64, error)
 	GetConversation(ctx context.Context, conversationID string, limit, offset int) ([]*models.AdminSupportChat, error)
@@ -185,4 +186,60 @@ func (s *service) ReplyToMessage(ctx context.Context, conversationID, parentMess
 	)
 
 	return message, nil
+}
+
+func (s *service) GetUserConversationsWithDetails(ctx context.Context, userID, role string, page, limit int) ([]map[string]interface{}, int64, error) {
+	if userID == "" {
+		return nil, 0, response.BadRequest("userId is required")
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 50
+	}
+
+	offset := (page - 1) * limit
+
+	// Get conversation IDs
+	conversationIDs, total, err := s.repo.GetUserConversations(ctx, userID, limit, offset)
+	if err != nil {
+		logger.Error("failed to get user conversations", "error", err, "userId", userID)
+		return nil, 0, response.InternalServerError("Failed to retrieve conversations", err)
+	}
+
+	// Build conversation details with latest message and metadata
+	conversations := make([]map[string]interface{}, 0, len(conversationIDs))
+
+	for _, conversationID := range conversationIDs {
+		// Get latest message in conversation
+		messages, msgTotal, err := s.repo.GetConversationMessages(ctx, conversationID, 1, 0)
+		if err != nil || len(messages) == 0 {
+			continue
+		}
+
+		latestMsg := messages[0]
+
+		// Get unread count for this conversation
+		unreadCount, _ := s.repo.GetUnreadCount(ctx, conversationID)
+
+		conv := map[string]interface{}{
+			"conversationId": conversationID,
+			"lastMessage": map[string]interface{}{
+				"content":    latestMsg.Content,
+				"senderRole": latestMsg.SenderRole,
+				"timestamp":  latestMsg.CreatedAt,
+				"isRead":     latestMsg.IsRead,
+			},
+			"unreadCount":    unreadCount,
+			"totalMessages":  msgTotal,
+			"preview":        latestMsg.Content,
+			"participantId":  conversationID, // For non-admins, conversationID is the other participant's ID
+		}
+
+		conversations = append(conversations, conv)
+	}
+
+	return conversations, total, nil
 }
