@@ -232,3 +232,61 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 
 	response.Success(c, nil, "Message marked as read")
 }
+
+// ResolveConversation godoc
+// @Summary Resolve a conversation
+// @Description Admin endpoint to mark a conversation as resolved
+// @Tags Admin Support Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param conversationId path string true "Conversation ID"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Router /admin-support-chat/conversations/:conversationId/resolve [post]
+func (h *Handler) ResolveConversation(c *gin.Context) {
+	conversationID := c.Param("conversationId")
+	
+	// Validate conversationId is not empty and not malformed
+	if conversationID == "" || conversationID == "[object Object]" {
+		c.Error(response.BadRequest("Invalid conversationId parameter"))
+		return
+	}
+
+	if err := h.service.ResolveConversation(c.Request.Context(), conversationID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, nil, "Conversation resolved successfully")
+}
+
+// DeleteConversation godoc
+// @Summary Delete a conversation
+// @Description Admin endpoint to delete (soft delete) a conversation and all its messages
+// @Tags Admin Support Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param conversationId path string true "Conversation ID"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Router /admin-support-chat/conversations/:conversationId [delete]
+func (h *Handler) DeleteConversation(c *gin.Context) {
+	conversationID := c.Param("conversationId")
+	
+	// Validate conversationId is not empty and not malformed
+	if conversationID == "" || conversationID == "[object Object]" {
+		c.Error(response.BadRequest("Invalid conversationId parameter"))
+		return
+	}
+
+	if err := h.service.DeleteConversation(c.Request.Context(), conversationID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, nil, "Conversation deleted successfully")
+}

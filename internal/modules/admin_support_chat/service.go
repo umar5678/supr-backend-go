@@ -19,6 +19,8 @@ type Service interface {
 	GetUnreadCount(ctx context.Context, conversationID string) (int64, error)
 	GetConversation(ctx context.Context, conversationID string, limit, offset int) ([]*models.AdminSupportChat, error)
 	ReplyToMessage(ctx context.Context, conversationID, parentMessageID, senderID, senderRole, content string, metadata map[string]interface{}) (*models.AdminSupportChat, error)
+	ResolveConversation(ctx context.Context, conversationID string) error
+	DeleteConversation(ctx context.Context, conversationID string) error
 }
 
 type service struct {
@@ -242,4 +244,32 @@ func (s *service) GetUserConversationsWithDetails(ctx context.Context, userID, r
 	}
 
 	return conversations, total, nil
+}
+
+func (s *service) ResolveConversation(ctx context.Context, conversationID string) error {
+	if conversationID == "" {
+		return response.BadRequest("conversationId is required")
+	}
+
+	if err := s.repo.ResolveConversation(ctx, conversationID); err != nil {
+		logger.Error("failed to resolve conversation", "error", err, "conversationId", conversationID)
+		return response.InternalServerError("Failed to resolve conversation", err)
+	}
+
+	logger.Info("conversation resolved", "conversationId", conversationID)
+	return nil
+}
+
+func (s *service) DeleteConversation(ctx context.Context, conversationID string) error {
+	if conversationID == "" {
+		return response.BadRequest("conversationId is required")
+	}
+
+	if err := s.repo.DeleteConversation(ctx, conversationID); err != nil {
+		logger.Error("failed to delete conversation", "error", err, "conversationId", conversationID)
+		return response.InternalServerError("Failed to delete conversation", err)
+	}
+
+	logger.Info("conversation deleted", "conversationId", conversationID)
+	return nil
 }

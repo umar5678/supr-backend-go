@@ -13,6 +13,8 @@ type Repository interface {
 	GetUserConversations(ctx context.Context, userID string, limit, offset int) ([]string, int64, error)
 	MarkAsRead(ctx context.Context, messageID string, readAt ...interface{}) error
 	GetUnreadCount(ctx context.Context, conversationID string) (int64, error)
+	ResolveConversation(ctx context.Context, conversationID string) error
+	DeleteConversation(ctx context.Context, conversationID string) error
 }
 
 type repository struct {
@@ -104,4 +106,21 @@ func (r *repository) GetUnreadCount(ctx context.Context, conversationID string) 
 		Count(&count).
 		Error
 	return count, err
+}
+
+func (r *repository) ResolveConversation(ctx context.Context, conversationID string) error {
+	// Update metadata to mark conversation as resolved
+	return r.db.WithContext(ctx).
+		Where("conversation_id = ?", conversationID).
+		Model(&models.AdminSupportChat{}).
+		Update("metadata", gorm.Expr("jsonb_set(metadata, '{status}', '\"resolved\"')")).
+		Error
+}
+
+func (r *repository) DeleteConversation(ctx context.Context, conversationID string) error {
+	// Soft delete all messages in the conversation
+	return r.db.WithContext(ctx).
+		Where("conversation_id = ?", conversationID).
+		Delete(&models.AdminSupportChat{}).
+		Error
 }

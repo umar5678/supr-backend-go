@@ -17,6 +17,8 @@ func RegisterRoutes(router *gin.RouterGroup, cfg *config.Config, service Service
 		chat.GET("/conversations", handler.GetUserConversations)
 		chat.GET("/conversations/:conversationId", handler.GetConversationMessages)
 		chat.POST("/:messageId/read", handler.MarkAsRead)
+		chat.POST("/conversations/:conversationId/resolve", handler.ResolveConversation, middleware.RequireAdmin())
+		chat.DELETE("/conversations/:conversationId", handler.DeleteConversation, middleware.RequireAdmin())
 	}
 }
 
@@ -30,5 +32,8 @@ func RegisterRoutesWithWebSocket(router *gin.RouterGroup, cfg *config.Config, se
 		chat.GET("/conversations", handler.GetUserConversations)
 		chat.GET("/conversations/:conversationId", handler.GetConversationMessages)
 		chat.POST("/:messageId/read", handler.MarkAsRead)
+		// Admin endpoints
+		chat.POST("/conversations/:conversationId/resolve", handler.ResolveConversation)
+		chat.DELETE("/conversations/:conversationId", handler.DeleteConversation)
 	}
 }
