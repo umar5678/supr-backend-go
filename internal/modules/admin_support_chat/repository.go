@@ -56,10 +56,11 @@ func (r *repository) GetUserConversations(ctx context.Context, userID string, li
 	var conversationIDs []string
 	var total int64
 
+	// Get conversations ordered by most recent message using GROUP BY
 	err := r.db.WithContext(ctx).
 		Model(&models.AdminSupportChat{}).
-		Distinct("conversation_id").
 		Where("sender_id = ?", userID).
+		Group("conversation_id").
 		Order("MAX(created_at) DESC").
 		Limit(limit).
 		Offset(offset).
@@ -73,8 +74,8 @@ func (r *repository) GetUserConversations(ctx context.Context, userID string, li
 	// Get total count of unique conversations
 	r.db.WithContext(ctx).
 		Model(&models.AdminSupportChat{}).
-		Distinct("conversation_id").
 		Where("sender_id = ?", userID).
+		Distinct("conversation_id").
 		Count(&total)
 
 	return conversationIDs, total, nil
