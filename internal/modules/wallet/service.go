@@ -32,6 +32,7 @@ type Service interface {
 	DebitWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 	CreditWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 	CreditDriverWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
+	CreditServiceProviderWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 
 	DebitDriverWallet(ctx context.Context, driverID string, amount float64, reason, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 	DeductCommission(ctx context.Context, driverID string, amount float64, commissionRate float64, rideID string) (*models.WalletTransaction, error)
@@ -668,6 +669,49 @@ func (s *service) CreditDriverWallet(ctx context.Context, userID string, amount 
 	}
 
 	logger.Info("driver wallet credited", "userID", userID, "amount", amount, "transactionID", txn.ID, "type", transactionType)
+
+	return txn, nil
+}
+
+func (s *service) CreditServiceProviderWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error) {
+	wallet, err := s.repo.FindWalletByUserID(ctx, userID, models.WalletTypeServiceProvider)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			wallet = &models.Wallet{
+				UserID:     userID,
+				Balance:    0,
+				Currency:   "INR",
+				WalletType: models.WalletTypeServiceProvider,
+			}
+			if err := s.repo.CreateWallet(ctx, wallet); err != nil {
+				return nil, response.InternalServerError("Failed to create service provider wallet", err)
+			}
+		} else {
+			return nil, response.InternalServerError("Failed to fetch service provider wallet", err)
+		}
+	}
+
+	txn := &models.WalletTransaction{
+		WalletID:      wallet.ID,
+		Amount:        amount,
+		Type:          "credit",
+		Status:        "completed",
+		ReferenceType: &transactionType,
+		ReferenceID:   &referenceID,
+		Description:   &description,
+		BalanceAfter:  wallet.Balance + amount,
+	}
+
+	if err := s.repo.CreateTransaction(ctx, txn); err != nil {
+		return nil, response.InternalServerError("Failed to create transaction", err)
+	}
+
+	wallet.Balance += amount
+	if err := s.repo.UpdateWallet(ctx, wallet); err != nil {
+		return nil, response.InternalServerError("Failed to update wallet", err)
+	}
+
+	logger.Info("service provider wallet credited", "userID", userID, "amount", amount, "transactionID", txn.ID, "type", transactionType)
 
 	return txn, nil
 }

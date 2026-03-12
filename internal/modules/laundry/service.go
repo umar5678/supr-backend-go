@@ -806,7 +806,7 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 		"commission": order.Total * 0.10,
 	}
 
-	if _, err := s.walletService.CreditWallet(
+	if _, err := s.walletService.CreditServiceProviderWallet(
 		ctx,
 		providerID,
 		providerEarnings,

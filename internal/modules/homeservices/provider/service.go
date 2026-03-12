@@ -559,7 +559,7 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 		"service": "homeservice",
 	}
 
-	if _, err := s.walletService.CreditWallet(
+	if _, err := s.walletService.CreditServiceProviderWallet(
 		ctx,
 		providerID,
 		providerPayout,
