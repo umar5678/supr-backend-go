@@ -5,14 +5,23 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/umar5678/go-backend/internal/utils/response"
+	"github.com/umar5678/go-backend/internal/websocket"
 )
 
 type Handler struct {
 	service Service
+	wsHub   *websocket.Hub
 }
 
 func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
+}
+
+func NewHandlerWithWebSocket(service Service, wsHub *websocket.Hub) *Handler {
+	return &Handler{
+		service: service,
+		wsHub:   wsHub,
+	}
 }
 
 type SendMessageRequest struct {
@@ -60,6 +69,27 @@ func (h *Handler) SendMessage(c *gin.Context) {
 	if err != nil {
 		c.Error(err)
 		return
+	}
+
+	// Broadcast message to conversation owner and admins in real-time if WebSocket hub is available
+	if h.wsHub != nil {
+		broadcastData := map[string]interface{}{
+			"senderId":       userID,
+			"senderRole":     role,
+			"content":        req.Content,
+			"metadata":       req.Metadata,
+			"conversationId": req.ConversationID,
+			"messageId":      message.ID,
+			"timestamp":      message.CreatedAt,
+		}
+
+		// Send to the user in the conversation (they will see the admin reply)
+		msg := websocket.NewTargetedMessage(websocket.TypeChatMessage, req.ConversationID, broadcastData)
+		h.wsHub.SendToUser(req.ConversationID, msg)
+
+		// Also broadcast to all admins so they see the sent message
+		broadcastMsg := websocket.NewMessage(websocket.TypeChatMessage, broadcastData)
+		h.wsHub.BroadcastToAll(broadcastMsg)
 	}
 
 	response.Success(c, message, "Message sent successfully")
