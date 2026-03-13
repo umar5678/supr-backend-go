@@ -10,7 +10,7 @@ type DriverProfile struct {
 	ID               string  `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	UserID           string  `gorm:"type:uuid;uniqueIndex;not null" json:"userId"`
 	LicenseNumber    string  `gorm:"type:varchar(100);uniqueIndex;not null" json:"licenseNumber"`
-	Status           string  `gorm:"type:varchar(50);default:'offline'" json:"status"` 
+	Status           string  `gorm:"type:varchar(50);default:'offline'" json:"status"`
 	CurrentLocation  *string `gorm:"type:geometry(Point,4326)" json:"currentLocation"`
 	Heading          int     `gorm:"default:0" json:"heading"`
 	Rating           float64 `gorm:"type:decimal(3,2);default:5.0" json:"rating"`
@@ -21,11 +21,11 @@ type DriverProfile struct {
 	IsVerified       bool    `gorm:"default:false" json:"isVerified"`
 	WalletBalance    float64 `gorm:"type:decimal(10,2);default:0" json:"walletBalance"`
 
-	AccountStatus       string     `gorm:"type:varchar(50);default:'active'" json:"accountStatus"`         
-	IsRestricted        bool       `gorm:"default:false" json:"isRestricted"`                              
-	RestrictedAt        *time.Time `json:"restrictedAt,omitempty"`                                         
-	RestrictionReason   *string    `gorm:"type:varchar(255)" json:"restrictionReason,omitempty"`           
-	MinBalanceThreshold float64    `gorm:"type:decimal(10,2);default:-2000.00" json:"minBalanceThreshold"` 
+	AccountStatus       string     `gorm:"type:varchar(50);default:'active'" json:"accountStatus"`
+	IsRestricted        bool       `gorm:"default:false" json:"isRestricted"`
+	RestrictedAt        *time.Time `json:"restrictedAt,omitempty"`
+	RestrictionReason   *string    `gorm:"type:varchar(255)" json:"restrictionReason,omitempty"`
+	MinBalanceThreshold float64    `gorm:"type:decimal(10,2);default:-2000.00" json:"minBalanceThreshold"`
 
 	CreatedAt time.Time      `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`

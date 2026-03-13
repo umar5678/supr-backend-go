@@ -35,16 +35,16 @@ type Service interface {
 }
 
 type service struct {
-	repo               Repository
-	walletService      walletservice.Service
-	db                 *gorm.DB
+	repo          Repository
+	walletService walletservice.Service
+	db            *gorm.DB
 }
 
 func NewService(repo Repository, walletService walletservice.Service, db *gorm.DB) Service {
 	return &service{
-		repo:               repo,
-		walletService:      walletService,
-		db:                 db,
+		repo:          repo,
+		walletService: walletService,
+		db:            db,
 	}
 }
 
@@ -805,4 +805,3 @@ func (s *service) GetWalletTransactionHistory(ctx context.Context, userID string
 
 	return []*driverdto.WalletTransactionResponse{}, nil
 }
-

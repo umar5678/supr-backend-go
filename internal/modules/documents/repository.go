@@ -297,4 +297,3 @@ func (r *repository) CountVerifiedDocumentsByServiceProviderID(ctx context.Conte
 	}
 	return int(count), nil
 }
-

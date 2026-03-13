@@ -96,8 +96,8 @@ func (s *service) UploadDocument(ctx context.Context, userID string, documentTyp
 		ImageKitFileID:   uploadResp.FileID,
 		ImageKitFilePath: uploadResp.FilePath,
 		Metadata: map[string]interface{}{
-			"uploadedAt":  time.Now().Format(time.RFC3339),
-			"uploadSize":  uploadResp.Size,
+			"uploadedAt":    time.Now().Format(time.RFC3339),
+			"uploadSize":    uploadResp.Size,
 			"fileExtension": fileExt,
 		},
 		CreatedAt: time.Now(),
@@ -284,7 +284,6 @@ func (s *service) VerifyDocument(ctx context.Context, adminID, docID, status, re
 		"status", status,
 		"adminID", adminID)
 
-
 	return &documentdto.VerifyDocumentResponse{
 		DocumentID:      docID,
 		Status:          status,
@@ -329,13 +328,13 @@ func (s *service) GetPendingDocuments(ctx context.Context) ([]*documentdto.Docum
 // This ensures the driver must upload and have their documents verified before becoming active
 func (s *service) InitializeDriverProfile(ctx context.Context, driverID string) error {
 	logger.Info("initializing driver profile for document verification", "driverID", driverID)
-	
+
 	// Ensure driver profile is not verified on creation
 	if err := s.repo.UpdateDriverProfileVerification(ctx, driverID, false); err != nil {
 		logger.Error("failed to initialize driver profile verification", "error", err, "driverID", driverID)
 		return fmt.Errorf("failed to initialize driver profile: %w", err)
 	}
-	
+
 	logger.Info("driver profile initialized for document verification", "driverID", driverID)
 	return nil
 }
@@ -344,13 +343,13 @@ func (s *service) InitializeDriverProfile(ctx context.Context, driverID string) 
 // This ensures the service provider must upload and have their documents verified before becoming active
 func (s *service) InitializeServiceProviderProfile(ctx context.Context, providerID string) error {
 	logger.Info("initializing service provider profile for document verification", "providerID", providerID)
-	
+
 	// Ensure service provider profile is not verified on creation
 	if err := s.repo.UpdateServiceProviderProfileVerification(ctx, providerID, false); err != nil {
 		logger.Error("failed to initialize service provider profile verification", "error", err, "providerID", providerID)
 		return fmt.Errorf("failed to initialize service provider profile: %w", err)
 	}
-	
+
 	logger.Info("service provider profile initialized for document verification", "providerID", providerID)
 	return nil
 }
@@ -359,17 +358,17 @@ func (s *service) InitializeServiceProviderProfile(ctx context.Context, provider
 
 func toDocumentResponse(doc *models.Document) *documentdto.DocumentResponse {
 	resp := &documentdto.DocumentResponse{
-		ID:            doc.ID,
-		UserID:        doc.UserID,
-		DocumentType:  doc.DocumentType,
-		FileName:      doc.FileName,
-		FileURL:       doc.FileURL,
-		FileSize:      doc.FileSize,
-		MimeType:      doc.MimeType,
-		Status:        doc.Status,
+		ID:              doc.ID,
+		UserID:          doc.UserID,
+		DocumentType:    doc.DocumentType,
+		FileName:        doc.FileName,
+		FileURL:         doc.FileURL,
+		FileSize:        doc.FileSize,
+		MimeType:        doc.MimeType,
+		Status:          doc.Status,
 		RejectionReason: doc.RejectionReason,
-		IsFront:       doc.IsFront,
-		UploadedAt:    doc.CreatedAt.Format(time.RFC3339),
+		IsFront:         doc.IsFront,
+		UploadedAt:      doc.CreatedAt.Format(time.RFC3339),
 	}
 
 	if doc.DriverID != nil {

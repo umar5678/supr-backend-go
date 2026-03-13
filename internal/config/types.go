@@ -80,11 +80,11 @@ type JWTConfig struct {
 }
 
 type UploadConfig struct {
-	Provider       string
-	MaxSize        int64
-	S3             S3Config
-	ImageKit       ImageKitConfig
-	LocalPath      string
+	Provider  string
+	MaxSize   int64
+	S3        S3Config
+	ImageKit  ImageKitConfig
+	LocalPath string
 }
 
 type S3Config struct {
@@ -95,13 +95,13 @@ type S3Config struct {
 }
 
 type ImageKitConfig struct {
-	PublicKey           string
-	PrivateKey          string
-	URLEndpoint         string
-	DocumentsFolder     string
-	BannersFolder       string
-	DocumentsMaxSize    int64
-	BannersMaxSize      int64
+	PublicKey        string
+	PrivateKey       string
+	URLEndpoint      string
+	DocumentsFolder  string
+	BannersFolder    string
+	DocumentsMaxSize int64
+	BannersMaxSize   int64
 }
 
 type LoggerConfig struct {

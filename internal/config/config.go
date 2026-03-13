@@ -123,7 +123,7 @@ func LoadConfig() (*Config, error) {
 	cfg.Upload.S3.Region = v.GetString("S3_REGION")
 	cfg.Upload.S3.AccessKey = v.GetString("S3_ACCESS_KEY")
 	cfg.Upload.S3.SecretKey = v.GetString("S3_SECRET_KEY")
-	
+
 	// Load ImageKit configuration
 	cfg.Upload.ImageKit.PublicKey = v.GetString("IMAGEKIT_PUBLIC_KEY")
 	cfg.Upload.ImageKit.PrivateKey = v.GetString("IMAGEKIT_PRIVATE_KEY")

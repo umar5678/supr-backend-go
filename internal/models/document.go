@@ -1,12 +1,29 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
 )
 
 type MetaData map[string]interface{}
+
+// Value implements the driver.Valuer interface for JSONB serialization
+func (m MetaData) Value() (driver.Value, error) {
+	return json.Marshal(m)
+}
+
+// Scan implements the sql.Scanner interface for JSONB deserialization
+func (m *MetaData) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion failed")
+	}
+	return json.Unmarshal(bytes, &m)
+}
 
 // Document represents verification documents for service providers (drivers and service providers)
 type Document struct {

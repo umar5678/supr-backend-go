@@ -37,7 +37,7 @@ func GenerateAuthenticationToken(cfg *config.Config) (string, error) {
 // Document types: "license", "aadhaar", "registration", "insurance", "trade-license", "profile-photo"
 func GetDocumentFolder(documentType string) string {
 	documentType = strings.ToLower(documentType)
-	
+
 	switch documentType {
 	case "license", "driving-license":
 		return "documents/licenses/"
@@ -59,18 +59,18 @@ func GetDocumentFolder(documentType string) string {
 // ValidateDocumentType checks if the document type is valid
 func ValidateDocumentType(docType string) bool {
 	validTypes := map[string]bool{
-		"license":           true,
-		"driving-license":   true,
-		"aadhaar":           true,
-		"aadhaar-card":      true,
-		"registration":      true,
+		"license":              true,
+		"driving-license":      true,
+		"aadhaar":              true,
+		"aadhaar-card":         true,
+		"registration":         true,
 		"vehicle-registration": true,
-		"insurance":         true,
-		"vehicle-insurance": true,
-		"trade-license":     true,
-		"trade_license":     true,
-		"profile-photo":     true,
-		"profile_photo":     true,
+		"insurance":            true,
+		"vehicle-insurance":    true,
+		"trade-license":        true,
+		"trade_license":        true,
+		"profile-photo":        true,
+		"profile_photo":        true,
 	}
 	return validTypes[strings.ToLower(docType)]
 }

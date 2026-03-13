@@ -95,7 +95,7 @@ func UploadDocumentToImageKit(
 	originalFileName := sanitizeFileName(file.Filename)
 	sanitizedUsername := strings.ReplaceAll(strings.ToLower(username), " ", "_")
 	fileName := fmt.Sprintf("%s_%s_%s", sanitizedUsername, documentType, originalFileName)
-	
+
 	if err := writer.WriteField("fileName", fileName); err != nil {
 		logger.Error("failed to write fileName field", "error", err)
 		return nil, fmt.Errorf("failed to write fileName field: %w", err)

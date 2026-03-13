@@ -1,22 +1,22 @@
 package documentdto
 
 type DocumentResponse struct {
-	ID               string  `json:"id"`
-	UserID           string  `json:"userId"`
-	DriverID         *string `json:"driverId,omitempty"`
+	ID                string  `json:"id"`
+	UserID            string  `json:"userId"`
+	DriverID          *string `json:"driverId,omitempty"`
 	ServiceProviderID *string `json:"serviceProviderId,omitempty"`
-	DocumentType     string  `json:"documentType"`
-	FileName         string  `json:"fileName"`
-	FileURL          string  `json:"fileUrl"`
-	FileSize         int64   `json:"fileSize"`
-	MimeType         string  `json:"mimeType"`
-	Status           string  `json:"status"` // pending, verified, rejected, expired
-	VerifiedBy       *string `json:"verifiedBy,omitempty"`
-	VerifiedAt       *string `json:"verifiedAt,omitempty"`
-	RejectionReason  string  `json:"rejectionReason,omitempty"`
-	ExpiryDate       *string `json:"expiryDate,omitempty"`
-	IsFront          bool    `json:"isFront,omitempty"`
-	UploadedAt       string  `json:"uploadedAt"`
+	DocumentType      string  `json:"documentType"`
+	FileName          string  `json:"fileName"`
+	FileURL           string  `json:"fileUrl"`
+	FileSize          int64   `json:"fileSize"`
+	MimeType          string  `json:"mimeType"`
+	Status            string  `json:"status"` // pending, verified, rejected, expired
+	VerifiedBy        *string `json:"verifiedBy,omitempty"`
+	VerifiedAt        *string `json:"verifiedAt,omitempty"`
+	RejectionReason   string  `json:"rejectionReason,omitempty"`
+	ExpiryDate        *string `json:"expiryDate,omitempty"`
+	IsFront           bool    `json:"isFront,omitempty"`
+	UploadedAt        string  `json:"uploadedAt"`
 }
 
 type DocumentListResponse struct {

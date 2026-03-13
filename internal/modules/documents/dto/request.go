@@ -10,18 +10,18 @@ type UploadDocumentRequest struct {
 
 type VerifyDocumentRequest struct {
 	DocumentID      string `json:"documentId" binding:"required"`
-	Status          string `json:"status" binding:"required"`      // verified, rejected
-	RejectionReason string `json:"rejectionReason"`               // Required if status is rejected
+	Status          string `json:"status" binding:"required"` // verified, rejected
+	RejectionReason string `json:"rejectionReason"`           // Required if status is rejected
 }
 
 type ListDocumentsRequest struct {
-	UserID           string `query:"userId"`
-	DriverID         string `query:"driverId"`
+	UserID            string `query:"userId"`
+	DriverID          string `query:"driverId"`
 	ServiceProviderID string `query:"serviceProviderId"`
-	DocumentType     string `query:"documentType"`
-	Status           string `query:"status"` // pending, verified, rejected, expired
-	Page             int    `query:"page" binding:"min=1"`
-	Limit            int    `query:"limit" binding:"min=1,max=100"`
+	DocumentType      string `query:"documentType"`
+	Status            string `query:"status"` // pending, verified, rejected, expired
+	Page              int    `query:"page" binding:"min=1"`
+	Limit             int    `query:"limit" binding:"min=1,max=100"`
 }
 
 func (r *ListDocumentsRequest) SetDefaults() {
