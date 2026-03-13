@@ -208,7 +208,7 @@ func main() {
 		pricing.RegisterRoutes(v1, pricingHandler, authMiddleware)
 
 		adminRepo := admin.NewRepository(db)
-		adminService := admin.NewService(adminRepo, spRepo)
+		adminService := admin.NewService(adminRepo, spRepo, driversRepo)
 		adminHandler := admin.NewHandler(adminService)
 		admin.RegisterRoutes(v1, adminHandler, authMiddleware)
 

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/umar5678/go-backend/internal/models"
+	"github.com/umar5678/go-backend/internal/modules/drivers"
 	"github.com/umar5678/go-backend/internal/modules/serviceproviders"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
@@ -18,17 +19,21 @@ type Service interface {
 	SuspendUser(ctx context.Context, userID, reason string) error
 	UpdateUserStatus(ctx context.Context, userID string, status models.UserStatus) error
 	GetDashboardStats(ctx context.Context) (map[string]interface{}, error)
+	ListDriverProfiles(ctx context.Context, filters map[string]interface{}, page, limit int) (map[string]interface{}, error)
+	ListServiceProviderProfiles(ctx context.Context, filters map[string]interface{}, page, limit int) (map[string]interface{}, error)
 }
 
 type service struct {
-	repo   Repository
-	spRepo serviceproviders.Repository
+	repo    Repository
+	spRepo  serviceproviders.Repository
+	drvRepo drivers.Repository
 }
 
-func NewService(repo Repository, spRepo serviceproviders.Repository) Service {
+func NewService(repo Repository, spRepo serviceproviders.Repository, drvRepo drivers.Repository) Service {
 	return &service{
-		repo:   repo,
-		spRepo: spRepo,
+		repo:    repo,
+		spRepo:  spRepo,
+		drvRepo: drvRepo,
 	}
 }
 
@@ -112,4 +117,48 @@ func (s *service) GetDashboardStats(ctx context.Context) (map[string]interface{}
 		return nil, response.InternalServerError("Failed to fetch stats", err)
 	}
 	return stats, nil
+}
+
+func (s *service) ListDriverProfiles(ctx context.Context, filters map[string]interface{}, page, limit int) (map[string]interface{}, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	drivers, total, err := s.drvRepo.ListDriverProfiles(ctx, filters, page, limit)
+	if err != nil {
+		logger.Error("failed to list driver profiles", "error", err)
+		return nil, response.InternalServerError("Failed to fetch driver profiles", err)
+	}
+
+	return map[string]interface{}{
+		"drivers": drivers,
+		"total":   total,
+		"page":    page,
+		"limit":   limit,
+	}, nil
+}
+
+func (s *service) ListServiceProviderProfiles(ctx context.Context, filters map[string]interface{}, page, limit int) (map[string]interface{}, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	providers, total, err := s.spRepo.List(ctx, filters, page, limit)
+	if err != nil {
+		logger.Error("failed to list service provider profiles", "error", err)
+		return nil, response.InternalServerError("Failed to fetch service provider profiles", err)
+	}
+
+	return map[string]interface{}{
+		"providers": providers,
+		"total":     total,
+		"page":      page,
+		"limit":     limit,
+	}, nil
 }

@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	dto "github.com/umar5678/go-backend/internal/modules/admin/dto"
 	"github.com/umar5678/go-backend/internal/utils/response"
@@ -153,4 +155,88 @@ func (h *Handler) GetDashboardStats(c *gin.Context) {
 	}
 
 	response.Success(c, stats, "Dashboard stats retrieved")
+}
+
+// GetAllDriverProfiles godoc
+// @Summary List all driver profiles (Admin)
+// @Description Retrieve a paginated list of driver profiles with optional filtering
+// @Tags Admin routes
+// @Accept json
+// @Produce json
+// @Param status query string false "Filter by driver status (e.g., online, offline, on_trip)"
+// @Param is_verified query boolean false "Filter by verification status"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20)
+// @Success 200 {object} response.Response "Driver profiles retrieved successfully"
+// @Failure 400 {object} response.Response "Bad request"
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 500 {object} response.Response "Internal server error"
+// @Router /admin/drivers [get]
+// @Security BearerAuth
+func (h *Handler) GetAllDriverProfiles(c *gin.Context) {
+	status := c.Query("status")
+	isVerified := c.Query("is_verified")
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "20")
+
+	filters := make(map[string]interface{})
+	if status != "" {
+		filters["status"] = status
+	}
+	if isVerified != "" {
+		filters["is_verified"] = isVerified == "true"
+	}
+
+	pageInt, _ := strconv.Atoi(page)
+	limitInt, _ := strconv.Atoi(limit)
+
+	result, err := h.service.ListDriverProfiles(c.Request.Context(), filters, pageInt, limitInt)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result, "Driver profiles retrieved")
+}
+
+// GetAllServiceProviderProfiles godoc
+// @Summary List all service provider profiles (Admin)
+// @Description Retrieve a paginated list of service provider profiles with optional filtering
+// @Tags Admin routes
+// @Accept json
+// @Produce json
+// @Param status query string false "Filter by provider status (e.g., active, pending_approval, suspended)"
+// @Param is_verified query boolean false "Filter by verification status"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20)
+// @Success 200 {object} response.Response "Service provider profiles retrieved successfully"
+// @Failure 400 {object} response.Response "Bad request"
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 500 {object} response.Response "Internal server error"
+// @Router /admin/service-providers [get]
+// @Security BearerAuth
+func (h *Handler) GetAllServiceProviderProfiles(c *gin.Context) {
+	status := c.Query("status")
+	isVerified := c.Query("is_verified")
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "20")
+
+	filters := make(map[string]interface{})
+	if status != "" {
+		filters["status"] = status
+	}
+	if isVerified != "" {
+		filters["is_verified"] = isVerified == "true"
+	}
+
+	pageInt, _ := strconv.Atoi(page)
+	limitInt, _ := strconv.Atoi(limit)
+
+	result, err := h.service.ListServiceProviderProfiles(c.Request.Context(), filters, pageInt, limitInt)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result, "Service provider profiles retrieved")
 }

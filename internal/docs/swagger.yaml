@@ -5959,6 +5959,54 @@ paths:
       summary: Get admin dashboard statistics
       tags:
       - Admin routes
+  /admin/drivers:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of driver profiles with optional filtering
+      parameters:
+      - description: Filter by driver status (e.g., online, offline, on_trip)
+        in: query
+        name: status
+        type: string
+      - description: Filter by verification status
+        in: query
+        name: is_verified
+        type: boolean
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Driver profiles retrieved successfully
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List all driver profiles (Admin)
+      tags:
+      - Admin routes
   /admin/homeservices/addons:
     get:
       description: Get paginated list of addons with filters
@@ -7072,6 +7120,55 @@ paths:
       summary: Update service status
       tags:
       - Admin - Home Services
+  /admin/service-providers:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of service provider profiles with optional
+        filtering
+      parameters:
+      - description: Filter by provider status (e.g., active, pending_approval, suspended)
+        in: query
+        name: status
+        type: string
+      - description: Filter by verification status
+        in: query
+        name: is_verified
+        type: boolean
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service provider profiles retrieved successfully
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List all service provider profiles (Admin)
+      tags:
+      - Admin routes
   /admin/service-providers/{id}/approve:
     post:
       consumes:

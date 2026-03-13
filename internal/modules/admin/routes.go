@@ -17,5 +17,7 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		admin.POST("/service-providers/:id/approve", handler.ApproveServiceProvider)
 		admin.POST("/users/:id/suspend", handler.SuspendUser)
 		admin.GET("/dashboard/stats", handler.GetDashboardStats)
+		admin.GET("/drivers", handler.GetAllDriverProfiles)
+		admin.GET("/service-providers", handler.GetAllServiceProviderProfiles)
 	}
 }

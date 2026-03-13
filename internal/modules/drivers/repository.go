@@ -31,6 +31,7 @@ type Repository interface {
 	UpdateRating(ctx context.Context, driverID string, newRating float64) error
 
 	FindNearbyDrivers(ctx context.Context, lat, lng, radiusKm float64, vehicleTypeID string) ([]*models.DriverProfile, error)
+	ListDriverProfiles(ctx context.Context, filters map[string]interface{}, page, limit int) ([]*models.DriverProfile, int64, error)
 }
 
 type repository struct {
@@ -208,4 +209,35 @@ func (r *repository) GetDriverLocationHistory(ctx context.Context, driverID stri
 		Limit(limit).
 		Find(&locations).Error
 	return locations, err
+}
+
+func (r *repository) ListDriverProfiles(ctx context.Context, filters map[string]interface{}, page, limit int) ([]*models.DriverProfile, int64, error) {
+	var drivers []*models.DriverProfile
+	var total int64
+
+	query := r.db.WithContext(ctx).
+		Preload("User").
+		Preload("Vehicle").
+		Preload("Vehicle.VehicleType")
+
+	// Apply filters
+	if status, ok := filters["status"]; ok {
+		query = query.Where("status = ?", status)
+	}
+	if isVerified, ok := filters["is_verified"]; ok {
+		query = query.Where("is_verified = ?", isVerified)
+	}
+
+	// Count total
+	query.Model(&models.DriverProfile{}).Count(&total)
+
+	// Apply pagination
+	offset := (page - 1) * limit
+	err := query.
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&drivers).Error
+
+	return drivers, total, err
 }

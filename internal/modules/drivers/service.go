@@ -32,6 +32,7 @@ type Service interface {
 	GetWalletTransactionHistory(ctx context.Context, userID string) ([]*driverdto.WalletTransactionResponse, error)
 
 	UpdateLocation(ctx context.Context, userID string, req driverdto.UpdateLocationRequest) error
+	ListDriverProfiles(ctx context.Context, filters map[string]interface{}, page, limit int) ([]*driverdto.DriverProfileResponse, int64, error)
 }
 
 type service struct {
@@ -804,4 +805,19 @@ func (s *service) GetWalletTransactionHistory(ctx context.Context, userID string
 	// This requires adding a method to wallet service Repository to fetch transactions by wallet ID
 
 	return []*driverdto.WalletTransactionResponse{}, nil
+}
+
+func (s *service) ListDriverProfiles(ctx context.Context, filters map[string]interface{}, page, limit int) ([]*driverdto.DriverProfileResponse, int64, error) {
+	drivers, total, err := s.repo.ListDriverProfiles(ctx, filters, page, limit)
+	if err != nil {
+		logger.Error("failed to list driver profiles", "error", err)
+		return nil, 0, response.InternalServerError("Failed to fetch driver profiles", err)
+	}
+
+	responses := make([]*driverdto.DriverProfileResponse, len(drivers))
+	for i, driver := range drivers {
+		responses[i] = driverdto.ToDriverProfileResponse(driver)
+	}
+
+	return responses, total, nil
 }
