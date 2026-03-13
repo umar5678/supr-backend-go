@@ -111,7 +111,7 @@ const (
 
 // Commission Constants
 const (
-	PlatformCommissionRate = 0.10 // 5%
+	PlatformCommissionRate = 0.10 // 10%
 )
 
 // Cancellation Fee Constants

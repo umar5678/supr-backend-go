@@ -167,6 +167,19 @@ func (c *Config) Validate() error {
 	if c.JWT.Secret == "" {
 		return fmt.Errorf("JWT_SECRET is required")
 	}
+	// HS256 requires at least 32 bytes (256 bits) for strong security
+	if len(c.JWT.Secret) < 32 {
+		return fmt.Errorf("JWT_SECRET must be at least 32 characters long for HS256 security")
+	}
+	if c.JWT.AccessExpiry <= 0 {
+		return fmt.Errorf("JWT_ACCESS_EXPIRY must be greater than 0")
+	}
+	if c.JWT.RefreshExpiry <= 0 {
+		return fmt.Errorf("JWT_REFRESH_EXPIRY must be greater than 0")
+	}
+	if c.JWT.AccessExpiry >= c.JWT.RefreshExpiry {
+		return fmt.Errorf("JWT_ACCESS_EXPIRY must be less than JWT_REFRESH_EXPIRY")
+	}
 	if c.Database.Host == "" {
 		return fmt.Errorf("DB_HOST is required")
 	}

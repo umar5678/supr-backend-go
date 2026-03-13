@@ -16,7 +16,7 @@ func AuthenticateWebSocket(ctx context.Context, token, jwtSecret string) (string
 
 	token = strings.TrimPrefix(token, "Bearer ")
 
-	claims, err := jwt.ValidateToken(token, jwtSecret)
+	claims, err := jwt.ValidateToken(token, jwtSecret, "") // TODO: pass issuer from config
 	if err != nil {
 		return "", errors.New("invalid or expired token")
 	}
@@ -36,7 +36,7 @@ func ValidateToken(token, jwtSecret string) (string, error) {
 
 	token = strings.TrimPrefix(token, "Bearer ")
 
-	claims, err := jwt.ValidateToken(token, jwtSecret)
+	claims, err := jwt.ValidateToken(token, jwtSecret, "") // TODO: pass issuer from config
 	if err != nil {
 		return "", errors.New("invalid token")
 	}

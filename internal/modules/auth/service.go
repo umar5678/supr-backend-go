@@ -313,7 +313,7 @@ func (s *service) mapRoleToCategory(role models.UserRole) string {
 
 func (s *service) RefreshToken(ctx context.Context, refreshToken string) (*authdto.AuthResponse, error) {
 
-	claims, err := jwt.ValidateToken(refreshToken, s.cfg.JWT.Secret)
+	claims, err := jwt.ValidateToken(refreshToken, s.cfg.JWT.Secret, s.cfg.JWT.Issuer)
 	if err != nil {
 		return nil, response.UnauthorizedError("Invalid refresh token")
 	}
@@ -429,6 +429,7 @@ func (s *service) generateAuthResponse(user *models.User) (*authdto.AuthResponse
 		user.ID,
 		string(user.Role),
 		s.cfg.JWT.Secret,
+		s.cfg.JWT.Issuer,
 		s.cfg.JWT.AccessExpiry,
 	)
 	if err != nil {
@@ -439,6 +440,7 @@ func (s *service) generateAuthResponse(user *models.User) (*authdto.AuthResponse
 		user.ID,
 		string(user.Role),
 		s.cfg.JWT.Secret,
+		s.cfg.JWT.Issuer,
 		s.cfg.JWT.RefreshExpiry,
 	)
 	if err != nil {

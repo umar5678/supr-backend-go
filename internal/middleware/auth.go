@@ -28,7 +28,7 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 
 		tokenString := parts[1]
 
-		claims, err := jwt.ValidateToken(tokenString, cfg.JWT.Secret)
+		claims, err := jwt.ValidateToken(tokenString, cfg.JWT.Secret, cfg.JWT.Issuer)
 		if err != nil {
 			c.Error(response.UnauthorizedError("Invalid or expired token"))
 			c.Abort()
@@ -79,7 +79,7 @@ func OptionalAuth(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		token := parts[1]
-		claims, err := jwt.ValidateToken(token, cfg.JWT.Secret)
+		claims, err := jwt.ValidateToken(token, cfg.JWT.Secret, cfg.JWT.Issuer)
 		if err == nil {
 			c.Set("userID", claims.UserID)
 			c.Set("userRole", claims.Role)
