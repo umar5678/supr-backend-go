@@ -189,7 +189,7 @@ func main() {
 		vehiclesRepo := vehicles.NewRepository(db)
 		vehiclesService := vehicles.NewService(vehiclesRepo)
 		vehiclesHandler := vehicles.NewHandler(vehiclesService)
-		vehicles.RegisterRoutes(v1, vehiclesHandler, authMiddleware)
+		vehicles.RegisterRoutes(v1, vehiclesHandler)
 
 		driversRepo := drivers.NewRepository(db)
 		driversService := drivers.NewService(driversRepo, walletService, db)

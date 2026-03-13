@@ -4,9 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gin.HandlerFunc) {
+func RegisterRoutes(router *gin.RouterGroup, handler *Handler) {
 	vehicles := router.Group("/vehicles")
-	vehicles.Use(authMiddleware)
 	{
 		vehicles.GET("/types", handler.GetAllVehicleTypes)
 		vehicles.GET("/types/active", handler.GetActiveVehicleTypes)
