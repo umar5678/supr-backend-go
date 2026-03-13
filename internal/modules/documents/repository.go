@@ -29,6 +29,8 @@ type Repository interface {
 	UpdateServiceProviderProfileVerification(ctx context.Context, providerID string, isVerified bool) error
 	CountVerifiedDocumentsByDriverID(ctx context.Context, driverID string) (int, error)
 	CountVerifiedDocumentsByServiceProviderID(ctx context.Context, providerID string) (int, error)
+	// User lookup
+	GetUserByID(ctx context.Context, userID string) (*models.User, error)
 }
 
 type repository struct {
@@ -37,6 +39,18 @@ type repository struct {
 
 func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
+}
+
+func (r *repository) GetUserByID(ctx context.Context, userID string) (*models.User, error) {
+	var user models.User
+	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("user not found")
+		}
+		logger.Error("failed to fetch user", "error", err, "userID", userID)
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (r *repository) CreateDocument(ctx context.Context, doc *models.Document) error {

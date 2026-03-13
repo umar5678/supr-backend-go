@@ -67,8 +67,15 @@ func (s *service) UploadDocument(ctx context.Context, userID string, documentTyp
 		"fileSize", file.Size,
 		"mimeType", mimeType)
 
+	// Fetch user to get username
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		logger.Error("failed to fetch user for document upload", "error", err, "userID", userID)
+		return nil, response.NotFoundError("User not found")
+	}
+
 	// Upload to ImageKit
-	uploadResp, err := imagekit.UploadDocumentToImageKit(s.cfg, file, documentType)
+	uploadResp, err := imagekit.UploadDocumentToImageKit(s.cfg, file, documentType, user.Name)
 	if err != nil {
 		logger.Error("failed to upload document to ImageKit", "error", err, "userID", userID, "fileName", file.Filename)
 		return nil, response.InternalServerError("Failed to upload document to storage", err)

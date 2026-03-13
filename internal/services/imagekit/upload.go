@@ -45,6 +45,7 @@ func UploadDocumentToImageKit(
 	cfg *config.Config,
 	file *multipart.FileHeader,
 	documentType string,
+	username string,
 ) (*UploadResponse, error) {
 	if cfg.Upload.ImageKit.PrivateKey == "" || cfg.Upload.ImageKit.URLEndpoint == "" {
 		return nil, fmt.Errorf("ImageKit configuration incomplete: missing private key or URL endpoint")
@@ -89,8 +90,12 @@ func UploadDocumentToImageKit(
 		return nil, fmt.Errorf("failed to write folder field: %w", err)
 	}
 
-	// Add file name (sanitized)
-	fileName := sanitizeFileName(file.Filename)
+	// Build new filename with username and document type
+	// Format: {username}_{documenttype}_{originalfilename}
+	originalFileName := sanitizeFileName(file.Filename)
+	sanitizedUsername := strings.ReplaceAll(strings.ToLower(username), " ", "_")
+	fileName := fmt.Sprintf("%s_%s_%s", sanitizedUsername, documentType, originalFileName)
+	
 	if err := writer.WriteField("fileName", fileName); err != nil {
 		logger.Error("failed to write fileName field", "error", err)
 		return nil, fmt.Errorf("failed to write fileName field: %w", err)
