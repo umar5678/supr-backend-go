@@ -9,7 +9,7 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
+func AuthMiddleware(jwtSecret, issuer string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Query("token")
 
@@ -28,7 +28,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := jwt.ValidateToken(token, jwtSecret, "")
+		claims, err := jwt.ValidateToken(token, jwtSecret, issuer)
 		if err != nil {
 			logger.Warn("websocket authentication failed",
 				"error", err.Error(),

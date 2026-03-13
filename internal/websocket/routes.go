@@ -9,7 +9,7 @@ import (
 func RegisterRoutes(router *gin.Engine, cfg *config.Config, server *Server) {
 	ws := router.Group("/ws")
 	{
-		ws.GET("/connect", AuthMiddleware(cfg.JWT.Secret), server.HandleConnection())
+		ws.GET("/connect", AuthMiddleware(cfg.JWT.Secret, cfg.JWT.Issuer), server.HandleConnection())
 
 		ws.GET("/health", server.HandleHealthCheck())
 

@@ -16,7 +16,7 @@ type Document struct {
 	DriverID         *string   `gorm:"type:uuid;index" json:"driverId,omitempty"`
 	DriverProfile    *DriverProfile `gorm:"foreignKey:DriverID" json:"-"`
 	ServiceProviderID *string  `gorm:"type:uuid;index" json:"serviceProviderId,omitempty"`
-	ServiceProvider  *ServiceProvider `gorm:"foreignKey:ServiceProviderID" json:"-"`
+	ServiceProvider  *ServiceProviderProfile `gorm:"foreignKey:ServiceProviderID" json:"-"`
 	
 	// Document details
 	DocumentType     string    `gorm:"type:varchar(100);not null;index" json:"documentType"` // license, aadhaar, registration, insurance, trade-license, profile-photo

@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     driver_id UUID REFERENCES driver_profiles(id) ON DELETE CASCADE,
-    service_provider_id UUID REFERENCES service_providers(id) ON DELETE CASCADE,
+    service_provider_id UUID REFERENCES service_provider_profiles(id) ON DELETE CASCADE,
     
     -- Document details
     document_type VARCHAR(100) NOT NULL,
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS documents (
     file_size BIGINT,
     mime_type VARCHAR(50),
     imagekit_file_id VARCHAR(255),
+    imagekit_file_path VARCHAR(500),
     
     -- Verification status
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
@@ -38,6 +39,8 @@ CREATE INDEX idx_documents_document_type ON documents(document_type);
 CREATE INDEX idx_documents_status ON documents(status);
 CREATE INDEX idx_documents_created_at ON documents(created_at);
 CREATE INDEX idx_documents_deleted_at ON documents(deleted_at);
+-- Create index for imagekit_file_path if it doesn't exist
+CREATE INDEX IF NOT EXISTS idx_documents_imagekit_file_id ON documents(imagekit_file_id);
 
 -- Create document verification logs table
 CREATE TABLE IF NOT EXISTS document_verification_logs (
