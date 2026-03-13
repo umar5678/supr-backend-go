@@ -108,6 +108,31 @@ func LoadConfig() (*Config, error) {
 	cfg.JWT.RefreshExpiry = v.GetDuration("JWT_REFRESH_EXPIRY")
 	cfg.JWT.Issuer = v.GetString("JWT_ISSUER")
 
+	// Set default JWT expiry times if not provided
+	if cfg.JWT.AccessExpiry == 0 {
+		cfg.JWT.AccessExpiry = 24 * time.Hour
+	}
+	if cfg.JWT.RefreshExpiry == 0 {
+		cfg.JWT.RefreshExpiry = 7 * 24 * time.Hour
+	}
+
+	// Load Upload configuration
+	cfg.Upload.Provider = v.GetString("UPLOAD_PROVIDER")
+	cfg.Upload.MaxSize = int64(v.GetInt("UPLOAD_MAX_SIZE"))
+	cfg.Upload.S3.Bucket = v.GetString("S3_BUCKET")
+	cfg.Upload.S3.Region = v.GetString("S3_REGION")
+	cfg.Upload.S3.AccessKey = v.GetString("S3_ACCESS_KEY")
+	cfg.Upload.S3.SecretKey = v.GetString("S3_SECRET_KEY")
+	
+	// Load ImageKit configuration
+	cfg.Upload.ImageKit.PublicKey = v.GetString("IMAGEKIT_PUBLIC_KEY")
+	cfg.Upload.ImageKit.PrivateKey = v.GetString("IMAGEKIT_PRIVATE_KEY")
+	cfg.Upload.ImageKit.URLEndpoint = v.GetString("IMAGEKIT_URL_ENDPOINT")
+	cfg.Upload.ImageKit.DocumentsFolder = v.GetString("IMAGEKIT_DOCUMENTS_FOLDER")
+	cfg.Upload.ImageKit.BannersFolder = v.GetString("IMAGEKIT_BANNERS_FOLDER")
+	cfg.Upload.ImageKit.DocumentsMaxSize = int64(v.GetInt("IMAGEKIT_DOCUMENTS_MAX_SIZE"))
+	cfg.Upload.ImageKit.BannersMaxSize = int64(v.GetInt("IMAGEKIT_BANNERS_MAX_SIZE"))
+
 	cfg.Logger.Level = v.GetString("LOG_LEVEL")
 	cfg.Logger.Format = v.GetString("LOG_FORMAT")
 	cfg.Logger.Output = v.GetString("LOG_OUTPUT")

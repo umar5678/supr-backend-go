@@ -9,8 +9,8 @@ import (
 )
 
 type Handler struct {
-	service         Service
-	broadcastFunc   func(map[string]interface{}) error
+	service       Service
+	broadcastFunc func(map[string]interface{}) error
 }
 
 func NewHandler(service Service) *Handler {
@@ -45,7 +45,7 @@ type GetMessagesRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param request body SendMessageRequest true "Message details"
-// @Success 200 {object} response.Response{data=models.AdminSupportChat}
+// @Success 200 {object} response.Response
 // @Failure 400 {object} response.Response
 // @Failure 401 {object} response.Response
 // @Router /admin-support-chat/send [post]
@@ -117,7 +117,7 @@ func (h *Handler) SendMessage(c *gin.Context) {
 // @Param conversationId query string true "Conversation ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(50)
-// @Success 200 {object} response.Response{data=[]models.AdminSupportChat}
+// @Success 200 {object} response.Response
 // @Failure 400 {object} response.Response
 // @Failure 401 {object} response.Response
 // @Router /admin-support-chat/conversations/:conversationId [get]
@@ -163,7 +163,7 @@ func (h *Handler) GetConversationMessages(c *gin.Context) {
 // @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(50)
-// @Success 200 {object} response.Response{data=[]map[string]interface{}}
+// @Success 200 {object} response.Response
 // @Failure 401 {object} response.Response
 // @Router /admin-support-chat/conversations [get]
 func (h *Handler) GetUserConversations(c *gin.Context) {

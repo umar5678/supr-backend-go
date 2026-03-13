@@ -18,7 +18,7 @@ type DriverProfile struct {
 	TotalEarnings    float64 `gorm:"type:decimal(10,2);default:0" json:"totalEarnings"`
 	AcceptanceRate   float64 `gorm:"type:decimal(5,2);default:100.0" json:"acceptanceRate"`
 	CancellationRate float64 `gorm:"type:decimal(5,2);default:0.0" json:"cancellationRate"`
-	IsVerified       bool    `gorm:"default:true" json:"isVerified"`
+	IsVerified       bool    `gorm:"default:false" json:"isVerified"`
 	WalletBalance    float64 `gorm:"type:decimal(10,2);default:0" json:"walletBalance"`
 
 	AccountStatus       string     `gorm:"type:varchar(50);default:'active'" json:"accountStatus"`         

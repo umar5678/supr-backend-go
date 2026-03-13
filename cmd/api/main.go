@@ -22,6 +22,7 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/admin_support_chat"
 	"github.com/umar5678/go-backend/internal/modules/auth"
 	"github.com/umar5678/go-backend/internal/modules/batching"
+	"github.com/umar5678/go-backend/internal/modules/documents"
 	"github.com/umar5678/go-backend/internal/modules/drivers"
 	"github.com/umar5678/go-backend/internal/modules/fraud"
 	"github.com/umar5678/go-backend/internal/modules/homeservices"
@@ -320,6 +321,12 @@ func main() {
 			adminSupportService,
 			websocketutils.BroadcastAdminSupportMessage,
 		)
+
+		// Documents module for handling document uploads and verification
+		documentsRepo := documents.NewRepository(db)
+		documentsService := documents.NewService(documentsRepo, cfg)
+		documentsHandler := documents.NewHandler(documentsService)
+		documents.RegisterRoutes(v1, documentsHandler, authMiddleware)
 
 		// Add other modules here...
 	}

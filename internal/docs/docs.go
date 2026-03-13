@@ -71,14 +71,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieve all conversations for a user",
+                "description": "Retrieve all conversations for a user with preview of latest message",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Admin Support Chat"
                 ],
-                "summary": "Get user conversations",
+                "summary": "Get user conversations with latest message",
                 "parameters": [
                     {
                         "type": "integer",
@@ -99,22 +99,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
                         }
                     },
                     "401": {
@@ -168,22 +153,103 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChat"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin endpoint to delete (soft delete) a conversation and all its messages",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Support Chat"
+                ],
+                "summary": "Delete a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin-support-chat/conversations/:conversationId/resolve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin endpoint to mark a conversation as resolved",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Support Chat"
+                ],
+                "summary": "Resolve a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
                         }
                     },
                     "400": {
@@ -234,19 +300,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChat"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
                         }
                     },
                     "400": {
@@ -3419,6 +3473,359 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_auth_dto.AuthResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/documents": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Get user documents",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/:id": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Delete document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document ID",
+                        "name": "documentId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Get all documents with filters (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Driver ID",
+                        "name": "driverId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Document type",
+                        "name": "documentType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status (pending, verified, rejected)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/driver": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Get driver documents (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Driver ID",
+                        "name": "driverId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/pending": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Get pending documents awaiting verification (admin only)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/upload": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Users can reupload documents after rejection. Each upload creates a new document record. Admin can verify the latest document, and once all required documents are verified, the profile is marked as verified.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Upload verification document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document type (license, aadhaar, registration, insurance, etc.)",
+                        "name": "documentType",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File name",
+                        "name": "fileName",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Document file (PDF, JPG, PNG, WebP)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Is front side (for dual documents)",
+                        "name": "isFront",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/verify": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "When a document is verified, the system checks if all required documents are verified. If so, the user's profile (driver or service provider) is marked as verified. When a document is rejected, the profile is marked as not verified and the user can reupload a new document.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Verify/reject document (admin only)",
+                "parameters": [
+                    {
+                        "description": "Verification request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.VerifyDocumentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.VerifyDocumentResponse"
                                         }
                                     }
                                 }
@@ -11255,56 +11662,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_umar5678_go-backend_internal_models.AdminSupportChat": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "type": "string"
-                },
-                "conversationId": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isRead": {
-                    "type": "boolean"
-                },
-                "metadata": {
-                    "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChatMetadata"
-                },
-                "parentMessageId": {
-                    "type": "string"
-                },
-                "readByAdminAt": {
-                    "type": "string"
-                },
-                "senderId": {
-                    "type": "string"
-                },
-                "senderRole": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_umar5678_go-backend_internal_models.AdminSupportChatMetadata": {
-            "type": "object",
-            "properties": {
-                "extra": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "messageId": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_umar5678_go-backend_internal_models.TransactionStatus": {
             "type": "string",
             "enum": [
@@ -11820,6 +12177,120 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentListResponse": {
+            "type": "object",
+            "properties": {
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse": {
+            "type": "object",
+            "properties": {
+                "documentType": {
+                    "type": "string"
+                },
+                "driverId": {
+                    "type": "string"
+                },
+                "expiryDate": {
+                    "type": "string"
+                },
+                "fileName": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "fileUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isFront": {
+                    "type": "boolean"
+                },
+                "mimeType": {
+                    "type": "string"
+                },
+                "rejectionReason": {
+                    "type": "string"
+                },
+                "serviceProviderId": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "pending, verified, rejected, expired",
+                    "type": "string"
+                },
+                "uploadedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "verifiedAt": {
+                    "type": "string"
+                },
+                "verifiedBy": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_documents_dto.VerifyDocumentRequest": {
+            "type": "object",
+            "required": [
+                "documentId",
+                "status"
+            ],
+            "properties": {
+                "documentId": {
+                    "type": "string"
+                },
+                "rejectionReason": {
+                    "description": "Required if status is rejected",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "verified, rejected",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_umar5678_go-backend_internal_modules_documents_dto.VerifyDocumentResponse": {
+            "type": "object",
+            "properties": {
+                "documentId": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "rejectionReason": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "verifiedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -12508,11 +12979,17 @@ const docTemplate = `{
                 "isToday": {
                     "type": "boolean"
                 },
+                "personCount": {
+                    "type": "integer"
+                },
                 "preferredTime": {
                     "type": "string"
                 },
                 "time": {
                     "type": "string"
+                },
+                "toolsRequired": {
+                    "type": "boolean"
                 }
             }
         },
@@ -13989,6 +14466,11 @@ const docTemplate = `{
                     "description": "YYYY-MM-DD",
                     "type": "string"
                 },
+                "personCount": {
+                    "type": "integer",
+                    "maximum": 20,
+                    "minimum": 1
+                },
                 "preferredTime": {
                     "description": "optional specific time HH:MM",
                     "type": "string"
@@ -14001,6 +14483,9 @@ const docTemplate = `{
                 "time": {
                     "description": "HH:MM",
                     "type": "string"
+                },
+                "toolsRequired": {
+                    "type": "boolean"
                 }
             }
         },
@@ -14234,6 +14719,9 @@ const docTemplate = `{
                     "description": "e.g., \"2:30 PM\"",
                     "type": "string"
                 },
+                "personCount": {
+                    "type": "integer"
+                },
                 "preferredTime": {
                     "type": "string"
                 },
@@ -14242,6 +14730,9 @@ const docTemplate = `{
                 },
                 "time": {
                     "type": "string"
+                },
+                "toolsRequired": {
+                    "type": "boolean"
                 }
             }
         },
@@ -15971,11 +16462,17 @@ const docTemplate = `{
                 "formattedTime": {
                     "type": "string"
                 },
+                "personCount": {
+                    "type": "integer"
+                },
                 "preferredTime": {
                     "type": "string"
                 },
                 "time": {
                     "type": "string"
+                },
+                "toolsRequired": {
+                    "type": "boolean"
                 }
             }
         },
@@ -18650,6 +19147,9 @@ const docTemplate = `{
                 "driverLocation": {
                     "$ref": "#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.LocationDTO"
                 },
+                "driverRating": {
+                    "type": "number"
+                },
                 "dropoffAddress": {
                     "type": "string"
                 },
@@ -18720,6 +19220,9 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "updatedAt": {
+                    "type": "string"
+                },
+                "vehicleName": {
                     "type": "string"
                 },
                 "vehicleType": {

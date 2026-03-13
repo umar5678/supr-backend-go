@@ -13,6 +13,7 @@ type Handler struct {
 func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
+
 // RegisterDriver godoc
 // @Summary Register driver profile
 // @Tags drivers

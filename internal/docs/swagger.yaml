@@ -17,39 +17,6 @@ definitions:
       updatedAt:
         type: string
     type: object
-  github_com_umar5678_go-backend_internal_models.AdminSupportChat:
-    properties:
-      content:
-        type: string
-      conversationId:
-        type: string
-      createdAt:
-        type: string
-      id:
-        type: string
-      isRead:
-        type: boolean
-      metadata:
-        $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChatMetadata'
-      parentMessageId:
-        type: string
-      readByAdminAt:
-        type: string
-      senderId:
-        type: string
-      senderRole:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  github_com_umar5678_go-backend_internal_models.AdminSupportChatMetadata:
-    properties:
-      extra:
-        additionalProperties: true
-        type: object
-      messageId:
-        type: string
-    type: object
   github_com_umar5678_go-backend_internal_models.TransactionStatus:
     enum:
     - pending
@@ -411,6 +378,82 @@ definitions:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserRole'
       status:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.UserStatus'
+    type: object
+  github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentListResponse:
+    properties:
+      documents:
+        items:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse:
+    properties:
+      documentType:
+        type: string
+      driverId:
+        type: string
+      expiryDate:
+        type: string
+      fileName:
+        type: string
+      fileSize:
+        type: integer
+      fileUrl:
+        type: string
+      id:
+        type: string
+      isFront:
+        type: boolean
+      mimeType:
+        type: string
+      rejectionReason:
+        type: string
+      serviceProviderId:
+        type: string
+      status:
+        description: pending, verified, rejected, expired
+        type: string
+      uploadedAt:
+        type: string
+      userId:
+        type: string
+      verifiedAt:
+        type: string
+      verifiedBy:
+        type: string
+    type: object
+  github_com_umar5678_go-backend_internal_modules_documents_dto.VerifyDocumentRequest:
+    properties:
+      documentId:
+        type: string
+      rejectionReason:
+        description: Required if status is rejected
+        type: string
+      status:
+        description: verified, rejected
+        type: string
+    required:
+    - documentId
+    - status
+    type: object
+  github_com_umar5678_go-backend_internal_modules_documents_dto.VerifyDocumentResponse:
+    properties:
+      documentId:
+        type: string
+      message:
+        type: string
+      rejectionReason:
+        type: string
+      status:
+        type: string
+      verifiedAt:
+        type: string
     type: object
   github_com_umar5678_go-backend_internal_modules_drivers_dto.DriverDashboardResponse:
     properties:
@@ -880,10 +923,14 @@ definitions:
         type: boolean
       isToday:
         type: boolean
+      personCount:
+        type: integer
       preferredTime:
         type: string
       time:
         type: string
+      toolsRequired:
+        type: boolean
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_admin_dto.AdminCancelOrderRequest:
     properties:
@@ -1864,6 +1911,10 @@ definitions:
       date:
         description: YYYY-MM-DD
         type: string
+      personCount:
+        maximum: 20
+        minimum: 1
+        type: integer
       preferredTime:
         description: optional specific time HH:MM
         type: string
@@ -1874,6 +1925,8 @@ definitions:
       time:
         description: HH:MM
         type: string
+      toolsRequired:
+        type: boolean
     required:
     - date
     - quantityOfPros
@@ -2036,12 +2089,16 @@ definitions:
       formattedTime:
         description: e.g., "2:30 PM"
         type: string
+      personCount:
+        type: integer
       preferredTime:
         type: string
       quantityOfPros:
         type: integer
       time:
         type: string
+      toolsRequired:
+        type: boolean
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_customer_dto.OrderCancellationInfo:
     properties:
@@ -3211,10 +3268,14 @@ definitions:
         type: string
       formattedTime:
         type: string
+      personCount:
+        type: integer
       preferredTime:
         type: string
       time:
         type: string
+      toolsRequired:
+        type: boolean
     type: object
   github_com_umar5678_go-backend_internal_modules_homeservices_provider_dto.OrderCustomerInfo:
     properties:
@@ -5032,6 +5093,8 @@ definitions:
         type: string
       driverLocation:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_rides_dto.LocationDTO'
+      driverRating:
+        type: number
       dropoffAddress:
         type: string
       dropoffLat:
@@ -5079,6 +5142,8 @@ definitions:
       surgeMultiplier:
         type: number
       updatedAt:
+        type: string
+      vehicleName:
         type: string
       vehicleType:
         $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_vehicles_dto.VehicleTypeResponse'
@@ -5703,7 +5768,7 @@ paths:
       - Admin Support Chat
   /admin-support-chat/conversations:
     get:
-      description: Retrieve all conversations for a user
+      description: Retrieve all conversations for a user with preview of latest message
       parameters:
       - default: 1
         description: Page number
@@ -5721,24 +5786,48 @@ paths:
         "200":
           description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-            - properties:
-                data:
-                  items:
-                    type: string
-                  type: array
-              type: object
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
         "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
       security:
       - BearerAuth: []
-      summary: Get user conversations
+      summary: Get user conversations with latest message
       tags:
       - Admin Support Chat
   /admin-support-chat/conversations/:conversationId:
+    delete:
+      consumes:
+      - application/json
+      description: Admin endpoint to delete (soft delete) a conversation and all its
+        messages
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: conversationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete a conversation
+      tags:
+      - Admin Support Chat
     get:
       description: Retrieve all messages in a conversation
       parameters:
@@ -5763,14 +5852,7 @@ paths:
         "200":
           description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChat'
-                  type: array
-              type: object
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
         "400":
           description: Bad Request
           schema:
@@ -5782,6 +5864,37 @@ paths:
       security:
       - BearerAuth: []
       summary: Get conversation messages
+      tags:
+      - Admin Support Chat
+  /admin-support-chat/conversations/:conversationId/resolve:
+    post:
+      consumes:
+      - application/json
+      description: Admin endpoint to mark a conversation as resolved
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: conversationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Resolve a conversation
       tags:
       - Admin Support Chat
   /admin-support-chat/send:
@@ -5802,12 +5915,7 @@ paths:
         "200":
           description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_models.AdminSupportChat'
-              type: object
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
         "400":
           description: Bad Request
           schema:
@@ -7773,6 +7881,215 @@ paths:
       summary: Refresh access token
       tags:
       - auth
+  /documents:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get user documents
+      tags:
+      - documents
+  /documents/:id:
+    delete:
+      parameters:
+      - description: Document ID
+        in: query
+        name: documentId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete document
+      tags:
+      - documents
+  /documents/admin:
+    get:
+      parameters:
+      - description: User ID
+        in: query
+        name: userId
+        type: string
+      - description: Driver ID
+        in: query
+        name: driverId
+        type: string
+      - description: Document type
+        in: query
+        name: documentType
+        type: string
+      - description: Status (pending, verified, rejected)
+        in: query
+        name: status
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentListResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get all documents with filters (admin only)
+      tags:
+      - documents
+  /documents/driver:
+    get:
+      parameters:
+      - description: Driver ID
+        in: query
+        name: driverId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get driver documents (admin only)
+      tags:
+      - documents
+  /documents/pending:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get pending documents awaiting verification (admin only)
+      tags:
+      - documents
+  /documents/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Users can reupload documents after rejection. Each upload creates
+        a new document record. Admin can verify the latest document, and once all
+        required documents are verified, the profile is marked as verified.
+      parameters:
+      - description: Document type (license, aadhaar, registration, insurance, etc.)
+        in: formData
+        name: documentType
+        required: true
+        type: string
+      - description: File name
+        in: formData
+        name: fileName
+        required: true
+        type: string
+      - description: Document file (PDF, JPG, PNG, WebP)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Is front side (for dual documents)
+        in: formData
+        name: isFront
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.DocumentResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Upload verification document
+      tags:
+      - documents
+  /documents/verify:
+    post:
+      consumes:
+      - application/json
+      description: When a document is verified, the system checks if all required
+        documents are verified. If so, the user's profile (driver or service provider)
+        is marked as verified. When a document is rejected, the profile is marked
+        as not verified and the user can reupload a new document.
+      parameters:
+      - description: Verification request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.VerifyDocumentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_umar5678_go-backend_internal_utils_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_umar5678_go-backend_internal_modules_documents_dto.VerifyDocumentResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Verify/reject document (admin only)
+      tags:
+      - documents
   /drivers/dashboard:
     get:
       produces:
