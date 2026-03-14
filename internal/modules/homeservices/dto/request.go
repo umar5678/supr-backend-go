@@ -13,10 +13,10 @@ type CreateOrderRequest struct {
 	Longitude      float64                  `json:"longitude" binding:"required,longitude"`
 	ServiceDate    string                   `json:"serviceDate" binding:"required"`
 	Frequency      string                   `json:"frequency" binding:"omitempty,oneof=once daily weekly monthly"`
-	QuantityOfPros int                      `json:"quantityOfPros" binding:"required,min=1,max=10"`   
+	QuantityOfPros int                      `json:"quantityOfPros" binding:"required,min=1,max=10"`
 	PersonCount    int                      `json:"personCount" binding:"required,min=1,max=10"` // Number of people attending
-	ToolsRequired  bool                     `json:"toolsRequired" binding:"omitempty"` // Whether tools are needed
-	HoursOfService float64                  `json:"hoursOfService" binding:"required,min=0.5,max=24"` 
+	ToolsRequired  bool                     `json:"toolsRequired" binding:"omitempty"`           // Whether tools are needed
+	HoursOfService float64                  `json:"hoursOfService" binding:"required,min=0.5,max=24"`
 	Notes          *string                  `json:"notes" binding:"omitempty,max=500"`
 	CouponCode     *string                  `json:"couponCode" binding:"omitempty,max=50"`
 }
@@ -28,8 +28,8 @@ type CreateOrderItemRequest struct {
 
 type SelectedOptionRequest struct {
 	OptionID uint    `json:"optionId" binding:"required,min=1"`
-	ChoiceID *uint   `json:"choiceId" binding:"omitempty,min=1"` 
-	Value    *string `json:"value" binding:"omitempty"`          
+	ChoiceID *uint   `json:"choiceId" binding:"omitempty,min=1"`
+	Value    *string `json:"value" binding:"omitempty"`
 }
 
 func (r *CreateOrderRequest) Validate() error {

@@ -42,7 +42,6 @@ func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-
 func (r *repository) CreateDriver(ctx context.Context, driver *models.DriverProfile) error {
 	return r.db.WithContext(ctx).Create(driver).Error
 }

@@ -35,13 +35,13 @@ func (c *CustomerInfo) Scan(value interface{}) error {
 }
 
 type BookingInfo struct {
-	Day            string    `json:"day"`                       
-	Date           string    `json:"date"`                      
-	Time           string    `json:"time"`                      
-	PreferredTime  time.Time `json:"prefferedTime"`             
+	Day            string    `json:"day"`
+	Date           string    `json:"date"`
+	Time           string    `json:"time"`
+	PreferredTime  time.Time `json:"prefferedTime"`
 	QuantityOfPros int       `json:"quantityOfPros" default:"1"`
-	ToolsRequired   bool      `json:"toolsRequired"`
-	PersonCount     int       `json:"personCount" default:"1"`
+	ToolsRequired  bool      `json:"toolsRequired"`
+	PersonCount    int       `json:"personCount" default:"1"`
 	Frequency      *string   `json:"frequency,omitempty"` // For recurring orders: daily, weekly, biweekly, monthly, quarterly, yearly, once
 }
 
@@ -114,8 +114,8 @@ func (s *SelectedAddons) Scan(value interface{}) error {
 }
 
 type PaymentInfo struct {
-	Method        string  `json:"method"` 
-	Status        string  `json:"status"` 
+	Method        string  `json:"method"`
+	Status        string  `json:"status"`
 	Total         float64 `json:"total"`
 	AmountPaid    float64 `json:"amountPaid"`
 	Voucher       string  `json:"voucher,omitempty"`

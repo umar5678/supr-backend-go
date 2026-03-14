@@ -498,4 +498,3 @@ func (r *repository) GetProviderCategory(ctx context.Context, providerID string,
 	}
 	return &category, nil
 }
-
