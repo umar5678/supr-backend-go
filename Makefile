@@ -56,7 +56,11 @@ swagger: ## Generate Swagger documentation
 	@echo "Swagger docs generated"
 
 migrate-create: ## Create a new migration (use name=migration_name)
-	migrate create -ext sql -dir $(MIGRATION_PATH) -seq $(name)
+	@if [ -z "$(name)" ]; then \
+		echo "Error: name parameter is required. Usage: make migrate-create name=your_migration_name"; \
+		exit 1; \
+	fi
+	migrate create -ext sql -dir $(MIGRATION_PATH) -seq "$(name)"
 
 migrate-up: ## Run database migrations
 	migrate -path $(MIGRATION_PATH) -database "$(DB_URL)" up

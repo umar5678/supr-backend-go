@@ -19,9 +19,9 @@ type Service interface {
 	GetSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error)
 	GetActiveSOS(ctx context.Context, userID string) (*dto.SOSAlertResponse, error)
 	ListSOS(ctx context.Context, userID string, req dto.ListSOSRequest) ([]*dto.SOSAlertListResponse, int64, error)
-	ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) error
-	CancelSOS(ctx context.Context, userID, alertID string) error
-	UpdateSOSLocation(ctx context.Context, userID, alertID string, latitude, longitude float64) error
+	ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) (*dto.SOSAlertResponse, error)
+	CancelSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error)
+	UpdateSOSLocation(ctx context.Context, userID, alertID string, latitude, longitude float64) (*dto.SOSAlertResponse, error)
 }
 
 type service struct {
@@ -122,71 +122,85 @@ func (s *service) ListSOS(ctx context.Context, userID string, req dto.ListSOSReq
 	return result, total, nil
 }
 
-func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) error {
+func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) (*dto.SOSAlertResponse, error) {
 	alert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
-		return response.NotFoundError("SOS alert")
+		return nil, response.NotFoundError("SOS alert")
 	}
 
 	if alert.UserID != userID {
-		return response.ForbiddenError("You can only resolve your own alerts")
+		return nil, response.ForbiddenError("You can only resolve your own alerts")
 	}
 
 	if alert.Status != "active" {
-		return response.BadRequest("Alert is not active")
+		return nil, response.BadRequest("Alert is not active")
 	}
 
 	if err := s.repo.Resolve(ctx, alertID, userID, req.Notes); err != nil {
 		logger.Error("failed to resolve SOS alert", "error", err, "alertID", alertID)
-		return response.InternalServerError("Failed to resolve SOS alert", err)
+		return nil, response.InternalServerError("Failed to resolve SOS alert", err)
+	}
+
+	// Fetch updated alert
+	updatedAlert, err := s.repo.FindByID(ctx, alertID)
+	if err != nil {
+		logger.Error("failed to fetch updated alert after resolve", "error", err, "alertID", alertID)
+		return nil, response.InternalServerError("Failed to fetch updated alert", err)
 	}
 
 	logger.Info("SOS alert resolved", "alertID", alertID, "userID", userID)
-	return nil
+	return dto.ToSOSAlertResponse(updatedAlert), nil
 }
 
-func (s *service) CancelSOS(ctx context.Context, userID, alertID string) error {
+func (s *service) CancelSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error) {
 	alert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
-		return response.NotFoundError("SOS alert")
+		return nil, response.NotFoundError("SOS alert")
 	}
 
 	if alert.UserID != userID {
-		return response.ForbiddenError("You can only cancel your own alerts")
+		return nil, response.ForbiddenError("You can only cancel your own alerts")
 	}
 
 	if alert.Status != "active" {
-		return response.BadRequest("Alert is not active")
+		return nil, response.BadRequest("Alert is not active")
 	}
 
 	if err := s.repo.Cancel(ctx, alertID); err != nil {
 		logger.Error("failed to cancel SOS alert", "error", err, "alertID", alertID)
-		return response.InternalServerError("Failed to cancel SOS alert", err)
+		return nil, response.InternalServerError("Failed to cancel SOS alert", err)
+	}
+
+	// Fetch updated alert
+	updatedAlert, err := s.repo.FindByID(ctx, alertID)
+	if err != nil {
+		logger.Error("failed to fetch updated alert after cancel", "error", err, "alertID", alertID)
+		return nil, response.InternalServerError("Failed to fetch updated alert", err)
 	}
 
 	logger.Info("SOS alert cancelled", "alertID", alertID, "userID", userID)
-	return nil
+	return dto.ToSOSAlertResponse(updatedAlert), nil
 }
 
 // UpdateSOSLocation updates the location of an active SOS alert and broadcasts to admin
-func (s *service) UpdateSOSLocation(ctx context.Context, userID, alertID string, latitude, longitude float64) error {
+func (s *service) UpdateSOSLocation(ctx context.Context, userID, alertID string, latitude, longitude float64) (*dto.SOSAlertResponse, error) {
 	alert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
-		return response.NotFoundError("SOS alert")
+		return nil, response.NotFoundError("SOS alert")
 	}
 
 	if alert.UserID != userID {
-		return response.ForbiddenError("You can only update your own alerts")
+		return nil, response.ForbiddenError("You can only update your own alerts")
 	}
 
 	if alert.Status != "active" {
-		return response.BadRequest("Alert is not active")
+		return nil, response.BadRequest("Alert is not active")
 	}
 
 	// Update location in the database
 	if err := s.repo.UpdateLocation(ctx, alertID, latitude, longitude); err != nil {
 		logger.Error("failed to update SOS location", "error", err, "alertID", alertID)
-		return response.InternalServerError("Failed to update SOS location", err)
+		return nil, response.InternalServerError("Failed to update SOS location", err)
 	}
 
 	// Broadcast updated location to admin
@@ -197,13 +211,20 @@ func (s *service) UpdateSOSLocation(ctx context.Context, userID, alertID string,
 		"longitude": longitude,
 	}, true)
 
+	// Fetch updated alert
+	updatedAlert, err := s.repo.FindByID(ctx, alertID)
+	if err != nil {
+		logger.Error("failed to fetch updated alert after location update", "error", err, "alertID", alertID)
+		return nil, response.InternalServerError("Failed to fetch updated alert", err)
+	}
+
 	logger.Info("SOS location updated and broadcasted to admin",
 		"alertID", alertID,
 		"userID", userID,
 		"latitude", latitude,
 		"longitude", longitude,
 	)
-	return nil
+	return dto.ToSOSAlertResponse(updatedAlert), nil
 }
 
 func (s *service) notifyEmergencyContacts(ctx context.Context, alert *models.SOSAlert) {

@@ -24,7 +24,11 @@ func NewHandler(service Service) *Handler {
 // @Success 201 {object} response.Response{data=dto.SOSAlertResponse}
 // @Router /sos/trigger [post]
 func (h *Handler) TriggerSOS(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Error(response.UnauthorizedError("User ID not found in context"))
+		return
+	}
 
 	var req dto.TriggerSOSRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -50,7 +54,11 @@ func (h *Handler) TriggerSOS(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.SOSAlertResponse}
 // @Router /sos/{id} [get]
 func (h *Handler) GetSOS(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Error(response.UnauthorizedError("User ID not found in context"))
+		return
+	}
 	alertID := c.Param("id")
 
 	alert, err := h.service.GetSOS(c.Request.Context(), userID.(string), alertID)
@@ -70,7 +78,11 @@ func (h *Handler) GetSOS(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.SOSAlertResponse}
 // @Router /sos/active [get]
 func (h *Handler) GetActiveSOS(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Error(response.UnauthorizedError("User ID not found in context"))
+		return
+	}
 
 	alert, err := h.service.GetActiveSOS(c.Request.Context(), userID.(string))
 	if err != nil {
@@ -92,7 +104,11 @@ func (h *Handler) GetActiveSOS(c *gin.Context) {
 // @Success 200 {object} response.Response{data=[]dto.SOSAlertListResponse}
 // @Router /sos [get]
 func (h *Handler) ListSOS(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Error(response.UnauthorizedError("User ID not found in context"))
+		return
+	}
 
 	var req dto.ListSOSRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -121,10 +137,14 @@ func (h *Handler) ListSOS(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Alert ID"
 // @Param request body dto.ResolveSOSRequest true "Resolution notes"
-// @Success 200 {object} response.Response
+// @Success 200 {object} response.Response{data=dto.SOSAlertResponse}
 // @Router /sos/{id}/resolve [post]
 func (h *Handler) ResolveSOS(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Error(response.UnauthorizedError("User ID not found in context"))
+		return
+	}
 	alertID := c.Param("id")
 
 	var req dto.ResolveSOSRequest
@@ -132,12 +152,13 @@ func (h *Handler) ResolveSOS(c *gin.Context) {
 		req = dto.ResolveSOSRequest{}
 	}
 
-	if err := h.service.ResolveSOS(c.Request.Context(), userID.(string), alertID, req); err != nil {
+	alert, err := h.service.ResolveSOS(c.Request.Context(), userID.(string), alertID, req)
+	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	response.Success(c, nil, "SOS alert resolved successfully")
+	response.Success(c, alert, "SOS alert resolved successfully")
 }
 
 // CancelSOS godoc
@@ -145,18 +166,23 @@ func (h *Handler) ResolveSOS(c *gin.Context) {
 // @Tags sos
 // @Security BearerAuth
 // @Param id path string true "Alert ID"
-// @Success 200 {object} response.Response
+// @Success 200 {object} response.Response{data=dto.SOSAlertResponse}
 // @Router /sos/{id}/cancel [post]
 func (h *Handler) CancelSOS(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Error(response.UnauthorizedError("User ID not found in context"))
+		return
+	}
 	alertID := c.Param("id")
 
-	if err := h.service.CancelSOS(c.Request.Context(), userID.(string), alertID); err != nil {
+	alert, err := h.service.CancelSOS(c.Request.Context(), userID.(string), alertID)
+	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	response.Success(c, nil, "SOS alert cancelled successfully")
+	response.Success(c, alert, "SOS alert cancelled successfully")
 }
 
 // UpdateSOSLocation godoc
@@ -167,10 +193,14 @@ func (h *Handler) CancelSOS(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Alert ID"
 // @Param request body dto.UpdateSOSLocationRequest true "Location data"
-// @Success 200 {object} response.Response
+// @Success 200 {object} response.Response{data=dto.SOSAlertResponse}
 // @Router /sos/{id}/location [post]
 func (h *Handler) UpdateSOSLocation(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Error(response.UnauthorizedError("User ID not found in context"))
+		return
+	}
 	alertID := c.Param("id")
 
 	var req dto.UpdateSOSLocationRequest
@@ -179,10 +209,11 @@ func (h *Handler) UpdateSOSLocation(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateSOSLocation(c.Request.Context(), userID.(string), alertID, req.Latitude, req.Longitude); err != nil {
+	alert, err := h.service.UpdateSOSLocation(c.Request.Context(), userID.(string), alertID, req.Latitude, req.Longitude)
+	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	response.Success(c, nil, "SOS location updated and broadcast to admin")
+	response.Success(c, alert, "SOS location updated and broadcast to admin")
 }
