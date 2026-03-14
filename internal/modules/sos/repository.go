@@ -52,49 +52,38 @@ func (r *repository) FindActiveByUserID(ctx context.Context, userID string) (*mo
 }
 
 func (r *repository) List(ctx context.Context, filters map[string]interface{}, page, limit int) ([]*models.SOSAlert, int64, error) {
-	// Build base query with filters
-	query := r.db.WithContext(ctx)
-
-	// Apply userId filter (required)
-	if userID, ok := filters["userId"].(string); ok && userID != "" {
-		query = query.Where("user_id = ?", userID)
-	}
-
-	// Apply status filter (optional)
-	if status, ok := filters["status"].(string); ok && status != "" {
-		query = query.Where("status = ?", status)
-	}
-
-	// Get total count
+	var alerts []*models.SOSAlert
 	var total int64
-	if err := query.Model(&models.SOSAlert{}).Count(&total).Error; err != nil {
+
+	// Count total records with filters
+	countQuery := r.db.WithContext(ctx)
+	if userID, ok := filters["userId"].(string); ok && userID != "" {
+		countQuery = countQuery.Where("user_id = ?", userID)
+	}
+	if status, ok := filters["status"].(string); ok && status != "" {
+		countQuery = countQuery.Where("status = ?", status)
+	}
+	if err := countQuery.Model(&models.SOSAlert{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Fetch alerts with pagination
-	var alerts []*models.SOSAlert
+	// Fetch records with filters and pagination
 	offset := (page - 1) * limit
-
-	// Build fresh query for fetch (to avoid state corruption)
 	fetchQuery := r.db.WithContext(ctx)
-
 	if userID, ok := filters["userId"].(string); ok && userID != "" {
 		fetchQuery = fetchQuery.Where("user_id = ?", userID)
 	}
-
 	if status, ok := filters["status"].(string); ok && status != "" {
 		fetchQuery = fetchQuery.Where("status = ?", status)
 	}
-
-	err := fetchQuery.
+	
+	if err := fetchQuery.
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Preload("User").
 		Preload("Ride").
-		Find(&alerts).Error
-
-	if err != nil {
+		Find(&alerts).Error; err != nil {
 		return nil, 0, err
 	}
 
