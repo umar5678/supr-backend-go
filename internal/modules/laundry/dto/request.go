@@ -10,6 +10,7 @@ type CreateLaundryOrderRequest struct {
 	PickupDate   string             `json:"pickupDate" binding:"required"`
 	PickupTime   string             `json:"pickupTime" binding:"required"`
 	IsExpress    bool               `json:"isExpress"`
+	PersonCount   int                `json:"personCount" binding:"required,min=1"`
 	SpecialNotes string             `json:"specialNotes"`
 	Address      string             `json:"address" binding:"required"`
 	Lat          float64            `json:"lat" binding:"required"`

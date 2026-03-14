@@ -18,6 +18,7 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 		admin.Use(middleware.RequireAdmin())
 		{
 			admin.GET("/driver", handler.GetDocumentsByDriver)
+			admin.GET("/service-provider", handler.GetDocumentsByServiceProvider)
 			admin.GET("/admin", handler.GetDocumentsAdmin)
 			admin.POST("/verify", handler.VerifyDocument)
 			admin.GET("/pending", handler.GetPendingDocuments)

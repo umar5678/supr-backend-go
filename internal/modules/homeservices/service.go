@@ -265,14 +265,11 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 		return nil, response.BadRequest("Service date must be in the future")
 	}
 
-	// 3. Calculate pricing for each item
-	var items []models.OrderItem
-	var addOns []models.OrderAddOn
-	var categorySlug string // Track category from first service
+	// 3. Validate and build SelectedServices
+	var categorySlug string
 	var subtotal float64
-	var totalDuration int
+	selectedServices := models.SelectedServices{}
 
-	// Process main service items
 	for i, itemReq := range req.Items {
 		svc, err := s.repo.GetServiceNewByID(ctx, itemReq.ServiceID)
 		if err != nil {
@@ -291,31 +288,23 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 			categorySlug = svc.CategorySlug
 		}
 
-		// For the new ServiceNew model, calculate price from BasePrice
-		// The new model doesn't have options like the old Service model
 		price := 0.0
-		duration := 0
 		if svc.BasePrice != nil {
 			price = *svc.BasePrice
 		}
-		if svc.Duration != nil {
-			duration = *svc.Duration
-		}
 
-		items = append(items, models.OrderItem{
-			ServiceID:       svc.ID,
-			ServiceName:     svc.Title,
-			BasePrice:       price,
-			CalculatedPrice: price,
-			DurationMinutes: duration,
-			SelectedOptions: nil,
+		selectedServices = append(selectedServices, models.SelectedServiceItem{
+			ServiceSlug: svc.ServiceSlug,
+			Title:       svc.Title,
+			Price:       price,
+			Quantity:    1,
 		})
 
 		subtotal += price
-		totalDuration += duration
 	}
 
-	// Process add-ons
+	// 4. Validate and build SelectedAddons
+	var selectedAddons models.SelectedAddons
 	if len(req.AddOnIDs) > 0 {
 		addOnServices, err := s.repo.GetAddOnsByIDs(ctx, req.AddOnIDs)
 		if err != nil {
@@ -327,73 +316,76 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 				return nil, response.BadRequest(fmt.Sprintf("Add-on '%s' is not available", addon.Title))
 			}
 
-			addOns = append(addOns, models.OrderAddOn{
-				AddOnID: addon.ID,
-				Title:   addon.Title,
-				Price:   addon.Price,
+			selectedAddons = append(selectedAddons, models.SelectedAddonItem{
+				AddonSlug: addon.Title, // Using title as slug since Addon model might not have slug
+				Title:     addon.Title,
+				Price:     addon.Price,
+				Quantity:  1,
 			})
 
 			subtotal += addon.Price
-			totalDuration += addon.DurationMinutes
 		}
 	}
 
-	// 4. Calculate fees
-	surgeFee := s.calculateSurgeFee(req.Latitude, req.Longitude, serviceDate)
+	// 5. Calculate fees
 	platformFee := subtotal * 0.10 // 10% platform fee
-	discount := 0.0
+	totalPrice := subtotal + platformFee
 
-	// TODO: Apply coupon if provided
-
-	total := subtotal + surgeFee + platformFee - discount
-
-	// 5. Create wallet hold using existing wallet service (non-blocking for cash model)
-	// This is only for tracking expected payment, not for authorization
-	orderCode := s.generateOrderCode()
-	holdDurationMinutes := int(HoldExpiryDuration.Minutes())
+	// 6. Create wallet hold using existing wallet service (non-blocking for cash model)
 	var holdID *string
-
 	holdReq := walletdto.HoldFundsRequest{
-		Amount:        total,
+		Amount:        totalPrice,
 		ReferenceType: "service_order",
-		ReferenceID:   orderCode,
-		HoldDuration:  holdDurationMinutes,
+		ReferenceID:   uuid.New().String(),
+		HoldDuration:  int(HoldExpiryDuration.Minutes()),
 	}
 
 	holdResp, err := s.walletService.HoldFunds(ctx, userID, holdReq)
 	if err != nil {
-		logger.Warn("failed to create payment tracking hold", "error", err, "orderCode", orderCode, "total", total)
+		logger.Warn("failed to create payment tracking hold", "error", err, "total", totalPrice)
 		// Don't fail the order - cash payment doesn't require wallet authorization
 	} else {
 		holdID = &holdResp.ID
-		logger.Info("payment hold created for tracking", "orderCode", orderCode, "holdID", holdResp.ID, "amount", total)
+		logger.Info("payment hold created for tracking", "holdID", holdResp.ID, "amount", totalPrice)
 	}
 
-	// 6. Create order
-	order := &models.ServiceOrder{
-		ID:             uuid.New().String(),
-		Code:           orderCode,
-		UserID:         userID,
-		Status:         "searching_provider",
-		Address:        req.Address,
-		Latitude:       req.Latitude,
-		Longitude:      req.Longitude,
-		ServiceDate:    serviceDate,
-		Frequency:      req.Frequency,
-		QuantityOfPros: req.QuantityOfPros, // ✅ NEW
-		HoursOfService: req.HoursOfService, // ✅ NEW
-		CategorySlug:   categorySlug,       // ✅ Set category slug from first service
-		Notes:          req.Notes,
-		Subtotal:       subtotal,
-		Discount:       discount,
-		SurgeFee:       surgeFee,
-		PlatformFee:    platformFee,
-		Total:          total,
-		CouponCode:     req.CouponCode,
-		// Note: Using WalletHold field as temporary storage
-		WalletHold: total,
-		Items:      items,
-		AddOns:     addOns,
+	// 7. Create order using ServiceOrderNew
+	order := &models.ServiceOrderNew{
+		ID:          uuid.New().String(),
+		OrderNumber: s.generateOrderCode(),
+		CustomerID:  userID,
+		CustomerInfo: models.CustomerInfo{
+			Name:    "",
+			Phone:   "",
+			Email:   "",
+			Address: req.Address,
+			Lat:     req.Latitude,
+			Lng:     req.Longitude,
+		},
+		BookingInfo: models.BookingInfo{
+			Date:           serviceDate.Format("2006-01-02"),
+			Time:           serviceDate.Format("15:04"),
+			QuantityOfPros: req.QuantityOfPros,
+			PersonCount:    req.PersonCount,
+			ToolsRequired:  req.ToolsRequired,
+			Frequency:      &req.Frequency,
+		},
+		CategorySlug:       categorySlug,
+		SelectedServices:   selectedServices,
+		SelectedAddons:     selectedAddons,
+		SpecialNotes:       "",
+		ServicesTotal:      subtotal,
+		AddonsTotal:        0,
+		Subtotal:           subtotal,
+		PlatformCommission: platformFee,
+		TotalPrice:         totalPrice,
+		PaymentInfo: &models.PaymentInfo{
+			Method: "cash",
+			Status: "pending",
+			Total:  totalPrice,
+		},
+		WalletHoldID: holdID,
+		Status:       "searching_provider",
 	}
 
 	if err := s.repo.CreateOrder(ctx, order); err != nil {
@@ -406,12 +398,13 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 		return nil, response.InternalServerError("Failed to create order", err)
 	}
 
-	logger.Info("order created", "orderID", order.ID, "userID", userID, "total", total)
+	logger.Info("order created", "orderID", order.ID, "userID", userID, "total", totalPrice)
 
-	// 7. Trigger async provider search
+	// 8. Trigger async provider search
 	go s.FindAndNotifyNextProvider(order.ID)
 
-	return homeservicedto.ToOrderResponse(order), nil
+	// Convert to DTO response using the customer DTO converter
+	return homeservicedto.ToOrderResponseFromNew(order), nil
 }
 
 // Helper function to check if services use hourly pricing
@@ -432,337 +425,6 @@ func (s *service) generateOrderCode() string {
 	return fmt.Sprintf("HS-%d-%06d", year, random)
 }
 
-/* DEPRECATED: Old helper functions for legacy Service model - no longer used
-// ✅ Calculate order pricing based on services, add-ons, options, quantity, and hours
-func (s *service) calculateOrderPricing(
-	services []*models.Service,
-	addOns []*models.AddOnService,
-	req homeservicedto.CreateOrderRequest,
-) (subtotal float64, totalDuration int) {
-	subtotal = 0.0
-	totalDuration = 0
-
-	// Calculate service prices with selected options
-	for _, service := range services {
-		itemPrice := service.BasePrice
-		itemDuration := service.BaseDurationMinutes
-
-		// Find matching request item for options
-		var reqItem *homeservicedto.CreateOrderItemRequest
-		for j := range req.Items {
-			if req.Items[j].ServiceID == service.ID {
-				reqItem = &req.Items[j]
-				break
-			}
-		}
-
-		// Apply option modifiers if present
-		if reqItem != nil && len(reqItem.SelectedOptions) > 0 {
-			optionPrice, optionDuration := s.calculateOptionModifiers(service, reqItem.SelectedOptions)
-			itemPrice += optionPrice
-			itemDuration += optionDuration
-		}
-
-		subtotal += itemPrice
-		totalDuration += itemDuration
-
-		logger.Debug("calculated service price",
-			"serviceID", service.ID,
-			"serviceName", service.Name,
-			"basePrice", service.BasePrice,
-			"finalPrice", itemPrice,
-			"duration", itemDuration,
-		)
-	}
-
-	// Add add-on prices
-	for _, addon := range addOns {
-		subtotal += addon.Price
-		totalDuration += addon.DurationMinutes
-
-		logger.Debug("added addon price",
-			"addonID", addon.ID,
-			"title", addon.Title,
-			"price", addon.Price,
-		)
-	}
-
-	return subtotal, totalDuration
-}
-
-// ✅ Calculate price and duration modifiers from selected options
-func (s *service) calculateOptionModifiers(
-	service *models.Service,
-	selectedOptions []homeservicedto.SelectedOptionRequest,
-) (float64, int) {
-	priceModifier := 0.0
-	durationModifier := 0
-
-	for _, selectedOpt := range selectedOptions {
-		// Find the option in service
-		var option *models.ServiceOption
-		for i := range service.Options {
-			if service.Options[i].ID == selectedOpt.OptionID {
-				option = &service.Options[i]
-				break
-			}
-		}
-
-		if option == nil {
-			continue
-		}
-
-		// If a choice is selected, apply its modifiers
-		if selectedOpt.ChoiceID != nil {
-			for _, choice := range option.Choices {
-				if choice.ID == *selectedOpt.ChoiceID {
-					priceModifier += choice.PriceModifier
-					durationModifier += choice.DurationModifierMinutes
-					break
-				}
-			}
-		}
-	}
-
-	return priceModifier, durationModifier
-}
-
-// ✅ Check if any service uses hourly pricing
-func (s *service) hasHourlyPricing(services []*models.Service) bool {
-	for _, svc := range services {
-		if svc.PricingModel == "hourly" {
-			return true
-		}
-	}
-	return false
-}
-
-
-// ✅ Build order items from request
-func (s *service) buildOrderItems(
-	reqItems []homeservicedto.CreateOrderItemRequest,
-	services []*models.Service,
-) []models.OrderItem {
-	items := make([]models.OrderItem, len(reqItems))
-
-	for i, reqItem := range reqItems {
-		// Find matching service
-		var service *models.Service
-		for _, svc := range services {
-			if svc.ID == reqItem.ServiceID {
-				service = svc
-				break
-			}
-		}
-
-		if service == nil {
-			continue
-		}
-
-		// Calculate final price with options
-		finalPrice := service.BasePrice
-		duration := service.BaseDurationMinutes
-
-		if len(reqItem.SelectedOptions) > 0 {
-			optPrice, optDuration := s.calculateOptionModifiers(service, reqItem.SelectedOptions)
-			finalPrice += optPrice
-			duration += optDuration
-		}
-
-		// Convert selected options to JSON
-		selectedOptionsJSON := make(map[string]interface{})
-		for _, opt := range reqItem.SelectedOptions {
-			selectedOptionsJSON[fmt.Sprintf("option_%d", opt.OptionID)] = map[string]interface{}{
-				"optionId": opt.OptionID,
-				"choiceId": opt.ChoiceID,
-				"value":    opt.Value,
-			}
-		}
-
-		items[i] = models.OrderItem{
-			ServiceID:       service.ID,
-			ServiceName:     service.Name,
-			BasePrice:       service.BasePrice,
-			CalculatedPrice: finalPrice,
-			DurationMinutes: duration,
-			SelectedOptions: selectedOptionsJSON,
-		}
-	}
-
-	return items
-}
-
-// ✅ Build order add-ons from request
-func (s *service) buildOrderAddOns(addOnIDs []uint, addOns []*models.AddOnService) []models.OrderAddOn {
-	orderAddOns := make([]models.OrderAddOn, len(addOnIDs))
-
-	for i, addonID := range addOnIDs {
-		// Find matching add-on
-		var addon *models.AddOnService
-		for _, a := range addOns {
-			if a.ID == addonID {
-				addon = a
-				break
-			}
-		}
-
-		if addon == nil {
-			continue
-		}
-
-		orderAddOns[i] = models.OrderAddOn{
-			AddOnID: addon.ID,
-			Title:   addon.Title,
-			Price:   addon.Price,
-		}
-	}
-
-	return orderAddOns
-}
-*/
-
-// func (s *service) CreateOrder(ctx context.Context, userID string, req homeservicedto.CreateOrderRequest) (*homeservicedto.OrderResponse, error) {
-// 	// 1. Validate and set defaults
-// 	if err := req.Validate(); err != nil {
-// 		return nil, response.BadRequest(err.Error())
-// 	}
-// 	req.SetDefaults()
-
-// 	// 2. Parse service date
-// 	serviceDate, err := time.Parse(time.RFC3339, req.ServiceDate)
-// 	if err != nil {
-// 		return nil, response.BadRequest("Invalid service date format. Use RFC3339")
-// 	}
-
-// 	// Ensure service date is in the future
-// 	if serviceDate.Before(time.Now()) {
-// 		return nil, response.BadRequest("Service date must be in the future")
-// 	}
-
-// 	// 3. Calculate pricing for each item
-// 	var items []models.OrderItem
-// 	var addOns []models.OrderAddOn
-// 	subtotal := 0.0
-// 	totalDuration := 0
-
-// 	// Process main service items
-// 	for _, itemReq := range req.Items {
-// 		svc, err := s.repo.GetServiceWithOptions(ctx, itemReq.ServiceID)
-// 		if err != nil {
-// 			if err == gorm.ErrRecordNotFound {
-// 				return nil, response.BadRequest(fmt.Sprintf("Service with ID %d not found", itemReq.ServiceID))
-// 			}
-// 			return nil, response.InternalServerError("Failed to fetch service", err)
-// 		}
-
-// 		if !svc.IsActive {
-// 			return nil, response.BadRequest(fmt.Sprintf("Service '%s' is not available", svc.Name))
-// 		}
-
-// 		// Calculate price and duration based on selected options
-// 		price, duration, selectedOpts, err := s.calculateItemPrice(svc, itemReq.SelectedOptions)
-// 		if err != nil {
-// 			return nil, response.BadRequest(err.Error())
-// 		}
-
-// 		items = append(items, models.OrderItem{
-// 			ServiceID:       svc.ID,
-// 			ServiceName:     svc.Name,
-// 			BasePrice:       svc.BasePrice,
-// 			CalculatedPrice: price,
-// 			DurationMinutes: duration,
-// 			SelectedOptions: selectedOpts,
-// 		})
-
-// 		subtotal += price
-// 		totalDuration += duration
-// 	}
-
-// 	// Process add-ons
-// 	if len(req.AddOnIDs) > 0 {
-// 		addOnServices, err := s.repo.GetAddOnsByIDs(ctx, req.AddOnIDs)
-// 		if err != nil {
-// 			return nil, response.InternalServerError("Failed to fetch add-ons", err)
-// 		}
-
-// 		for _, addon := range addOnServices {
-// 			if !addon.IsActive {
-// 				return nil, response.BadRequest(fmt.Sprintf("Add-on '%s' is not available", addon.Title))
-// 			}
-
-// 			addOns = append(addOns, models.OrderAddOn{
-// 				AddOnID: addon.ID,
-// 				Title:   addon.Title,
-// 				Price:   addon.Price,
-// 			})
-
-// 			subtotal += addon.Price
-// 			totalDuration += addon.DurationMinutes
-// 		}
-// 	}
-
-// 	// 4. Calculate fees
-// 	surgeFee := s.calculateSurgeFee(req.Latitude, req.Longitude, serviceDate)
-// 	platformFee := subtotal * 0.10 // 10% platform fee
-// 	discount := 0.0
-
-// 	// TODO: Apply coupon if provided
-
-// 	total := subtotal + surgeFee + platformFee - discount
-
-// 	// 5. Create wallet hold using existing wallet service
-// 	orderCode := s.generateOrderCode()
-// 	holdDurationMinutes := int(HoldExpiryDuration.Minutes())
-
-// 	holdReq := wallethomeservicedto.HoldFundsRequest{
-// 		Amount:        total,
-// 		ReferenceType: "service_order",
-// 		ReferenceID:   orderCode,
-// 		HoldDuration:  holdDurationMinutes,
-// 	}
-
-// 	holdResp, err := s.walletService.HoldFunds(ctx, userID, holdReq)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// 6. Create order
-// 	order := &models.ServiceOrder{
-// 		ID:          uuid.New().String(),
-// 		Code:        orderCode,
-// 		UserID:      userID,
-// 		Status:      "searching_provider",
-// 		Address:     req.Address,
-// 		ServiceDate: serviceDate,
-// 		Frequency:   req.Frequency,
-// 		Notes:       req.Notes,
-// 		Subtotal:    subtotal,
-// 		Discount:    discount,
-// 		SurgeFee:    surgeFee,
-// 		PlatformFee: platformFee,
-// 		Total:       total,
-// 		CouponCode:  req.CouponCode,
-// 		WalletHoldID:  &holdResp.ID,
-// 		Items:       items,
-// 		AddOns:      addOns,
-// 	}
-
-// 	if err := s.repo.CreateOrder(ctx, order); err != nil {
-// 		// Release hold if order creation fails
-// 		releaseReq := wallethomeservicedto.ReleaseHoldRequest{HoldID: holdResp.ID}
-// 		s.walletService.ReleaseHold(ctx, userID, releaseReq)
-// 		logger.Error("failed to create order", "error", err, "userID", userID)
-// 		return nil, response.InternalServerError("Failed to create order", err)
-// 	}
-
-// 	logger.Info("order created", "orderID", order.ID, "userID", userID, "total", total)
-
-// 	// 7. Trigger async provider search
-// 	go s.FindAndNotifyNextProvider(order.ID)
-
-// 	return homeservicedto.ToOrderResponse(order), nil
-// }
-
 func (s *service) GetMyOrders(ctx context.Context, userID string, query homeservicedto.ListOrdersQuery) ([]*homeservicedto.OrderListResponse, *response.PaginationMeta, error) {
 	query.SetDefaults()
 
@@ -780,7 +442,7 @@ func (s *service) GetMyOrders(ctx context.Context, userID string, query homeserv
 
 func (s *service) GetOrderDetails(ctx context.Context, userID, orderID string) (*homeservicedto.OrderResponse, error) {
 	// Fetch ServiceOrderNew directly for rich details
-	orderNew, err := s.repo.GetServiceOrderNewByID(ctx, orderID)
+	orderNew, err := s.repo.GetOrderByIDWithDetails(ctx, orderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, response.NotFoundError("Order")
@@ -801,33 +463,10 @@ func (s *service) GetOrderDetails(ctx context.Context, userID, orderID string) (
 	}
 
 	// Convert to OrderResponse with full details from ServiceOrderNew
-	orderResp := homeservicedto.ToOrderResponseFromNew(orderNew)
-	if orderResp == nil {
-		logger.Error("failed to convert order to response", "orderID", orderID)
-		return nil, response.InternalServerError("Failed to format order response", nil)
-	}
-
-	return orderResp, nil
+	return homeservicedto.ToOrderResponseFromNew(orderNew), nil
 }
 
-// func (s *service) GetOrderDetails(ctx context.Context, userID, orderID string) (*homeservicedto.OrderResponse, error) {
-// 	order, err := s.repo.GetOrderByIDWithDetails(ctx, orderID)
-// 	if err != nil {
-// 		if err == gorm.ErrRecordNotFound {
-// 			return nil, response.NotFoundError("Order")
-// 		}
-// 		return nil, response.InternalServerError("Failed to fetch order", err)
-// 	}
-
-// 	// Verify ownership
-// 	if order.UserID != userID {
-// 		return nil, response.ForbiddenError("You don't have access to this order")
-// 	}
-
-// 	return homeservicedto.ToOrderResponse(order), nil
-// }
-
-func (s *service) CancelOrder(ctx context.Context, userID, orderID string) error {
+func (s *service) CancelOrder(ctx context.Context, CustomerID, orderID string) error {
 	order, err := s.repo.GetOrderByID(ctx, orderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -837,7 +476,7 @@ func (s *service) CancelOrder(ctx context.Context, userID, orderID string) error
 	}
 
 	// Verify ownership
-	if order.UserID != userID {
+	if order.CustomerID != CustomerID {
 		return response.ForbiddenError("You don't have access to this order")
 	}
 
@@ -851,7 +490,7 @@ func (s *service) CancelOrder(ctx context.Context, userID, orderID string) error
 		releaseReq := walletdto.ReleaseHoldRequest{
 			HoldID: *order.WalletHoldID,
 		}
-		if err := s.walletService.ReleaseHold(ctx, userID, releaseReq); err != nil {
+		if err := s.walletService.ReleaseHold(ctx, CustomerID, releaseReq); err != nil {
 			logger.Error("failed to release hold on order cancellation", "error", err, "orderID", orderID)
 		}
 	}
@@ -861,7 +500,7 @@ func (s *service) CancelOrder(ctx context.Context, userID, orderID string) error
 		return response.InternalServerError("Failed to cancel order", err)
 	}
 
-	logger.Info("order cancelled", "orderID", orderID, "userID", userID)
+	logger.Info("order cancelled", "orderID", orderID, "userID", CustomerID)
 
 	return nil
 }
@@ -937,7 +576,7 @@ func (s *service) StartOrder(ctx context.Context, providerID, orderID string) er
 		return response.NotFoundError("Order")
 	}
 
-	if order.ProviderID == nil || *order.ProviderID != providerID {
+	if order.AssignedProviderID == nil || *order.AssignedProviderID != providerID {
 		return response.ForbiddenError("You are not assigned to this order")
 	}
 
@@ -960,7 +599,7 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string)
 		return response.NotFoundError("Order")
 	}
 
-	if order.ProviderID == nil || *order.ProviderID != providerID {
+	if order.AssignedProviderID == nil || *order.AssignedProviderID != providerID {
 		return response.ForbiddenError("You are not assigned to this order")
 	}
 
@@ -972,9 +611,9 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string)
 	if order.WalletHoldID != nil {
 		captureReq := walletdto.CaptureHoldRequest{
 			HoldID:      *order.WalletHoldID,
-			Description: fmt.Sprintf("Payment for order %s", order.Code),
+			Description: fmt.Sprintf("Payment for order %s", order.OrderNumber),
 		}
-		if _, err := s.walletService.CaptureHold(ctx, order.UserID, captureReq); err != nil {
+		if _, err := s.walletService.CaptureHold(ctx, order.CustomerID, captureReq); err != nil {
 			logger.Error("failed to capture hold", "error", err, "orderID", orderID)
 			return response.InternalServerError("Payment processing failed", err)
 		}
@@ -983,13 +622,13 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string)
 	// 2. Transfer funds to provider using existing wallet service
 	provider, err := s.repo.GetProviderByID(ctx, providerID)
 	if err == nil && provider != nil {
-		providerAmount := order.Total - order.PlatformFee
+		providerAmount := order.TotalPrice - order.PlatformCommission
 		transferReq := walletdto.TransferFundsRequest{
 			RecipientID: provider.UserID, // Use provider's UserID for wallet transfer
 			Amount:      providerAmount,
-			Description: fmt.Sprintf("Earnings from order %s", order.Code),
+			Description: fmt.Sprintf("Earnings from order %s", order.OrderNumber),
 		}
-		if _, err := s.walletService.TransferFunds(ctx, order.UserID, transferReq); err != nil {
+		if _, err := s.walletService.TransferFunds(ctx, order.CustomerID, transferReq); err != nil {
 			logger.Error("failed to transfer to provider", "error", err, "providerID", providerID)
 			// Don't fail the completion, but log for manual reconciliation
 		}
@@ -1008,64 +647,6 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string)
 	return nil
 }
 
-// func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string) error {
-// 	order, err := s.repo.GetOrderByID(ctx, orderID)
-// 	if err != nil {
-// 		return response.NotFoundError("Order")
-// 	}
-
-// 	if order.ProviderID == nil || *order.ProviderID != providerID {
-// 		return response.ForbiddenError("You are not assigned to this order")
-// 	}
-
-// 	if order.Status != "in_progress" {
-// 		return response.BadRequest("Order must be in progress to complete")
-// 	}
-
-// 	// 1. Capture the wallet hold using existing wallet service
-// 	if order.WalletHoldID != nil {
-// 		captureReq := wallethomeservicedto.CaptureHoldRequest{
-// 			HoldID:      *order.WalletHoldID,
-// 			Description: fmt.Sprintf("Payment for order %s", order.Code),
-// 		}
-// 		if _, err := s.walletService.CaptureHold(ctx, order.UserID, captureReq); err != nil {
-// 			logger.Error("failed to capture hold", "error", err, "orderID", orderID)
-// 			return response.InternalServerError("Payment processing failed", err)
-// 		}
-// 	}
-
-// 	// 2. Transfer funds to provider using existing wallet service
-// 	provider, _ := s.repo.GetProviderByID(ctx, providerID)
-// 	if provider != nil {
-// 		providerAmount := order.Total - order.PlatformFee
-// 		transferReq := wallethomeservicedto.TransferFundsRequest{
-// 			RecipientID: provider.UserID,
-// 			Amount:      providerAmount,
-// 			Description: fmt.Sprintf("Earnings from order %s", order.Code),
-// 		}
-// 		if _, err := s.walletService.TransferFunds(ctx, order.UserID, transferReq); err != nil {
-// 			logger.Error("failed to transfer to provider", "error", err, "providerID", providerID)
-// 			// Don't fail the completion, but log for manual reconciliation
-// 		}
-// 	}
-
-// 	// 3. Update order status
-// 	if err := s.repo.UpdateOrderStatus(ctx, orderID, "completed"); err != nil {
-// 		return response.InternalServerError("Failed to complete order", err)
-// 	}
-
-// 	// 4. Update provider status back to available
-// 	s.repo.UpdateProviderStatus(ctx, providerID, "available")
-
-// 	logger.Info("order completed", "providerID", providerID, "orderID", orderID)
-
-// 	// TODO: Send notification to customer for rating
-
-// 	return nil
-// }
-
-// --- Provider Matching Logic ---
-
 func (s *service) FindAndNotifyNextProvider(orderID string) {
 	ctx := context.Background()
 
@@ -1076,17 +657,17 @@ func (s *service) FindAndNotifyNextProvider(orderID string) {
 		return
 	}
 
-	// 3. Get service IDs from order items
-	var serviceIDs []string
+	// 3. Get service slugs from order items
+	var serviceSlugs []string
 	fullOrder, _ := s.repo.GetOrderByIDWithDetails(ctx, orderID)
 	if fullOrder != nil {
-		for _, item := range fullOrder.Items {
-			serviceIDs = append(serviceIDs, item.ServiceID)
+		for _, item := range fullOrder.SelectedServices {
+			serviceSlugs = append(serviceSlugs, item.ServiceSlug)
 		}
 	}
 
-	if len(serviceIDs) == 0 {
-		logger.Error("no service IDs found for order", "orderID", orderID)
+	if len(serviceSlugs) == 0 {
+		logger.Error("no service slugs found for order", "orderID", orderID)
 		return
 	}
 
@@ -1097,18 +678,12 @@ func (s *service) FindAndNotifyNextProvider(orderID string) {
 		return
 	}
 
-	// 5. Find providers with this category (category-based matching)
-	// The provider matching is now handled through category slugs
-	// Providers register with categories and see orders with matching categories
-	// This is managed through the provider app's GetAvailableOrders endpoint
-
-	// For now, just update order status to indicate it's available for providers
 	if err := s.repo.UpdateOrderStatus(ctx, orderID, "pending"); err != nil {
 		logger.Error("failed to update order status", "error", err, "orderID", orderID)
 		// Release wallet hold on error
 		if order.WalletHoldID != nil {
 			releaseReq := walletdto.ReleaseHoldRequest{HoldID: *order.WalletHoldID}
-			s.walletService.ReleaseHold(ctx, order.UserID, releaseReq)
+			s.walletService.ReleaseHold(ctx, order.CustomerID, releaseReq)
 		}
 		return
 	}

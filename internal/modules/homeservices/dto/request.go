@@ -5,17 +5,18 @@ import (
 	"fmt"
 )
 
-// CreateOrderRequest represents a customer's service booking request
 type CreateOrderRequest struct {
 	Items          []CreateOrderItemRequest `json:"items" binding:"required,min=1,dive"`
 	AddOnIDs       []uint                   `json:"addOnIds" binding:"omitempty"`
 	Address        string                   `json:"address" binding:"required,min=5,max=500"`
 	Latitude       float64                  `json:"latitude" binding:"required,latitude"`
 	Longitude      float64                  `json:"longitude" binding:"required,longitude"`
-	ServiceDate    string                   `json:"serviceDate" binding:"required"` // RFC3339 format
+	ServiceDate    string                   `json:"serviceDate" binding:"required"`
 	Frequency      string                   `json:"frequency" binding:"omitempty,oneof=once daily weekly monthly"`
-	QuantityOfPros int                      `json:"quantityOfPros" binding:"required,min=1,max=10"`   // ✅ NEW: Number of professionals needed
-	HoursOfService float64                  `json:"hoursOfService" binding:"required,min=0.5,max=24"` // ✅ NEW: Hours of service required
+	QuantityOfPros int                      `json:"quantityOfPros" binding:"required,min=1,max=10"`   
+	PersonCount    int                      `json:"personCount" binding:"required,min=1,max=10"` // Number of people attending
+	ToolsRequired  bool                     `json:"toolsRequired" binding:"omitempty"` // Whether tools are needed
+	HoursOfService float64                  `json:"hoursOfService" binding:"required,min=0.5,max=24"` 
 	Notes          *string                  `json:"notes" binding:"omitempty,max=500"`
 	CouponCode     *string                  `json:"couponCode" binding:"omitempty,max=50"`
 }
@@ -27,8 +28,8 @@ type CreateOrderItemRequest struct {
 
 type SelectedOptionRequest struct {
 	OptionID uint    `json:"optionId" binding:"required,min=1"`
-	ChoiceID *uint   `json:"choiceId" binding:"omitempty,min=1"` // For select_single/select_multiple
-	Value    *string `json:"value" binding:"omitempty"`          // For text/quantity types
+	ChoiceID *uint   `json:"choiceId" binding:"omitempty,min=1"` 
+	Value    *string `json:"value" binding:"omitempty"`          
 }
 
 func (r *CreateOrderRequest) Validate() error {
@@ -210,9 +211,6 @@ type CreateOptionChoiceRequest struct {
 	DurationModifierMinutes int     `json:"durationModifierMinutes"`
 }
 
-// RegisterProviderRequest for new provider registration
-// Note: Providers are automatically assigned ALL services in their registered category
-// This enables dynamic service assignment - future services are automatically available
 type RegisterProviderRequest struct {
 	CategorySlug string  `json:"categorySlug" binding:"required,min=2,max=100"`
 	Latitude     float64 `json:"latitude" binding:"required,latitude"`

@@ -42,6 +42,7 @@ type BookingInfo struct {
 	QuantityOfPros int       `json:"quantityOfPros" default:"1"`
 	ToolsRequired   bool      `json:"toolsRequired"`
 	PersonCount     int       `json:"personCount" default:"1"`
+	Frequency      *string   `json:"frequency,omitempty"` // For recurring orders: daily, weekly, biweekly, monthly, quarterly, yearly, once
 }
 
 func (b BookingInfo) Value() (driver.Value, error) {
@@ -243,10 +244,10 @@ func (o *ServiceOrderNew) CanBeRatedByProvider() bool {
 	return o.Status == "completed" && o.ProviderRating == nil
 }
 
-func (o *ServiceOrder) IsCompleted() bool {
+func (o *ServiceOrderNew) IsCompleted() bool {
 	return o.Status == "completed"
 }
 
-func (o *ServiceOrder) IsCancelled() bool {
+func (o *ServiceOrderNew) IsCancelled() bool {
 	return o.Status == "cancelled"
 }

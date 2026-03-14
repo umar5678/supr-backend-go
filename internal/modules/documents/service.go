@@ -104,6 +104,18 @@ func (s *service) UploadDocument(ctx context.Context, userID string, documentTyp
 		UpdatedAt: time.Now(),
 	}
 
+	// Try to link to driver profile if user is a driver
+	if driverProfile, err := s.repo.GetDriverByUserID(ctx, userID); err == nil {
+		doc.DriverID = &driverProfile.ID
+		logger.Info("document linked to driver profile", "docID", doc.ID, "driverID", driverProfile.ID, "userID", userID)
+	}
+
+	// Try to link to service provider profile if user is a service provider
+	if providerProfile, err := s.repo.GetServiceProviderByUserID(ctx, userID); err == nil {
+		doc.ServiceProviderID = &providerProfile.ID
+		logger.Info("document linked to service provider profile", "docID", doc.ID, "providerID", providerProfile.ID, "userID", userID)
+	}
+
 	if err := s.repo.CreateDocument(ctx, doc); err != nil {
 		logger.Error("failed to create document record", "error", err, "userID", userID)
 		// Try to delete from ImageKit if record creation failed

@@ -16,6 +16,7 @@ type LaundryOrderResponse struct {
 	TotalPrice  float64               `json:"totalPrice"`
 	Tip         *float64              `json:"tip,omitempty"`
 	IsExpress   bool                  `json:"isExpress"`
+	PersonCount   int                   `json:"personCount"`
 	Address     string                `json:"address"`
 	Lat         float64               `json:"lat"`
 	Lng         float64               `json:"lng"`

@@ -377,73 +377,6 @@ func ToCategoryWithTabsResponse(cat *models.ServiceCategory) *CategoryWithTabsRe
 
 	return resp
 }
-func ToOrderResponse(order *models.ServiceOrder) *OrderResponse {
-	if order == nil {
-		return nil
-	}
-
-	resp := &OrderResponse{
-		ID:             order.ID,
-		Code:           order.Code,
-		UserID:         order.UserID,
-		ProviderID:     order.ProviderID,
-		Status:         order.Status,
-		Address:        order.Address,
-		ServiceDate:    order.ServiceDate,
-		Frequency:      order.Frequency,
-		QuantityOfPros: order.QuantityOfPros, // NEW
-		HoursOfService: order.HoursOfService, // NEW
-		Subtotal:       order.Subtotal,
-		Discount:       order.Discount,
-		SurgeFee:       order.SurgeFee,
-		PlatformFee:    order.PlatformFee,
-		Total:          order.Total,
-		CouponCode:     order.CouponCode,
-		CreatedAt:      order.CreatedAt,
-		AcceptedAt:     order.AcceptedAt,
-		CompletedAt:    order.CompletedAt,
-	}
-
-	if order.Items != nil && len(order.Items) > 0 {
-		resp.Items = make([]OrderItemResponse, len(order.Items))
-		for i, item := range order.Items {
-			resp.Items[i] = OrderItemResponse{
-				ID:              item.ID,
-				ServiceID:       item.ServiceID,
-				ServiceName:     item.ServiceName,
-				BasePrice:       item.BasePrice,
-				CalculatedPrice: item.CalculatedPrice,
-				DurationMinutes: item.DurationMinutes,
-				SelectedOptions: item.SelectedOptions,
-			}
-		}
-	}
-
-	if order.AddOns != nil && len(order.AddOns) > 0 {
-		resp.AddOns = make([]OrderAddOnResponse, len(order.AddOns))
-		for i, addon := range order.AddOns {
-			resp.AddOns[i] = OrderAddOnResponse{
-				ID:      addon.ID,
-				AddOnID: addon.AddOnID,
-				Title:   addon.Title,
-				Price:   addon.Price,
-			}
-		}
-	}
-
-	// Fixed provider response - use the provided user data
-	if order.Provider != nil {
-		resp.Provider = &ProviderResponse{
-			ID:            order.Provider.ID,
-			Name:          "Service Provider", // Placeholder name
-			Photo:         order.Provider.Photo,
-			Rating:        order.Provider.Rating,
-			CompletedJobs: order.Provider.CompletedJobs,
-		}
-	}
-
-	return resp
-}
 
 // ToOrderResponseFromNew converts ServiceOrderNew to OrderResponse with all details
 func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
@@ -474,7 +407,7 @@ func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
 	}
 
 	// Populate Items from SelectedServices JSONB
-	if orderNew.SelectedServices != nil && len(orderNew.SelectedServices) > 0 {
+	if len(orderNew.SelectedServices) > 0 {
 		resp.Items = make([]OrderItemResponse, len(orderNew.SelectedServices))
 		for i, svc := range orderNew.SelectedServices {
 			resp.Items[i] = OrderItemResponse{
@@ -489,7 +422,7 @@ func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
 	}
 
 	// Populate AddOns from SelectedAddons JSONB
-	if orderNew.SelectedAddons != nil && len(orderNew.SelectedAddons) > 0 {
+	if len(orderNew.SelectedAddons) > 0 {
 		resp.AddOns = make([]OrderAddOnResponse, len(orderNew.SelectedAddons))
 		for i, addon := range orderNew.SelectedAddons {
 			resp.AddOns[i] = OrderAddOnResponse{
@@ -586,21 +519,21 @@ func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
 //     return resp
 // }
 
-func ToOrderListResponse(order *models.ServiceOrder) *OrderListResponse {
+func ToOrderListResponse(order *models.ServiceOrderNew) *OrderListResponse {
 	return &OrderListResponse{
 		ID:             order.ID,
-		Code:           order.Code,
+		Code:           order.OrderNumber,
 		Status:         order.Status,
-		Address:        order.Address,
-		ServiceDate:    order.ServiceDate,
-		QuantityOfPros: order.QuantityOfPros, // NEW
-		HoursOfService: order.HoursOfService, // NEW
-		Total:          order.Total,
+		Address:        order.CustomerInfo.Address,
+		ServiceDate:    order.CreatedAt,
+		QuantityOfPros: order.BookingInfo.QuantityOfPros,
+		HoursOfService: 0, // Not in ServiceOrderNew
+		Total:          order.TotalPrice,
 		CreatedAt:      order.CreatedAt,
 	}
 }
 
-func ToOrderListResponses(orders []*models.ServiceOrder) []*OrderListResponse {
+func ToOrderListResponses(orders []*models.ServiceOrderNew) []*OrderListResponse {
 	result := make([]*OrderListResponse, len(orders))
 	for i, order := range orders {
 		result[i] = ToOrderListResponse(order)

@@ -34,7 +34,7 @@ func (m *StatusHistoryMetadata) Scan(value interface{}) error {
 type OrderStatusHistory struct {
 	ID            string                `gorm:"type:uuid;primaryKey" json:"id"`
 	OrderID       string                `gorm:"type:uuid;not null;index" json:"orderId"`
-	Order         *ServiceOrder         `gorm:"foreignKey:OrderID" json:"-"`
+	Order         *ServiceOrderNew      `gorm:"foreignKey:OrderID" json:"-"`
 	FromStatus    string                `gorm:"type:varchar(50)" json:"fromStatus"`
 	ToStatus      string                `gorm:"type:varchar(50);not null" json:"toStatus"`
 	ChangedBy     *string               `gorm:"type:uuid" json:"changedBy"`

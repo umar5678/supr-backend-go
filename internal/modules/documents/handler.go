@@ -94,6 +94,30 @@ func (h *Handler) GetDocumentsByDriver(c *gin.Context) {
 	response.Success(c, docs, "Driver documents retrieved successfully")
 }
 
+// GetDocumentsByServiceProvider godoc
+// @Summary Get service provider documents (admin only)
+// @Tags documents
+// @Security BearerAuth
+// @Produce json
+// @Param serviceProviderId query string true "Service Provider ID"
+// @Success 200 {object} response.Response{data=[]documentdto.DocumentResponse}
+// @Router /documents/service-provider [get]
+func (h *Handler) GetDocumentsByServiceProvider(c *gin.Context) {
+	providerID := c.Query("serviceProviderId")
+	if providerID == "" {
+		c.Error(response.BadRequest("Service Provider ID is required"))
+		return
+	}
+
+	docs, err := h.service.GetDocumentsByServiceProvider(c.Request.Context(), providerID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, docs, "Service provider documents retrieved successfully")
+}
+
 // GetDocumentsAdmin godoc
 // @Summary Get all documents with filters (admin only)
 // @Tags documents

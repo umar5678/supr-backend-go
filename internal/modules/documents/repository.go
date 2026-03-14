@@ -31,6 +31,9 @@ type Repository interface {
 	CountVerifiedDocumentsByServiceProviderID(ctx context.Context, providerID string) (int, error)
 	// User lookup
 	GetUserByID(ctx context.Context, userID string) (*models.User, error)
+	// Driver and Service Provider lookup
+	GetDriverByUserID(ctx context.Context, userID string) (*models.DriverProfile, error)
+	GetServiceProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error)
 }
 
 type repository struct {
@@ -296,4 +299,34 @@ func (r *repository) CountVerifiedDocumentsByServiceProviderID(ctx context.Conte
 		return 0, err
 	}
 	return int(count), nil
+}
+
+// GetDriverByUserID retrieves driver profile by user ID
+func (r *repository) GetDriverByUserID(ctx context.Context, userID string) (*models.DriverProfile, error) {
+	var driver models.DriverProfile
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		First(&driver).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("driver profile not found for user %s", userID)
+		}
+		logger.Error("failed to fetch driver profile", "error", err, "userID", userID)
+		return nil, err
+	}
+	return &driver, nil
+}
+
+// GetServiceProviderByUserID retrieves service provider profile by user ID
+func (r *repository) GetServiceProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error) {
+	var provider models.ServiceProviderProfile
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		First(&provider).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("service provider profile not found for user %s", userID)
+		}
+		logger.Error("failed to fetch service provider profile", "error", err, "userID", userID)
+		return nil, err
+	}
+	return &provider, nil
 }

@@ -190,6 +190,8 @@ type LaundryOrder struct {
 	Latitude  float64 `gorm:"type:decimal(10,8)" json:"lat"`
 	Longitude float64 `gorm:"type:decimal(11,8)" json:"lng"`
 
+	PersonCount   int  `gorm:"default:1" json:"personCount"`
+
 	ServiceDate *time.Time `json:"serviceDate,omitempty"`
 	Total       float64    `gorm:"type:decimal(10,2);not null" json:"total"`
 	Tip         *float64   `gorm:"type:decimal(10,2)" json:"tip,omitempty"`

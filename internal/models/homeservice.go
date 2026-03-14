@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -161,40 +160,6 @@ func (p *ServiceProvider) BeforeCreate(tx *gorm.DB) error {
 }
 func (ServiceProvider) TableName() string { return "service_providers" }
 
-type ServiceOrder struct {
-	ID             string     `gorm:"type:uuid;primaryKey" json:"id"`
-	Code           string     `gorm:"type:varchar(50);uniqueIndex;not null" json:"code"`
-	UserID         string     `gorm:"type:uuid;not null;index" json:"userId"`
-	ProviderID     *string    `gorm:"type:uuid;index" json:"providerId,omitempty"`
-	Status         string     `gorm:"type:varchar(50);not null;index" json:"status"`
-	Address        string     `gorm:"type:text;not null" json:"address"`
-	Latitude       float64    `gorm:"type:decimal(10,8);not null" json:"latitude"`
-	Longitude      float64    `gorm:"type:decimal(11,8);not null" json:"longitude"`
-	ServiceDate    time.Time  `gorm:"not null" json:"serviceDate"`
-	Frequency      string     `gorm:"type:varchar(50);default:'once'" json:"frequency"`      
-	QuantityOfPros int        `gorm:"type:integer;not null;default:1" json:"quantityOfPros"` 
-	HoursOfService float64    `gorm:"type:decimal(5,2);not null;default:1.0" json:"hoursOfService"`
-	CategorySlug   string     `gorm:"type:varchar(255);index" json:"categorySlug"` 
-	Subtotal       float64    `gorm:"type:decimal(10,2);not null" json:"subtotal"`
-	Discount       float64    `gorm:"type:decimal(10,2);default:0" json:"discount"`
-	SurgeFee       float64    `gorm:"type:decimal(10,2);default:0" json:"surgeFee"`
-	PlatformFee    float64    `gorm:"type:decimal(10,2);default:0" json:"platformFee"`
-	Total          float64    `gorm:"type:decimal(10,2);not null" json:"total"`
-	CouponCode     *string    `gorm:"type:varchar(50)" json:"couponCode,omitempty"`
-	Notes          *string    `gorm:"type:text" json:"notes,omitempty"`
-	CreatedAt      time.Time  `gorm:"autoCreateTime" json:"createdAt"`
-	AcceptedAt     *time.Time `json:"acceptedAt,omitempty"`
-	StartedAt      *time.Time `json:"startedAt,omitempty"`
-	CompletedAt    *time.Time `json:"completedAt,omitempty"`
-	CancelledAt    *time.Time `json:"cancelledAt,omitempty"`
-	WalletHold     float64    `gorm:"type:decimal(10,2);default:0" json:"walletHold"`
-	WalletHoldID   *string    `gorm:"type:uuid" json:"walletHoldId,omitempty"`
-
-	Items    []OrderItem      `gorm:"foreignKey:OrderID" json:"items,omitempty"`
-	AddOns   []OrderAddOn     `gorm:"foreignKey:OrderID" json:"addOns,omitempty"`
-	Provider *ServiceProvider `gorm:"foreignKey:ProviderID" json:"provider,omitempty"`
-}
-
 type OrderAddOn struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	OrderID   string    `gorm:"type:uuid;not null;index" json:"orderId"`
@@ -203,23 +168,10 @@ type OrderAddOn struct {
 	Price     float64   `gorm:"type:decimal(10,2);not null" json:"price"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"createdAt"`
 
-	Order *ServiceOrder `gorm:"foreignKey:OrderID" json:"order,omitempty"`
 	AddOn *AddOnService `gorm:"foreignKey:AddOnID" json:"addOn,omitempty"`
 }
 
 func (OrderAddOn) TableName() string { return "order_add_ons" }
-
-func (o *ServiceOrder) BeforeCreate(tx *gorm.DB) error {
-	if o.ID == "" {
-		o.ID = uuid.New().String()
-	}
-	if o.Code == "" {
-		o.Code = generateOrderCode()
-	}
-	return nil
-}
-
-func (ServiceOrder) TableName() string { return "service_orders" }
 
 type OrderItem struct {
 	ID              uint                   `gorm:"primaryKey" json:"id"`
@@ -231,8 +183,6 @@ type OrderItem struct {
 	DurationMinutes int                    `gorm:"not null" json:"durationMinutes"`
 	SelectedOptions map[string]interface{} `gorm:"type:jsonb" json:"selectedOptions"`
 	CreatedAt       time.Time              `gorm:"autoCreateTime" json:"createdAt"`
-
-	Order *ServiceOrder `gorm:"foreignKey:OrderID" json:"order,omitempty"`
 }
 
 func (OrderItem) TableName() string { return "order_items" }
@@ -261,7 +211,3 @@ type SurgeZone struct {
 }
 
 func (SurgeZone) TableName() string { return "surge_zones" }
-
-func generateOrderCode() string {
-	return fmt.Sprintf("HS%d", time.Now().Unix())
-}

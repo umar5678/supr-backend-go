@@ -33,12 +33,11 @@ type Repository interface {
 	GetAddOnsByIDs(ctx context.Context, ids []uint) ([]*models.AddOnService, error)
 	CreateAddOn(ctx context.Context, addon *models.AddOnService) error
 
-	CreateOrder(ctx context.Context, order *models.ServiceOrder) error
-	GetOrderByID(ctx context.Context, id string) (*models.ServiceOrder, error)
-	GetOrderByIDWithDetails(ctx context.Context, id string) (*models.ServiceOrder, error)
-	GetServiceOrderNewByID(ctx context.Context, id string) (*models.ServiceOrderNew, error)
-	ListUserOrders(ctx context.Context, userID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error)
-	ListProviderOrders(ctx context.Context, providerID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error)
+	CreateOrder(ctx context.Context, order *models.ServiceOrderNew) error
+	GetOrderByID(ctx context.Context, id string) (*models.ServiceOrderNew, error)
+	GetOrderByIDWithDetails(ctx context.Context, id string) (*models.ServiceOrderNew, error)
+	ListUserOrders(ctx context.Context, userID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
+	ListProviderOrders(ctx context.Context, providerID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
 	UpdateOrderStatus(ctx context.Context, orderID, status string) error
 	AssignProviderToOrder(ctx context.Context, providerID, orderID string) error
 
@@ -271,79 +270,32 @@ func (r *repository) CreateAddOn(ctx context.Context, addon *models.AddOnService
 	return r.db.WithContext(ctx).Create(addon).Error
 }
 
-func (r *repository) CreateOrder(ctx context.Context, order *models.ServiceOrder) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(order).Error; err != nil {
-			return err
-		}
-
-		if len(order.Items) > 0 {
-			for i := range order.Items {
-				order.Items[i].OrderID = order.ID
-			}
-			if err := tx.Create(&order.Items).Error; err != nil {
-				return err
-			}
-		}
-
-		if len(order.AddOns) > 0 {
-			for i := range order.AddOns {
-				order.AddOns[i].OrderID = order.ID
-			}
-			if err := tx.Create(&order.AddOns).Error; err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
+func (r *repository) CreateOrder(ctx context.Context, order *models.ServiceOrderNew) error {
+	return r.db.WithContext(ctx).Create(order).Error
 }
 
-func (r *repository) GetOrderByID(ctx context.Context, id string) (*models.ServiceOrder, error) {
-	var orderNew models.ServiceOrderNew
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&orderNew).Error
-	if err != nil {
-		return nil, err
-	}
-
-	conv := convertServiceOrderNewToServiceOrder(&orderNew)
-	if conv == nil {
-		return nil, gorm.ErrRecordNotFound
-	}
-
-	return conv, nil
-}
-
-func (r *repository) GetOrderByIDWithDetails(ctx context.Context, id string) (*models.ServiceOrder, error) {
-	var orderNew models.ServiceOrderNew
-	err := r.db.WithContext(ctx).
-		Where("id = ?", id).
-		First(&orderNew).Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	conv := convertServiceOrderNewToServiceOrder(&orderNew)
-	if conv == nil {
-		return nil, gorm.ErrRecordNotFound
-	}
-
-	return conv, nil
-}
-
-func (r *repository) GetServiceOrderNewByID(ctx context.Context, id string) (*models.ServiceOrderNew, error) {
-	var orderNew models.ServiceOrderNew
+func (r *repository) GetOrderByID(ctx context.Context, id string) (*models.ServiceOrderNew, error) {
+	var order models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Preload("AssignedProvider").
 		Preload("AssignedProvider.User").
 		Where("id = ?", id).
-		First(&orderNew).Error
-	return &orderNew, err
+		First(&order).Error
+	return &order, err
 }
 
-func (r *repository) ListUserOrders(ctx context.Context, userID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error) {
-	var ordersNew []*models.ServiceOrderNew
+func (r *repository) GetOrderByIDWithDetails(ctx context.Context, id string) (*models.ServiceOrderNew, error) {
+	var order models.ServiceOrderNew
+	err := r.db.WithContext(ctx).
+		Preload("AssignedProvider").
+		Preload("AssignedProvider.User").
+		Where("id = ?", id).
+		First(&order).Error
+	return &order, err
+}
+
+func (r *repository) ListUserOrders(ctx context.Context, userID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrderNew, int64, error) {
+	var orders []*models.ServiceOrderNew
 	var total int64
 
 	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).Where("customer_id = ?", userID)
@@ -359,22 +311,13 @@ func (r *repository) ListUserOrders(ctx context.Context, userID string, query ho
 	err := db.Order("created_at DESC").
 		Offset(query.GetOffset()).
 		Limit(query.Limit).
-		Find(&ordersNew).Error
+		Find(&orders).Error
 
-	if err != nil {
-		return nil, 0, err
-	}
-
-	orders := make([]*models.ServiceOrder, len(ordersNew))
-	for i, orderNew := range ordersNew {
-		orders[i] = convertServiceOrderNewToServiceOrder(orderNew)
-	}
-
-	return orders, total, nil
+	return orders, total, err
 }
 
-func (r *repository) ListProviderOrders(ctx context.Context, providerID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrder, int64, error) {
-	var ordersNew []*models.ServiceOrderNew
+func (r *repository) ListProviderOrders(ctx context.Context, providerID string, query homeServiceDto.ListOrdersQuery) ([]*models.ServiceOrderNew, int64, error) {
+	var orders []*models.ServiceOrderNew
 	var total int64
 
 	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{}).Where("assigned_provider_id = ?", providerID)
@@ -390,18 +333,9 @@ func (r *repository) ListProviderOrders(ctx context.Context, providerID string, 
 	err := db.Order("created_at ASC").
 		Offset(query.GetOffset()).
 		Limit(query.Limit).
-		Find(&ordersNew).Error
+		Find(&orders).Error
 
-	if err != nil {
-		return nil, 0, err
-	}
-
-	orders := make([]*models.ServiceOrder, len(ordersNew))
-	for i, orderNew := range ordersNew {
-		orders[i] = convertServiceOrderNewToServiceOrder(orderNew)
-	}
-
-	return orders, total, nil
+	return orders, total, err
 }
 
 func (r *repository) UpdateOrderStatus(ctx context.Context, orderID, status string) error {
@@ -565,41 +499,3 @@ func (r *repository) GetProviderCategory(ctx context.Context, providerID string,
 	return &category, nil
 }
 
-func convertServiceOrderNewToServiceOrder(orderNew *models.ServiceOrderNew) *models.ServiceOrder {
-	if orderNew == nil {
-		return nil
-	}
-	items := make([]models.OrderItem, 0)
-	addOns := make([]models.OrderAddOn, 0)
-
-	address := ""
-	lat := 0.0
-	lng := 0.0
-	if orderNew.CustomerInfo.Address != "" {
-		address = orderNew.CustomerInfo.Address
-		lat = orderNew.CustomerInfo.Lat
-		lng = orderNew.CustomerInfo.Lng
-	}
-
-	return &models.ServiceOrder{
-		ID:           orderNew.ID,
-		Code:         orderNew.OrderNumber,
-		UserID:       orderNew.CustomerID,
-		Status:       orderNew.Status,
-		Address:      address,
-		Latitude:     lat,
-		Longitude:    lng,
-		ServiceDate:  orderNew.CreatedAt,
-		CategorySlug: orderNew.CategorySlug,
-		Subtotal:     orderNew.ServicesTotal,
-		Total:        orderNew.TotalPrice,
-		PlatformFee:  orderNew.PlatformCommission,
-		CreatedAt:    orderNew.CreatedAt,
-		AcceptedAt:   orderNew.ProviderAcceptedAt,
-		StartedAt:    orderNew.ProviderStartedAt,
-		CompletedAt:  orderNew.ProviderCompletedAt,
-		CancelledAt:  orderNew.CompletedAt,
-		Items:        items,               
-		AddOns:       addOns,              
-	}
-}

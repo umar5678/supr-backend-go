@@ -46,7 +46,7 @@ func (s *service) CreateRating(ctx context.Context, userID string, req dto.Creat
 		return nil, response.InternalServerError("Failed to fetch order", err)
 	}
 
-	if order.UserID != userID {
+	if order.CustomerID != userID {
 		return nil, response.ForbiddenError("You don't have access to this order")
 	}
 
@@ -54,7 +54,7 @@ func (s *service) CreateRating(ctx context.Context, userID string, req dto.Creat
 		return nil, response.BadRequest("Can only rate completed orders")
 	}
 
-	if order.ProviderID == nil {
+	if order.AssignedProviderID == nil {
 		return nil, response.BadRequest("No provider assigned to this order")
 	}
 
@@ -67,7 +67,7 @@ func (s *service) CreateRating(ctx context.Context, userID string, req dto.Creat
 		ID:         uuid.New().String(),
 		OrderID:    req.OrderID,
 		UserID:     userID,
-		ProviderID: *order.ProviderID,
+		ProviderID: *order.AssignedProviderID,
 		Score:      req.Score,
 		Comment:    req.Comment,
 	}
@@ -77,9 +77,9 @@ func (s *service) CreateRating(ctx context.Context, userID string, req dto.Creat
 		return nil, response.InternalServerError("Failed to create rating", err)
 	}
 
-	newAverage, err := s.repo.GetProviderAverageRating(ctx, *order.ProviderID)
+	newAverage, err := s.repo.GetProviderAverageRating(ctx, *order.AssignedProviderID)
 	if err == nil {
-		s.repo.UpdateProviderRating(ctx, *order.ProviderID, newAverage)
+		s.repo.UpdateProviderRating(ctx, *order.AssignedProviderID, newAverage)
 	}
 
 	logger.Info("rating created", "ratingID", rating.ID, "orderID", req.OrderID, "score", req.Score)
