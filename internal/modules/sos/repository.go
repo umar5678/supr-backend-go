@@ -54,30 +54,25 @@ func (r *repository) List(ctx context.Context, filters map[string]interface{}, p
 	var alerts []*models.SOSAlert
 	var total int64
 
-	baseQuery := r.db.WithContext(ctx).Model(&models.SOSAlert{})
+	// Apply filters function
+	filterQuery := func(db *gorm.DB) *gorm.DB {
+		if status, ok := filters["status"].(string); ok && status != "" {
+			db = db.Where("status = ?", status)
+		}
+		if userID, ok := filters["userId"].(string); ok && userID != "" {
+			db = db.Where("user_id = ?", userID)
+		}
+		return db
+	}
 
-	// Apply filters to base query
-	if status, ok := filters["status"].(string); ok && status != "" {
-		baseQuery = baseQuery.Where("status = ?", status)
-	}
-	if userID, ok := filters["userId"].(string); ok && userID != "" {
-		baseQuery = baseQuery.Where("user_id = ?", userID)
+	// Count with filters
+	if err := filterQuery(r.db.WithContext(ctx)).Model(&models.SOSAlert{}).Count(&total).Error; err != nil {
+		return nil, 0, err
 	}
 
-	// For counting, create a fresh query with the same filters (without offset/limit/order)
-	countQuery := r.db.WithContext(ctx).Model(&models.SOSAlert{})
-	if status, ok := filters["status"].(string); ok && status != "" {
-		countQuery = countQuery.Where("status = ?", status)
-	}
-	if userID, ok := filters["userId"].(string); ok && userID != "" {
-		countQuery = countQuery.Where("user_id = ?", userID)
-	}
-	countQuery.Count(&total)
-
+	// Fetch with filters and pagination
 	offset := (page - 1) * limit
-	err := baseQuery.
-		Preload("User").
-		Preload("Ride").
+	err := filterQuery(r.db.WithContext(ctx)).
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
