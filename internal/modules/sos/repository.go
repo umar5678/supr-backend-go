@@ -51,30 +51,32 @@ func (r *repository) FindActiveByUserID(ctx context.Context, userID string) (*mo
 }
 
 func (r *repository) List(ctx context.Context, filters map[string]interface{}, page, limit int) ([]*models.SOSAlert, int64, error) {
-    var alerts []*models.SOSAlert
-    var total int64
+	var alerts []*models.SOSAlert
+	var total int64
 
-    query := r.db.WithContext(ctx).Model(&models.SOSAlert{})
+	query := r.db.WithContext(ctx).Model(&models.SOSAlert{})
 
-    if status, ok := filters["status"].(string); ok && status != "" {
-        query = query.Where("status = ?", status)
-    }
-    if userID, ok := filters["userId"].(string); ok && userID != "" {
-        query = query.Where("user_id = ?", userID)
-    }
+	if status, ok := filters["status"].(string); ok && status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if userID, ok := filters["userId"].(string); ok && userID != "" {
+		query = query.Where("user_id = ?", userID)
+	}
 
-    query.Count(&total)
+	// Create a copy for counting to preserve the original query state
+	countQuery := query.Session(&gorm.Session{NewDB: true})
+	countQuery.Count(&total)
 
-    offset := (page - 1) * limit
-    err := query.
-        Preload("User").
-        Preload("Ride").
-        Order("created_at DESC").
-        Offset(offset).
-        Limit(limit).
-        Find(&alerts).Error
+	offset := (page - 1) * limit
+	err := query.
+		Preload("User").
+		Preload("Ride").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&alerts).Error
 
-    return alerts, total, err
+	return alerts, total, err
 }
 
 func (r *repository) Resolve(ctx context.Context, alertID, resolvedBy, notes string) error {
