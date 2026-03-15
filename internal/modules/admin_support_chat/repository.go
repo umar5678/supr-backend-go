@@ -12,8 +12,11 @@ type Repository interface {
 	SaveMessage(ctx context.Context, message *models.AdminSupportChat) error
 	GetConversationMessages(ctx context.Context, conversationID string, limit, offset int) ([]*models.AdminSupportChat, int64, error)
 	GetUserConversations(ctx context.Context, userID string, limit, offset int) ([]string, int64, error)
+	GetAllConversations(ctx context.Context, limit, offset int) ([]string, int64, error)
+	GetLatestMessage(ctx context.Context, conversationID string) (*models.AdminSupportChat, error)
 	MarkAsRead(ctx context.Context, messageID string, readAt ...interface{}) error
 	GetUnreadCount(ctx context.Context, conversationID string) (int64, error)
+	IsConversationResolved(ctx context.Context, conversationID string) (bool, *time.Time, error)
 	ResolveConversation(ctx context.Context, conversationID string) error
 	DeleteConversation(ctx context.Context, conversationID string) error
 }
@@ -34,35 +37,36 @@ func (r *repository) GetConversationMessages(ctx context.Context, conversationID
 	var messages []*models.AdminSupportChat
 	var total int64
 
+	baseQuery := r.db.WithContext(ctx).
+		Model(&models.AdminSupportChat{}).
+		Where("conversation_id = ?", conversationID)
+
+	if err := baseQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if total == 0 {
+		return []*models.AdminSupportChat{}, 0, nil
+	}
+
 	err := r.db.WithContext(ctx).
 		Where("conversation_id = ?", conversationID).
 		Order("created_at ASC").
 		Limit(limit).
 		Offset(offset).
-		Find(&messages).
-		Error
+		Find(&messages).Error
 
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Get total count
-	r.db.WithContext(ctx).
-		Where("conversation_id = ?", conversationID).
-		Model(&models.AdminSupportChat{}).
-		Count(&total)
-
-	return messages, total, nil
+	return messages, total, err
 }
 
 func (r *repository) GetUserConversations(ctx context.Context, userID string, limit, offset int) ([]string, int64, error) {
 	var conversationIDs []string
 	var total int64
 
-	// Get conversations ordered by most recent message using GROUP BY
 	err := r.db.WithContext(ctx).
 		Model(&models.AdminSupportChat{}).
-		Where("sender_id = ?", userID).
+		Where("conversation_id = ?", userID).
+		Select("conversation_id").
 		Group("conversation_id").
 		Order("MAX(created_at) DESC").
 		Limit(limit).
@@ -74,14 +78,68 @@ func (r *repository) GetUserConversations(ctx context.Context, userID string, li
 		return nil, 0, err
 	}
 
-	// Get total count of unique conversations
 	r.db.WithContext(ctx).
 		Model(&models.AdminSupportChat{}).
-		Where("sender_id = ?", userID).
+		Where("conversation_id = ?", userID).
 		Distinct("conversation_id").
 		Count(&total)
 
 	return conversationIDs, total, nil
+}
+
+func (r *repository) GetAllConversations(ctx context.Context, limit, offset int) ([]string, int64, error) {
+	var conversationIDs []string
+	var total int64
+
+	err := r.db.WithContext(ctx).
+		Model(&models.AdminSupportChat{}).
+		Select("conversation_id").
+		Group("conversation_id").
+		Order("MAX(created_at) DESC").
+		Limit(limit).
+		Offset(offset).
+		Pluck("conversation_id", &conversationIDs).
+		Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	r.db.WithContext(ctx).
+		Model(&models.AdminSupportChat{}).
+		Distinct("conversation_id").
+		Count(&total)
+
+	return conversationIDs, total, nil
+}
+
+func (r *repository) GetLatestMessage(ctx context.Context, conversationID string) (*models.AdminSupportChat, error) {
+	var message models.AdminSupportChat
+	err := r.db.WithContext(ctx).
+		Where("conversation_id = ?", conversationID).
+		Order("created_at DESC").
+		First(&message).Error
+	if err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
+func (r *repository) IsConversationResolved(ctx context.Context, conversationID string) (bool, *time.Time, error) {
+	var message models.AdminSupportChat
+	err := r.db.WithContext(ctx).
+		Where("conversation_id = ? AND is_resolved = ?", conversationID, true).
+		Order("resolved_at DESC").
+		First(&message).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil, nil
+		}
+		return false, nil, err
+	}
+
+	return true, message.ResolvedAt, nil
 }
 
 func (r *repository) MarkAsRead(ctx context.Context, messageID string, readAt ...interface{}) error {
@@ -102,30 +160,25 @@ func (r *repository) MarkAsRead(ctx context.Context, messageID string, readAt ..
 func (r *repository) GetUnreadCount(ctx context.Context, conversationID string) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
-		Where("conversation_id = ? AND is_read = false", conversationID).
 		Model(&models.AdminSupportChat{}).
-		Count(&count).
-		Error
+		Where("conversation_id = ? AND is_read = ? AND sender_role != ?", conversationID, false, "admin").
+		Count(&count).Error
 	return count, err
 }
 
 func (r *repository) ResolveConversation(ctx context.Context, conversationID string) error {
-	// Update all messages in the conversation to mark as resolved
 	now := time.Now()
 	return r.db.WithContext(ctx).
-		Where("conversation_id = ?", conversationID).
 		Model(&models.AdminSupportChat{}).
+		Where("conversation_id = ?", conversationID).
 		Updates(map[string]interface{}{
 			"is_resolved": true,
 			"resolved_at": now,
-		}).
-		Error
+		}).Error
 }
 
 func (r *repository) DeleteConversation(ctx context.Context, conversationID string) error {
-	// Soft delete all messages in the conversation
 	return r.db.WithContext(ctx).
 		Where("conversation_id = ?", conversationID).
-		Delete(&models.AdminSupportChat{}).
-		Error
+		Delete(&models.AdminSupportChat{}).Error
 }

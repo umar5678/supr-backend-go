@@ -31,6 +31,10 @@ func NewService(repo Repository) Service {
 	return &service{repo: repo}
 }
 
+func isAdminRole(role string) bool {
+	return role == "admin" || role == "super_admin"
+}
+
 func (s *service) SendMessage(ctx context.Context, conversationID, senderID, senderRole, content string, metadata map[string]interface{}) (*models.AdminSupportChat, error) {
 	if conversationID == "" || senderID == "" || content == "" {
 		return nil, response.BadRequest("conversationId, senderId, and content are required")
@@ -204,32 +208,47 @@ func (s *service) GetUserConversationsWithDetails(ctx context.Context, userID, r
 
 	offset := (page - 1) * limit
 
-	// Get conversation IDs
-	conversationIDs, total, err := s.repo.GetUserConversations(ctx, userID, limit, offset)
+	var conversationIDs []string
+	var total int64
+	var err error
+
+	if isAdminRole(role) {
+		conversationIDs, total, err = s.repo.GetAllConversations(ctx, limit, offset)
+	} else {
+		conversationIDs, total, err = s.repo.GetUserConversations(ctx, userID, limit, offset)
+	}
+
 	if err != nil {
-		logger.Error("failed to get user conversations", "error", err, "userId", userID)
+		logger.Error("failed to get conversations", "error", err, "userId", userID, "role", role)
 		return nil, 0, response.InternalServerError("Failed to retrieve conversations", err)
 	}
 
-	// Build conversation details with latest message and metadata
 	conversations := make([]map[string]interface{}, 0, len(conversationIDs))
 
 	for _, conversationID := range conversationIDs {
-		// Get latest message in conversation
-		messages, msgTotal, err := s.repo.GetConversationMessages(ctx, conversationID, 1, 0)
-		if err != nil || len(messages) == 0 {
+
+		latestMsg, err := s.repo.GetLatestMessage(ctx, conversationID)
+		if err != nil || latestMsg == nil {
 			continue
 		}
 
-		latestMsg := messages[0]
+		_, msgTotal, _ := s.repo.GetConversationMessages(ctx, conversationID, 1, 0)
 
-		// Get unread count for this conversation
 		unreadCount, _ := s.repo.GetUnreadCount(ctx, conversationID)
+
+		isResolved, resolvedAt, _ := s.repo.IsConversationResolved(ctx, conversationID)
+
+		status := "pending"
+		if isResolved {
+			status = "resolved"
+		}
 
 		conv := map[string]interface{}{
 			"conversationId": conversationID,
+			"participantId":  conversationID,
 			"lastMessage": map[string]interface{}{
 				"content":    latestMsg.Content,
+				"senderId":   latestMsg.SenderID,
 				"senderRole": latestMsg.SenderRole,
 				"timestamp":  latestMsg.CreatedAt,
 				"isRead":     latestMsg.IsRead,
@@ -237,7 +256,11 @@ func (s *service) GetUserConversationsWithDetails(ctx context.Context, userID, r
 			"unreadCount":   unreadCount,
 			"totalMessages": msgTotal,
 			"preview":       latestMsg.Content,
-			"participantId": conversationID, // For non-admins, conversationID is the other participant's ID
+			"status":        status,
+		}
+
+		if resolvedAt != nil {
+			conv["resolvedAt"] = resolvedAt
 		}
 
 		conversations = append(conversations, conv)

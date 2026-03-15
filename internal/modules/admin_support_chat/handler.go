@@ -20,7 +20,6 @@ func NewHandler(service Service) *Handler {
 	}
 }
 
-// SetBroadcastFunc sets the WebSocket broadcast function for real-time messaging
 func (h *Handler) SetBroadcastFunc(fn func(map[string]interface{}) error) {
 	h.broadcastFunc = fn
 }
@@ -59,15 +58,13 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	// Enforce conversation ID logic:
-	// - Non-admins (riders, drivers, service providers, etc.) MUST use their userID as conversationID
-	// - Admins reply to existing conversations and should pass the user's ID as conversationID
+	roleStr := role.(string)
+	userIDStr := userID.(string)
 	conversationID := req.ConversationID
-	if role != "admin" {
-		// For non-admin users, conversation is always with themselves (1-to-1 with admins)
-		conversationID = userID.(string)
+
+	if roleStr != "admin" && roleStr != "super_admin" {
+		conversationID = userIDStr
 	} else if req.ConversationID == "" {
-		// Admin must specify which user's conversation to reply to
 		c.Error(response.BadRequest("Admin must specify conversationId (user ID) to reply to"))
 		return
 	}
@@ -75,8 +72,8 @@ func (h *Handler) SendMessage(c *gin.Context) {
 	message, err := h.service.SendMessage(
 		c.Request.Context(),
 		conversationID,
-		userID.(string),
-		role.(string),
+		userIDStr,
+		roleStr,
 		req.Content,
 		req.Metadata,
 	)
@@ -85,13 +82,14 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	// Broadcast message via WebSocket to all clients if broadcast function is configured
+	// Broadcast via WebSocket
 	if h.broadcastFunc != nil {
 		broadcastData := map[string]interface{}{
 			"id":             message.ID,
 			"conversationId": conversationID,
-			"senderId":       userID,
-			"senderRole":     role,
+			"userId":         conversationID,
+			"senderId":       userIDStr,
+			"senderRole":     roleStr,
 			"content":        req.Content,
 			"metadata":       req.Metadata,
 			"isRead":         message.IsRead,
@@ -100,13 +98,13 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		}
 
 		if err := h.broadcastFunc(broadcastData); err != nil {
-			logger.Warn("failed to broadcast admin support message via websocket", "error", err, "messageId", message.ID)
-			// Don't return error - message was saved successfully even if broadcast failed
+			logger.Warn("failed to broadcast message", "error", err, "messageId", message.ID)
 		}
 	}
 
 	response.Success(c, message, "Message sent successfully")
 }
+
 
 // GetConversationMessages godoc
 // @Summary Get conversation messages
@@ -124,7 +122,6 @@ func (h *Handler) SendMessage(c *gin.Context) {
 func (h *Handler) GetConversationMessages(c *gin.Context) {
 	conversationID := c.Param("conversationId")
 
-	// Validate conversationId is not empty and not malformed
 	if conversationID == "" || conversationID == "[object Object]" {
 		c.Error(response.BadRequest("Invalid conversationId parameter"))
 		return
@@ -134,13 +131,12 @@ func (h *Handler) GetConversationMessages(c *gin.Context) {
 	limit := 50
 
 	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
 			page = parsed
 		}
 	}
-
 	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
 			limit = parsed
 		}
 	}
@@ -169,22 +165,28 @@ func (h *Handler) GetConversationMessages(c *gin.Context) {
 func (h *Handler) GetUserConversations(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	role, _ := c.Get("role")
+
 	page := 1
 	limit := 50
 
 	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
 			page = parsed
 		}
 	}
-
 	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
 			limit = parsed
 		}
 	}
 
-	conversations, total, err := h.service.GetUserConversationsWithDetails(c.Request.Context(), userID.(string), role.(string), page, limit)
+	conversations, total, err := h.service.GetUserConversationsWithDetails(
+		c.Request.Context(),
+		userID.(string),
+		role.(string),
+		page,
+		limit,
+	)
 	if err != nil {
 		c.Error(err)
 		return
@@ -209,7 +211,6 @@ func (h *Handler) GetUserConversations(c *gin.Context) {
 func (h *Handler) MarkAsRead(c *gin.Context) {
 	messageID := c.Param("messageId")
 
-	// Validate messageId is not empty and not malformed
 	if messageID == "" || messageID == "[object Object]" {
 		c.Error(response.BadRequest("Invalid messageId parameter"))
 		return
@@ -238,7 +239,6 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 func (h *Handler) ResolveConversation(c *gin.Context) {
 	conversationID := c.Param("conversationId")
 
-	// Validate conversationId is not empty and not malformed
 	if conversationID == "" || conversationID == "[object Object]" {
 		c.Error(response.BadRequest("Invalid conversationId parameter"))
 		return
@@ -267,7 +267,6 @@ func (h *Handler) ResolveConversation(c *gin.Context) {
 func (h *Handler) DeleteConversation(c *gin.Context) {
 	conversationID := c.Param("conversationId")
 
-	// Validate conversationId is not empty and not malformed
 	if conversationID == "" || conversationID == "[object Object]" {
 		c.Error(response.BadRequest("Invalid conversationId parameter"))
 		return
