@@ -137,6 +137,16 @@ func (r *EventRegistry) registerDefaultSchemas() {
 		{EventRideStarted, "ride-events", "rides", "Ride started", "v1"},
 		{EventRideCompleted, "ride-events", "rides", "Ride completed", "v1"},
 		{EventRideCancelled, "ride-events", "rides", "Ride cancelled", "v1"},
+		{EventRideRequestSent, "ride-events", "rides", "Ride request sent to driver", "v1"},
+		{EventRideRequestCancelledBySystem, "ride-events", "rides", "Ride request cancelled by system", "v1"},
+		{EventRideRequestAlreadyAccepted, "ride-events", "rides", "Ride request already accepted", "v1"},
+		{EventRideRequestAccepted, "ride-events", "rides", "Ride request accepted by driver", "v1"},
+		{EventRideRequestRejected, "ride-events", "rides", "Ride request rejected by driver", "v1"},
+		{EventRideRequestExpired, "ride-events", "rides", "Ride request expired", "v1"},
+		{EventHighRiskRider, "ride-events", "rides", "High risk rider detected", "v1"},
+		{EventDriverArrived, "ride-events", "rides", "Driver arrived at pickup location", "v1"},
+		{EventInvalidRidePINAttempt, "ride-events", "rides", "Invalid ride PIN attempt", "v1"},
+		{EventRideAssigned, "ride-events", "rides", "Ride assigned to driver", "v1"},
 
 		{EventPaymentProcessed, "payment-events", "payments", "Payment processed", "v1"},
 		{EventPaymentFailed, "payment-events", "payments", "Payment failed", "v1"},
@@ -152,6 +162,7 @@ func (r *EventRegistry) registerDefaultSchemas() {
 		{EventUserVerificationPending, "user-events", "profile", "User verification pending", "v1"},
 
 		{EventSOSAlert, "sos-events", "sos", "SOS alert triggered", "v1"},
+		{EventSOSTriggered, "sos-events", "sos", "SOS triggered", "v1"},
 		{EventSOSResolved, "sos-events", "sos", "SOS alert resolved", "v1"},
 
 		{EventPromoCodeApplied, "promotion-events", "promotions", "Promo code applied", "v1"},
@@ -168,6 +179,7 @@ func (r *EventRegistry) registerDefaultSchemas() {
 		{EventPhoneSignup, "auth-events", "auth", "Phone signup", "v1"},
 		{EventPhoneLogin, "auth-events", "auth", "Phone login", "v1"},
 		{EventEmailSignup, "auth-events", "auth", "Email signup", "v1"},
+		{EventEmailLogin, "auth-events", "auth", "Email login", "v1"},
 		
 		{EventRiderProfileCreated, "rider-events", "riders", "Rider profile created", "v1"},
 		{EventRiderProfileUpdated, "rider-events", "riders", "Rider profile updated", "v1"},
@@ -191,7 +203,6 @@ func (r *EventRegistry) registerDefaultSchemas() {
 		{EventMessageReceived, "message-events", "messages", "Message received", "v1"},
 		{EventMessageRead, "message-events", "messages", "Message read", "v1"},
 		{EventMessageUnreadCountRetrieved, "message-events", "messages", "Unread message count retrieved", "v1"},
-
 		{EventUserConversationResolved, "message-events", "messages", "User conversation resolved", "v1"},
 		{EventUserConversationsRetrieved, "message-events", "messages", "User conversations retrieved", "v1"},
 
