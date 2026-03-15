@@ -82,9 +82,15 @@ func (c *NotificationController) RegisterRoutes(rg *gin.RouterGroup, authMiddlew
 // @Router /notifications [get]
 // @Security BearerAuth
 func (c *NotificationController) GetNotifications(ctx *gin.Context) {
-	userID, exists := ctx.Get("userID")
+	userIDStr, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		response.Unauthorized(ctx, "invalid user id")
 		return
 	}
 
@@ -94,7 +100,7 @@ func (c *NotificationController) GetNotifications(ctx *gin.Context) {
 		return
 	}
 
-	result, err := c.notifService.GetUserNotifications(ctx.Request.Context(), userID.(uuid.UUID), &req)
+	result, err := c.notifService.GetUserNotifications(ctx.Request.Context(), userID, &req)
 	if err != nil {
 		logger.Error("failed to get notifications", "error", err)
 		response.InternalError(ctx, "Failed to get notifications")
@@ -115,13 +121,19 @@ func (c *NotificationController) GetNotifications(ctx *gin.Context) {
 // @Router /notifications/unread/count [get]
 // @Security BearerAuth
 func (c *NotificationController) GetUnreadCount(ctx *gin.Context) {
-	userID, exists := ctx.Get("userID")
+	userIDStr, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
 		return
 	}
 
-	count, err := c.notifService.GetUnreadCount(ctx.Request.Context(), userID.(uuid.UUID))
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		response.Unauthorized(ctx, "invalid user id")
+		return
+	}
+
+	count, err := c.notifService.GetUnreadCount(ctx.Request.Context(), userID)
 	if err != nil {
 		logger.Error("failed to get unread count", "error", err)
 		response.InternalError(ctx, "Failed to get unread count")
@@ -145,9 +157,15 @@ func (c *NotificationController) GetUnreadCount(ctx *gin.Context) {
 // @Router /notifications/{id}/read [post]
 // @Security BearerAuth
 func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
-	userID, exists := ctx.Get("userID")
+	userIDStr, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		response.Unauthorized(ctx, "invalid user id")
 		return
 	}
 
@@ -157,7 +175,7 @@ func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.notifService.MarkAsRead(ctx.Request.Context(), notificationID, userID.(uuid.UUID)); err != nil {
+	if err := c.notifService.MarkAsRead(ctx.Request.Context(), notificationID, userID); err != nil {
 		logger.Error("failed to mark notification as read", "error", err)
 		response.InternalError(ctx, "Failed to mark notification as read")
 		return
@@ -177,13 +195,19 @@ func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
 // @Router /notifications/read-all [post]
 // @Security BearerAuth
 func (c *NotificationController) MarkAllAsRead(ctx *gin.Context) {
-	userID, exists := ctx.Get("userID")
+	userIDStr, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
 		return
 	}
 
-	if err := c.notifService.MarkAllAsRead(ctx.Request.Context(), userID.(uuid.UUID)); err != nil {
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		response.Unauthorized(ctx, "invalid user id")
+		return
+	}
+
+	if err := c.notifService.MarkAllAsRead(ctx.Request.Context(), userID); err != nil {
 		logger.Error("failed to mark all notifications as read", "error", err)
 		response.InternalError(ctx, "Failed to mark all notifications as read")
 		return
@@ -206,9 +230,15 @@ func (c *NotificationController) MarkAllAsRead(ctx *gin.Context) {
 // @Router /notifications/{id} [delete]
 // @Security BearerAuth
 func (c *NotificationController) DeleteNotification(ctx *gin.Context) {
-	userID, exists := ctx.Get("userID")
+	userIDStr, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		response.Unauthorized(ctx, "invalid user id")
 		return
 	}
 
@@ -218,7 +248,7 @@ func (c *NotificationController) DeleteNotification(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.notifService.DeleteNotification(ctx.Request.Context(), notificationID, userID.(uuid.UUID)); err != nil {
+	if err := c.notifService.DeleteNotification(ctx.Request.Context(), notificationID, userID); err != nil {
 		logger.Error("failed to delete notification", "error", err)
 		response.InternalError(ctx, "Failed to delete notification")
 		return
@@ -240,9 +270,15 @@ func (c *NotificationController) DeleteNotification(ctx *gin.Context) {
 // @Router /notifications/push-token [post]
 // @Security BearerAuth
 func (c *NotificationController) RegisterPushToken(ctx *gin.Context) {
-	userID, exists := ctx.Get("userID")
+	userIDStr, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		response.Unauthorized(ctx, "invalid user id")
 		return
 	}
 
@@ -252,7 +288,7 @@ func (c *NotificationController) RegisterPushToken(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.pushService.RegisterToken(ctx.Request.Context(), userID.(uuid.UUID), req.Token, req.DeviceID, req.DeviceOS); err != nil {
+	if err := c.pushService.RegisterToken(ctx.Request.Context(), userID, req.Token, req.DeviceID, req.DeviceOS); err != nil {
 		logger.Error("failed to register push token", "error", err)
 		response.InternalError(ctx, "Failed to register push token")
 		return
@@ -296,9 +332,15 @@ func (c *NotificationController) UnregisterPushToken(ctx *gin.Context) {
 // @Router /notifications/ws/push [get]
 // @Security BearerAuth
 func (c *NotificationController) SubscribePush(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
+	userIDStr, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
 		return
 	}
 
@@ -315,12 +357,12 @@ func (c *NotificationController) SubscribePush(ctx *gin.Context) {
 
 	// Subscribe to user's notifications - cast to LocalPushService
 	if localPush, ok := c.pushService.(*service.LocalPushService); ok {
-		if err := localPush.SubscribeToUser(userID.(uuid.UUID), subscriberID, msgChan); err != nil {
+		if err := localPush.SubscribeToUser(userID, subscriberID, msgChan); err != nil {
 			logger.Error("failed to subscribe to push", "error", err)
 			ws.WriteMessage(websocket.TextMessage, []byte(`{"error":"Failed to subscribe"}`))
 			return
 		}
-		defer localPush.UnsubscribeFromUser(userID.(uuid.UUID), subscriberID)
+		defer localPush.UnsubscribeFromUser(userID, subscriberID)
 
 		// Listen for messages and send to WebSocket
 		for msg := range msgChan {
