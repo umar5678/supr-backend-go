@@ -83,7 +83,7 @@ func (h *Handler) SendMessage(c *gin.Context) {
 	}
 
 	senderType := "rider"
-	if val, exists := c.Get("userRole"); exists {
+	if val, exists := c.Get("role"); exists {
 		if role, ok := val.(string); ok && role == "driver" {
 			senderType = "driver"
 		}

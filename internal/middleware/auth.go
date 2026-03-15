@@ -1,3 +1,4 @@
+// internal/middleware/auth.go
 package middleware
 
 import (
@@ -26,9 +27,7 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		tokenString := parts[1]
-
-		claims, err := jwt.ValidateToken(tokenString, cfg.JWT.Secret, cfg.JWT.Issuer)
+		claims, err := jwt.ValidateToken(parts[1], cfg.JWT.Secret, cfg.JWT.Issuer)
 		if err != nil {
 			c.Error(response.UnauthorizedError("Invalid or expired token"))
 			c.Abort()
@@ -36,7 +35,7 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		c.Set("userID", claims.UserID)
-		c.Set("role", claims.Role)
+		c.Set("role", claims.Role) // ← standardized key
 
 		c.Next()
 	}
@@ -44,7 +43,7 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 
 func RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userRole, exists := c.Get("role")
+		userRole, exists := c.Get("role") // ← matches Auth
 		if !exists {
 			c.Error(response.ForbiddenError("Insufficient permissions"))
 			c.Abort()
@@ -78,11 +77,10 @@ func OptionalAuth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		token := parts[1]
-		claims, err := jwt.ValidateToken(token, cfg.JWT.Secret, cfg.JWT.Issuer)
+		claims, err := jwt.ValidateToken(parts[1], cfg.JWT.Secret, cfg.JWT.Issuer)
 		if err == nil {
 			c.Set("userID", claims.UserID)
-			c.Set("userRole", claims.Role)
+			c.Set("role", claims.Role) // ← FIXED: was "userRole"
 		}
 
 		c.Next()

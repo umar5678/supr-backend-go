@@ -44,7 +44,7 @@ func RequireRiderOrDriver() gin.HandlerFunc {
 
 func RequireAdminOrSelf() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userRole, exists := c.Get("userRole")
+		userRole, exists := c.Get("role")
 		if !exists {
 			c.Error(response.UnauthorizedError("Authentication required"))
 			c.Abort()
@@ -81,7 +81,7 @@ func RequireAdminOrSelf() gin.HandlerFunc {
 
 func RequireServiceProviderOrAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userRole, exists := c.Get("userRole")
+		userRole, exists := c.Get("role")
 		if !exists {
 			c.Error(response.UnauthorizedError("Authentication required"))
 			c.Abort()

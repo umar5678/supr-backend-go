@@ -18,7 +18,7 @@ func NewHandler(service Service) *Handler {
 
 func (h *Handler) getProviderIDFromContext(c *gin.Context) (string, error) {
 	userID, _ := c.Get("userID")
-	userRole, _ := c.Get("userRole")
+	userRole, _ := c.Get("role")
 
 	providerID, err := h.service.GetProviderIDByUserID(c.Request.Context(), userID.(string))
 	if err != nil {
