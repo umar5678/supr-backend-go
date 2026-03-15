@@ -82,7 +82,7 @@ func (c *NotificationController) RegisterRoutes(rg *gin.RouterGroup, authMiddlew
 // @Router /notifications [get]
 // @Security BearerAuth
 func (c *NotificationController) GetNotifications(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
+	userID, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
 		return
@@ -115,7 +115,7 @@ func (c *NotificationController) GetNotifications(ctx *gin.Context) {
 // @Router /notifications/unread/count [get]
 // @Security BearerAuth
 func (c *NotificationController) GetUnreadCount(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
+	userID, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
 		return
@@ -145,7 +145,7 @@ func (c *NotificationController) GetUnreadCount(ctx *gin.Context) {
 // @Router /notifications/{id}/read [post]
 // @Security BearerAuth
 func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
+	userID, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
 		return
@@ -177,7 +177,7 @@ func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
 // @Router /notifications/read-all [post]
 // @Security BearerAuth
 func (c *NotificationController) MarkAllAsRead(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
+	userID, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
 		return
@@ -206,7 +206,7 @@ func (c *NotificationController) MarkAllAsRead(ctx *gin.Context) {
 // @Router /notifications/{id} [delete]
 // @Security BearerAuth
 func (c *NotificationController) DeleteNotification(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
+	userID, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
 		return
@@ -240,7 +240,7 @@ func (c *NotificationController) DeleteNotification(ctx *gin.Context) {
 // @Router /notifications/push-token [post]
 // @Security BearerAuth
 func (c *NotificationController) RegisterPushToken(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
+	userID, exists := ctx.Get("userID")
 	if !exists {
 		response.Unauthorized(ctx, "unauthorized")
 		return
