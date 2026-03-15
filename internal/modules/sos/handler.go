@@ -32,7 +32,7 @@ func (h *Handler) TriggerSOS(c *gin.Context) {
 
 	var req dto.TriggerSOSRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(response.BadRequest("Invalid request body"))
+		c.Error(response.BadRequest("Invalid request body: " + err.Error()))
 		return
 	}
 
@@ -59,7 +59,12 @@ func (h *Handler) GetSOS(c *gin.Context) {
 		c.Error(response.UnauthorizedError("User ID not found in context"))
 		return
 	}
+
 	alertID := c.Param("id")
+	if alertID == "" {
+		c.Error(response.BadRequest("Alert ID is required"))
+		return
+	}
 
 	alert, err := h.service.GetSOS(c.Request.Context(), userID.(string), alertID)
 	if err != nil {
@@ -112,11 +117,10 @@ func (h *Handler) ListSOS(c *gin.Context) {
 
 	var req dto.ListSOSRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.Error(response.BadRequest("Invalid query parameters"))
+		c.Error(response.BadRequest("Invalid query parameters: " + err.Error()))
 		return
 	}
 
-	// Set defaults for pagination
 	req.SetDefaults()
 
 	alerts, total, err := h.service.ListSOS(c.Request.Context(), userID.(string), req)
@@ -145,10 +149,16 @@ func (h *Handler) ResolveSOS(c *gin.Context) {
 		c.Error(response.UnauthorizedError("User ID not found in context"))
 		return
 	}
+
 	alertID := c.Param("id")
+	if alertID == "" {
+		c.Error(response.BadRequest("Alert ID is required"))
+		return
+	}
 
 	var req dto.ResolveSOSRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		// Allow empty body - notes are optional
 		req = dto.ResolveSOSRequest{}
 	}
 
@@ -174,7 +184,12 @@ func (h *Handler) CancelSOS(c *gin.Context) {
 		c.Error(response.UnauthorizedError("User ID not found in context"))
 		return
 	}
+
 	alertID := c.Param("id")
+	if alertID == "" {
+		c.Error(response.BadRequest("Alert ID is required"))
+		return
+	}
 
 	alert, err := h.service.CancelSOS(c.Request.Context(), userID.(string), alertID)
 	if err != nil {
@@ -201,11 +216,16 @@ func (h *Handler) UpdateSOSLocation(c *gin.Context) {
 		c.Error(response.UnauthorizedError("User ID not found in context"))
 		return
 	}
+
 	alertID := c.Param("id")
+	if alertID == "" {
+		c.Error(response.BadRequest("Alert ID is required"))
+		return
+	}
 
 	var req dto.UpdateSOSLocationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(response.BadRequest("Invalid request body"))
+		c.Error(response.BadRequest("Invalid request body: " + err.Error()))
 		return
 	}
 

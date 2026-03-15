@@ -2,6 +2,7 @@ package sos
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,15 +38,20 @@ func NewService(repo Repository, db *gorm.DB) Service {
 }
 
 func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.TriggerSOSRequest) (*dto.SOSAlertResponse, error) {
+	if userID == "" {
+		return nil, response.BadRequest("User ID is required")
+	}
+
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
 	existingAlert, err := s.repo.FindActiveByUserID(ctx, userID)
-	if err == nil && existingAlert.Status == "active" {
+	if err == nil && existingAlert != nil && existingAlert.Status == "active" {
 		return nil, response.BadRequest("You already have an active SOS alert")
 	}
 
+	now := time.Now()
 	alert := &models.SOSAlert{
 		UserID:      userID,
 		RideID:      req.RideID,
@@ -54,7 +60,7 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 		Longitude:   req.Longitude,
 		Status:      "active",
 		Severity:    "critical",
-		TriggeredAt: time.Now(),
+		TriggeredAt: now,
 	}
 
 	if err := s.repo.Create(ctx, alert); err != nil {
@@ -62,7 +68,11 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 		return nil, response.InternalServerError("Failed to trigger SOS", err)
 	}
 
-	alert, _ = s.repo.FindByID(ctx, alert.ID)
+	alert, err = s.repo.FindByID(ctx, alert.ID)
+	if err != nil {
+		logger.Error("failed to fetch created SOS alert", "error", err, "alertID", alert.ID)
+		return nil, response.InternalServerError("Failed to fetch created alert", err)
+	}
 
 	go s.notifyEmergencyContacts(context.Background(), alert)
 	go s.notifySafetyTeam(context.Background(), alert)
@@ -78,9 +88,17 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 }
 
 func (s *service) GetSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error) {
+	if userID == "" || alertID == "" {
+		return nil, response.BadRequest("User ID and Alert ID are required")
+	}
+
 	alert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
-		return nil, response.NotFoundError("SOS alert")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NotFoundError("SOS alert")
+		}
+		logger.Error("failed to fetch SOS alert", "error", err, "alertID", alertID)
+		return nil, response.InternalServerError("Failed to fetch SOS alert", err)
 	}
 
 	if alert.UserID != userID {
@@ -91,41 +109,54 @@ func (s *service) GetSOS(ctx context.Context, userID, alertID string) (*dto.SOSA
 }
 
 func (s *service) GetActiveSOS(ctx context.Context, userID string) (*dto.SOSAlertResponse, error) {
+	if userID == "" {
+		return nil, response.BadRequest("User ID is required")
+	}
+
 	alert, err := s.repo.FindActiveByUserID(ctx, userID)
 	if err != nil {
-		return nil, response.NotFoundError("No active SOS alert")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NotFoundError("No active SOS alert")
+		}
+		logger.Error("failed to fetch active SOS alert", "error", err, "userID", userID)
+		return nil, response.InternalServerError("Failed to fetch active SOS alert", err)
 	}
 
 	return dto.ToSOSAlertResponse(alert), nil
 }
 
 func (s *service) ListSOS(ctx context.Context, userID string, req dto.ListSOSRequest) ([]*dto.SOSAlertListResponse, int64, error) {
+	if userID == "" {
+		return nil, 0, response.BadRequest("User ID is required")
+	}
+
 	req.SetDefaults()
 
-	filters := map[string]interface{}{
-		"userId": userID,
-	}
-	if req.Status != "" {
-		filters["status"] = req.Status
-	}
-
-	alerts, total, err := s.repo.List(ctx, filters, req.Page, req.Limit)
+	alerts, total, err := s.repo.List(ctx, userID, req.Status, req.Page, req.Limit)
 	if err != nil {
+		logger.Error("failed to list SOS alerts", "error", err, "userID", userID)
 		return nil, 0, response.InternalServerError("Failed to fetch SOS alerts", err)
 	}
 
-	result := make([]*dto.SOSAlertListResponse, len(alerts))
-	for i, alert := range alerts {
-		result[i] = dto.ToSOSAlertListResponse(alert)
+	result := make([]*dto.SOSAlertListResponse, 0, len(alerts))
+	for _, alert := range alerts {
+		result = append(result, dto.ToSOSAlertListResponse(alert))
 	}
 
 	return result, total, nil
 }
 
 func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) (*dto.SOSAlertResponse, error) {
+	if userID == "" || alertID == "" {
+		return nil, response.BadRequest("User ID and Alert ID are required")
+	}
+
 	alert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
-		return nil, response.NotFoundError("SOS alert")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NotFoundError("SOS alert")
+		}
+		return nil, response.InternalServerError("Failed to fetch SOS alert", err)
 	}
 
 	if alert.UserID != userID {
@@ -133,7 +164,7 @@ func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dt
 	}
 
 	if alert.Status != "active" {
-		return nil, response.BadRequest("Alert is not active")
+		return nil, response.BadRequest(fmt.Sprintf("Alert cannot be resolved, current status: %s", alert.Status))
 	}
 
 	if err := s.repo.Resolve(ctx, alertID, userID, req.Notes); err != nil {
@@ -141,21 +172,29 @@ func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dt
 		return nil, response.InternalServerError("Failed to resolve SOS alert", err)
 	}
 
-	// Fetch updated alert
 	updatedAlert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
 		logger.Error("failed to fetch updated alert after resolve", "error", err, "alertID", alertID)
 		return nil, response.InternalServerError("Failed to fetch updated alert", err)
 	}
 
+	go NotifySOSResolved(context.Background(), updatedAlert, userID)
+
 	logger.Info("SOS alert resolved", "alertID", alertID, "userID", userID)
 	return dto.ToSOSAlertResponse(updatedAlert), nil
 }
 
 func (s *service) CancelSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error) {
+	if userID == "" || alertID == "" {
+		return nil, response.BadRequest("User ID and Alert ID are required")
+	}
+
 	alert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
-		return nil, response.NotFoundError("SOS alert")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NotFoundError("SOS alert")
+		}
+		return nil, response.InternalServerError("Failed to fetch SOS alert", err)
 	}
 
 	if alert.UserID != userID {
@@ -163,7 +202,7 @@ func (s *service) CancelSOS(ctx context.Context, userID, alertID string) (*dto.S
 	}
 
 	if alert.Status != "active" {
-		return nil, response.BadRequest("Alert is not active")
+		return nil, response.BadRequest(fmt.Sprintf("Alert cannot be cancelled, current status: %s", alert.Status))
 	}
 
 	if err := s.repo.Cancel(ctx, alertID); err != nil {
@@ -171,7 +210,6 @@ func (s *service) CancelSOS(ctx context.Context, userID, alertID string) (*dto.S
 		return nil, response.InternalServerError("Failed to cancel SOS alert", err)
 	}
 
-	// Fetch updated alert
 	updatedAlert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
 		logger.Error("failed to fetch updated alert after cancel", "error", err, "alertID", alertID)
@@ -182,11 +220,17 @@ func (s *service) CancelSOS(ctx context.Context, userID, alertID string) (*dto.S
 	return dto.ToSOSAlertResponse(updatedAlert), nil
 }
 
-// UpdateSOSLocation updates the location of an active SOS alert and broadcasts to admin
 func (s *service) UpdateSOSLocation(ctx context.Context, userID, alertID string, latitude, longitude float64) (*dto.SOSAlertResponse, error) {
+	if userID == "" || alertID == "" {
+		return nil, response.BadRequest("User ID and Alert ID are required")
+	}
+
 	alert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
-		return nil, response.NotFoundError("SOS alert")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NotFoundError("SOS alert")
+		}
+		return nil, response.InternalServerError("Failed to fetch SOS alert", err)
 	}
 
 	if alert.UserID != userID {
@@ -197,28 +241,26 @@ func (s *service) UpdateSOSLocation(ctx context.Context, userID, alertID string,
 		return nil, response.BadRequest("Alert is not active")
 	}
 
-	// Update location in the database
 	if err := s.repo.UpdateLocation(ctx, alertID, latitude, longitude); err != nil {
 		logger.Error("failed to update SOS location", "error", err, "alertID", alertID)
 		return nil, response.InternalServerError("Failed to update SOS location", err)
 	}
 
-	// Broadcast updated location to admin
-	websocketutil.SendSOSLocationUpdate(userID, map[string]interface{}{
+	go websocketutil.SendSOSLocationUpdate(userID, map[string]interface{}{
 		"alertId":   alertID,
 		"rideId":    alert.RideID,
 		"latitude":  latitude,
 		"longitude": longitude,
+		"timestamp": time.Now().UTC(),
 	}, true)
 
-	// Fetch updated alert
 	updatedAlert, err := s.repo.FindByID(ctx, alertID)
 	if err != nil {
 		logger.Error("failed to fetch updated alert after location update", "error", err, "alertID", alertID)
 		return nil, response.InternalServerError("Failed to fetch updated alert", err)
 	}
 
-	logger.Info("SOS location updated and broadcasted to admin",
+	logger.Info("SOS location updated",
 		"alertID", alertID,
 		"userID", userID,
 		"latitude", latitude,
@@ -228,6 +270,12 @@ func (s *service) UpdateSOSLocation(ctx context.Context, userID, alertID string,
 }
 
 func (s *service) notifyEmergencyContacts(ctx context.Context, alert *models.SOSAlert) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("panic in notifyEmergencyContacts", "recover", r, "alertID", alert.ID)
+		}
+	}()
+
 	var user models.User
 	if err := s.userDB.WithContext(ctx).Where("id = ?", alert.UserID).First(&user).Error; err != nil {
 		logger.Error("failed to fetch user for emergency contact", "error", err, "userID", alert.UserID)
@@ -259,10 +307,18 @@ func (s *service) notifyEmergencyContacts(ctx context.Context, alert *models.SOS
 		"message": "SOS Alert from your emergency contact",
 	})
 
-	s.repo.MarkEmergencyContactsNotified(ctx, alert.ID)
+	if err := s.repo.MarkEmergencyContactsNotified(ctx, alert.ID); err != nil {
+		logger.Error("failed to mark emergency contacts notified", "error", err, "alertID", alert.ID)
+	}
 }
 
 func (s *service) notifySafetyTeam(ctx context.Context, alert *models.SOSAlert) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("panic in notifySafetyTeam", "recover", r, "alertID", alert.ID)
+		}
+	}()
+
 	websocketutil.BroadcastToRole("admin", websocket.TypeSOSAlert, map[string]interface{}{
 		"type":      "sos_alert",
 		"alertId":   alert.ID,
@@ -279,5 +335,7 @@ func (s *service) notifySafetyTeam(ctx context.Context, alert *models.SOSAlert) 
 		"rideID", alert.RideID,
 	)
 
-	s.repo.MarkSafetyTeamNotified(ctx, alert.ID)
+	if err := s.repo.MarkSafetyTeamNotified(ctx, alert.ID); err != nil {
+		logger.Error("failed to mark safety team notified", "error", err, "alertID", alert.ID)
+	}
 }
