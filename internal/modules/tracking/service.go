@@ -7,6 +7,7 @@ import (
 
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/tracking/dto"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/location"
 	"github.com/umar5678/go-backend/internal/utils/logger"
@@ -25,11 +26,19 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo          Repository
+	eventProducer notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository) Service {
-	return &service{repo: repo}
+	return NewServiceWithNotifications(repo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, eventProducer notificationsmodule.EventProducer) Service {
+	return &service{
+		repo:          repo,
+		eventProducer: eventProducer,
+	}
 }
 
 func (s *service) UpdateDriverLocation(ctx context.Context, driverID string, req dto.UpdateLocationRequest) error {

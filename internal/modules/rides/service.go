@@ -15,6 +15,7 @@ import (
 	batchingdto "github.com/umar5678/go-backend/internal/modules/batching/dto"
 	driversrepo "github.com/umar5678/go-backend/internal/modules/drivers"
 	fraudservice "github.com/umar5678/go-backend/internal/modules/fraud"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	pricingservice "github.com/umar5678/go-backend/internal/modules/pricing"
 	pricingdto "github.com/umar5678/go-backend/internal/modules/pricing/dto"
 	"github.com/umar5678/go-backend/internal/modules/profile"
@@ -78,6 +79,7 @@ type service struct {
 	fraudService      fraudservice.Service
 	batchingService   batchingservice.Service
 	wsHelper          *RideWebSocketHelper
+	eventProducer     notificationsmodule.EventProducer
 }
 
 func NewService(
@@ -96,6 +98,42 @@ func NewService(
 	batchingService batchingservice.Service,
 	adminRepo adminrepo.Repository,
 ) Service {
+	return NewServiceWithNotifications(
+		repo,
+		driversRepo,
+		ridersRepo,
+		pricingService,
+		trackingService,
+		walletService,
+		ridePINService,
+		profileService,
+		sosService,
+		promotionsService,
+		ratingsService,
+		fraudService,
+		batchingService,
+		adminRepo,
+		nil,
+	)
+}
+
+func NewServiceWithNotifications(
+	repo Repository,
+	driversRepo driversrepo.Repository,
+	ridersRepo ridersrepo.Repository,
+	pricingService pricingservice.Service,
+	trackingService trackingservice.Service,
+	walletService walletservice.Service,
+	ridePINService ridepinservice.Service,
+	profileService profile.Service,
+	sosService sos.Service,
+	promotionsService promotionsservice.Service,
+	ratingsService ratingsservice.Service,
+	fraudService fraudservice.Service,
+	batchingService batchingservice.Service,
+	adminRepo adminrepo.Repository,
+	eventProducer notificationsmodule.EventProducer,
+) Service {
 	svc := &service{
 		repo:              repo,
 		adminRepo:         adminRepo,
@@ -112,6 +150,7 @@ func NewService(
 		fraudService:      fraudService,
 		batchingService:   batchingService,
 		wsHelper:          NewRideWebSocketHelper(),
+		eventProducer:     eventProducer,
 	}
 
 	svc.wsHelper.SetService(svc)
@@ -845,6 +884,13 @@ func (s *service) sendRideRequestToDriver(
 		"eta", driver.ETA,
 	)
 
+	s.publishRideEvent(ctx, notificationsmodule.EventRideRequestSent, ride.ID, ride.RiderID, driver.DriverID, map[string]interface{}{
+		"driver_id": driver.DriverID,
+		"request_id": requestID,
+		"distance":  driver.Distance,
+		"eta":       driver.ETA,
+	})
+
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
@@ -857,6 +903,9 @@ func (s *service) sendRideRequestToDriver(
 				"driverID", driver.DriverID,
 				"driverName", driverDetails.User.Name,
 			)
+			s.publishRideEvent(ctx, notificationsmodule.EventRideRequestCancelledBySystem, ride.ID, ride.RiderID, driver.DriverID, map[string]interface{}{
+				"request_id": requestID,
+			})
 			return
 
 		case <-ticker.C:
@@ -869,6 +918,9 @@ func (s *service) sendRideRequestToDriver(
 					"rideID", ride.ID,
 					"rideStatus", currentRide.Status,
 				)
+				s.publishRideEvent(ctx, notificationsmodule.EventRideRequestAlreadyAccepted, ride.ID, ride.RiderID, driver.DriverID, map[string]interface{}{
+					"request_id": requestID,
+				})
 				return
 			}
 
@@ -884,6 +936,9 @@ func (s *service) sendRideRequestToDriver(
 					"driverName", driverDetails.User.Name,
 					"rideID", ride.ID,
 				)
+				s.publishRideEvent(ctx, notificationsmodule.EventRideRequestAccepted, ride.ID, ride.RiderID, driver.DriverID, map[string]interface{}{
+					"request_id": requestID,
+				})
 				resultChan <- driver.DriverID
 				return
 			}
@@ -895,6 +950,9 @@ func (s *service) sendRideRequestToDriver(
 					"driverName", driverDetails.User.Name,
 					"rideID", ride.ID,
 				)
+				s.publishRideEvent(ctx, notificationsmodule.EventRideRequestRejected, ride.ID, ride.RiderID, driver.DriverID, map[string]interface{}{
+					"request_id": requestID,
+				})
 				return
 			}
 
@@ -905,6 +963,9 @@ func (s *service) sendRideRequestToDriver(
 					"driverName", driverDetails.User.Name,
 					"rideID", ride.ID,
 				)
+				s.publishRideEvent(ctx, notificationsmodule.EventRideRequestExpired, ride.ID, ride.RiderID, driver.DriverID, map[string]interface{}{
+					"request_id": requestID,
+				})
 				return
 			}
 
@@ -916,6 +977,9 @@ func (s *service) sendRideRequestToDriver(
 					"driverName", driverDetails.User.Name,
 					"rideID", ride.ID,
 				)
+				s.publishRideEvent(ctx, notificationsmodule.EventRideRequestExpired, ride.ID, ride.RiderID, driver.DriverID, map[string]interface{}{
+					"request_id": requestID,
+				})
 				return
 			}
 		}
@@ -964,6 +1028,9 @@ func (s *service) AcceptRide(ctx context.Context, userID, rideID string) (*dto.R
 			"riderID", ride.RiderID,
 			"riskScore", riderRiskScore,
 			"driverID", driverID)
+		s.publishRideEvent(ctx, notificationsmodule.EventHighRiskRider, rideID, ride.RiderID, driverID, map[string]interface{}{
+			"riskScore": riderRiskScore,
+		})
 	}
 
 	if err := s.repo.UpdateRideRequestStatus(ctx, rideRequest.ID, "accepted", nil); err != nil {
@@ -984,6 +1051,11 @@ func (s *service) AcceptRide(ctx context.Context, userID, rideID string) (*dto.R
 		"driverName", driver.User.Name,
 		"riderID", ride.RiderID,
 	)
+
+	s.publishRideEvent(ctx, notificationsmodule.EventRideAccepted, rideID, ride.RiderID, driverID, map[string]interface{}{
+		"driverName":   driver.User.Name,
+		"status":       "accepted",
+	})
 
 	freshRide, err := s.repo.FindRideByID(ctx, rideID)
 	if err != nil {
@@ -1025,6 +1097,12 @@ func (s *service) RejectRide(ctx context.Context, userID, rideID string, req dto
 		return response.NotFoundError("Ride request not found")
 	}
 
+	ride, err := s.repo.FindRideByID(ctx, rideID)
+	if err != nil {
+		logger.Error("ride not found", "error", err, "rideID", rideID)
+		return response.NotFoundError("Ride not found")
+	}
+
 	if rideRequest.Status != "pending" {
 		return response.BadRequest("Ride request is no longer available")
 	}
@@ -1041,6 +1119,10 @@ func (s *service) RejectRide(ctx context.Context, userID, rideID string, req dto
 		"requestID", rideRequest.ID,
 		"reason", req.Reason,
 	)
+
+	s.publishRideEvent(ctx, notificationsmodule.EventRideRequestRejected, rideID, ride.RiderID, driverID, map[string]interface{}{
+		"reason": req.Reason,
+	})
 
 	return nil
 }
@@ -1096,6 +1178,8 @@ func (s *service) MarkArrived(ctx context.Context, userID, rideID string) (*dto.
 		"driverName", driver.User.Name,
 		"riderID", ride.RiderID,
 	)
+
+	s.publishRideEvent(ctx, notificationsmodule.EventDriverArrived, rideID, ride.RiderID, driverID, map[string]interface{}{})
 
 	time.AfterFunc(3*time.Minute, func() {
 		if ride.WaitTimeCharge == nil {
@@ -1162,10 +1246,18 @@ func (s *service) StartRide(ctx context.Context, userID, rideID string, req dto.
 			"rideID", rideID,
 			"driverID", driverID,
 			"riderID", ride.RiderID)
+
+		s.publishRideEvent(ctx, notificationsmodule.EventInvalidRidePINAttempt, rideID, ride.RiderID, driverID, map[string]interface{}{})
 		return nil, response.BadRequest("Invalid Rider PIN. Please ask the rider for their 4-digit Ride PIN.")
 	}
 
 	logger.Info("ride PIN verified at start", "rideID", rideID)
+
+	s.publishRideEvent(ctx, notificationsmodule.EventRideStarted, rideID, ride.RiderID, driverUserID, map[string]interface{}{
+		"ride_id":   rideID,
+		"driver_id": driverUserID,
+		"rider_id":  ride.RiderID,
+	})
 
 	now := time.Now()
 	if ride.ArrivedAt != nil {
@@ -1192,6 +1284,12 @@ func (s *service) StartRide(ctx context.Context, userID, rideID string, req dto.
 		logger.Warn("failed to update driver status", "error", err, "driverID", driverID)
 	}
 
+	s.publishRideEvent(ctx, notificationsmodule.EventRideStarted, rideID, ride.RiderID, driverUserID, map[string]interface{}{
+		"ride_id":   rideID,
+		"driver_id": driverUserID,
+		"rider_id":  ride.RiderID,
+	})
+
 	cacheKey := fmt.Sprintf("ride:active:%s", rideID)
 	logger.Info("setting ride cache", "cacheKey", cacheKey)
 	if err := cache.SetJSON(ctx, cacheKey, ride, 30*time.Minute); err != nil {
@@ -1207,6 +1305,10 @@ func (s *service) StartRide(ctx context.Context, userID, rideID string, req dto.
 	}); err != nil {
 		logger.Warn("failed to send websocket notification", "error", err, "rideID", rideID)
 	}
+
+	s.publishRideEvent(ctx, notificationsmodule.EventRideStarted, rideID, ride.RiderID, driverUserID, map[string]interface{}{
+		"status": "started",
+	})
 
 	logger.Info("ride started successfully", "rideID", rideID, "driverID", driverID, "riderID", ride.RiderID)
 
@@ -1259,7 +1361,6 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	distanceToDropoff := location.HaversineDistance(req.DriverLat, req.DriverLon, ride.DropoffLat, ride.DropoffLon)
 	distanceKm := distanceToDropoff
-	// const maxCompletionRadiusKm = 0.100
 	const maxCompletionRadiusKm = 100
 	const epsilon = 0.001
 
@@ -1270,7 +1371,6 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 
 	logger.Info("driver verified within 100 meter radius", "rideID", rideID, "distanceKm", distanceKm)
 
-	// Validate ride duration (must be 60 seconds to 12 hours)
 	const minRideDurationSeconds = 60
 	const maxRideDurationSeconds = 12 * 60 * 60
 	if req.ActualDuration < minRideDurationSeconds || req.ActualDuration > maxRideDurationSeconds {
@@ -1285,7 +1385,6 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		))
 	}
 
-	// Log ride completion details for debugging
 	logger.Info("CompleteRide called",
 		"rideID", rideID,
 		"driverID", userID,
@@ -1478,6 +1577,12 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 		logger.Warn("failed to notify driver of completion", "error", err, "rideID", rideID)
 	}
 
+	s.publishRideEvent(ctx, notificationsmodule.EventRideCompleted, rideID, ride.RiderID, driverUserID, map[string]interface{}{
+		"status":      "completed",
+		"fare":        actualFare,
+		"earnings":    driverEarnings,
+	})
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -1652,7 +1757,6 @@ func (s *service) assignDriverToRide(ctx context.Context, rideID, userID, driver
 		"eta":     calculatedETA,
 	}
 
-	// Send to rider via WebSocket
 	if err := s.wsHelper.SendRideAccepted(ride.RiderID, rideDetails); err != nil {
 		logger.Error("failed to send ride acceptance notification",
 			"error", err,
@@ -1672,6 +1776,10 @@ func (s *service) assignDriverToRide(ctx context.Context, rideID, userID, driver
 		"riderID", ride.RiderID,
 		"calculatedETA", calculatedETA,
 	)
+
+	s.publishRideEvent(ctx, notificationsmodule.EventRideAssigned, rideID, ride.RiderID, driverProfileID, map[string]interface{}{
+		"calculated_eta": calculatedETA,
+	})
 
 	return nil
 }
@@ -2563,6 +2671,17 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 		"driverPenalty", driverPenalty,
 		"status", "success",
 	)
+	driverID := ""
+	if ride.DriverID != nil {
+		driverID = *ride.DriverID
+	}
+	s.publishRideEvent(ctx, notificationsmodule.EventRideCancelled, rideID, ride.RiderID, driverID, map[string]interface{}{
+		"status":       "cancelled",
+		"cancelledBy":  cancelledBy,
+		"reason":       req.Reason,
+		"riderFee":     riderCancellationFee,
+		"driverPenalty": driverPenalty,
+	})
 
 	return nil
 }
@@ -2632,9 +2751,43 @@ func (s *service) TriggerSOS(ctx context.Context, riderID, rideID string, latitu
 		"longitude", longitude,
 	)
 
+	s.publishRideEvent(ctx, notificationsmodule.EventSOSTriggered, rideID, riderID, "", map[string]interface{}{
+		"alertId":   alert.ID,
+		"rideId":    rideID,
+		"riderId":   riderID,
+		"latitude":  latitude,
+		"longitude": longitude,
+		"severity":  "critical",
+		"timestamp": time.Now().UTC(),
+	})
+
 	return nil
 }
 
 func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
 	return location.HaversineDistance(lat1, lon1, lat2, lon2)
 }
+
+func (s *service) publishRideEvent(ctx context.Context, eventType notificationsmodule.EventType, rideID, riderID, driverID string, additionalData map[string]interface{}) {
+	if s.eventProducer == nil {
+		return
+	}
+
+	payload := map[string]interface{}{
+		"rideId":   rideID,
+		"riderId":  riderID,
+		"driverId": driverID,
+		"timestamp": time.Now().UTC(),
+	}
+
+	for k, v := range additionalData {
+		payload[k] = v
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEventWithKey(ctx, eventType, rideID, payload); err != nil {
+			logger.Error("failed to publish ride event", "error", err, "eventType", eventType, "rideID", rideID)
+		}
+	}()
+}
+

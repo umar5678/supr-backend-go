@@ -138,6 +138,62 @@ func LoadConfig() (*Config, error) {
 	cfg.Logger.Output = v.GetString("LOG_OUTPUT")
 	cfg.Logger.FilePath = v.GetString("LOG_FILE_PATH")
 
+	// Load Kafka configuration
+	brokerStr := v.GetString("KAFKA_BROKERS")
+	if brokerStr != "" {
+		cfg.Kafka.Brokers = strings.Split(brokerStr, ",")
+	} else {
+		cfg.Kafka.Brokers = []string{"localhost:9092"}
+	}
+
+	cfg.Kafka.SASL.Enabled = v.GetBool("KAFKA_SASL_ENABLED")
+	cfg.Kafka.SASL.Mechanism = v.GetString("KAFKA_SASL_MECHANISM")
+	cfg.Kafka.SASL.Username = v.GetString("KAFKA_SASL_USERNAME")
+	cfg.Kafka.SASL.Password = v.GetString("KAFKA_SASL_PASSWORD")
+
+	cfg.Kafka.Producer.Retries = v.GetInt("KAFKA_PRODUCER_RETRIES")
+	cfg.Kafka.Producer.BatchSize = v.GetInt("KAFKA_PRODUCER_BATCH_SIZE")
+	cfg.Kafka.Producer.FlushInterval = v.GetDuration("KAFKA_PRODUCER_FLUSH_INTERVAL") * time.Second
+	cfg.Kafka.Producer.Timeout = v.GetDuration("KAFKA_PRODUCER_TIMEOUT") * time.Second
+	cfg.Kafka.Producer.Compression = v.GetString("KAFKA_PRODUCER_COMPRESSION")
+
+	if cfg.Kafka.Producer.Retries == 0 {
+		cfg.Kafka.Producer.Retries = 3
+	}
+	if cfg.Kafka.Producer.BatchSize == 0 {
+		cfg.Kafka.Producer.BatchSize = 100
+	}
+	if cfg.Kafka.Producer.FlushInterval == 0 {
+		cfg.Kafka.Producer.FlushInterval = 1 * time.Second
+	}
+	if cfg.Kafka.Producer.Timeout == 0 {
+		cfg.Kafka.Producer.Timeout = 10 * time.Second
+	}
+
+	cfg.Kafka.Consumer.GroupID = v.GetString("KAFKA_CONSUMER_GROUP_ID")
+	cfg.Kafka.Consumer.MaxConcurrent = v.GetInt("KAFKA_CONSUMER_MAX_CONCURRENT")
+	cfg.Kafka.Consumer.SessionTimeout = v.GetDuration("KAFKA_CONSUMER_SESSION_TIMEOUT") * time.Second
+	cfg.Kafka.Consumer.HeartbeatInterval = v.GetDuration("KAFKA_CONSUMER_HEARTBEAT_INTERVAL") * time.Second
+	cfg.Kafka.Consumer.CommitInterval = v.GetDuration("KAFKA_CONSUMER_COMMIT_INTERVAL") * time.Second
+	cfg.Kafka.Consumer.MaxRetries = v.GetInt("KAFKA_CONSUMER_MAX_RETRIES")
+	cfg.Kafka.Consumer.RetryBackoff = v.GetDuration("KAFKA_CONSUMER_RETRY_BACKOFF") * time.Second
+
+	if cfg.Kafka.Consumer.GroupID == "" {
+		cfg.Kafka.Consumer.GroupID = "notification-consumer"
+	}
+	if cfg.Kafka.Consumer.MaxConcurrent == 0 {
+		cfg.Kafka.Consumer.MaxConcurrent = 10
+	}
+	if cfg.Kafka.Consumer.SessionTimeout == 0 {
+		cfg.Kafka.Consumer.SessionTimeout = 10 * time.Second
+	}
+	if cfg.Kafka.Consumer.HeartbeatInterval == 0 {
+		cfg.Kafka.Consumer.HeartbeatInterval = 3 * time.Second
+	}
+	if cfg.Kafka.Consumer.CommitInterval == 0 {
+		cfg.Kafka.Consumer.CommitInterval = 1 * time.Second
+	}
+
 	// Load WebSocket config with defaults
 	cfg.WebSocket = DefaultWebSocketConfig()
 

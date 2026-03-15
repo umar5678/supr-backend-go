@@ -3,14 +3,17 @@ package profile
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/profile/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/codegen"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
+
 
 type WalletService interface {
 	CreditWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
@@ -33,10 +36,15 @@ type Service interface {
 type service struct {
 	repo          Repository
 	walletService WalletService
+	eventProducer notifications.EventProducer
 }
 
 func NewService(repo Repository, walletService WalletService) Service {
-	return &service{repo: repo, walletService: walletService}
+	return NewServiceWithNotifications(repo, walletService, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, walletService WalletService, eventProducer notifications.EventProducer) Service {
+	return &service{repo: repo, walletService: walletService, eventProducer: eventProducer}
 }
 
 func (s *service) UpdateEmergencyContact(ctx context.Context, userID string, req dto.UpdateEmergencyContactRequest) error {
@@ -104,6 +112,12 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 		hasApplied = false
 	}
 
+	s.publishProfileEvent(ctx, notifications.EventReferralCodeGenerated, map[string]interface{}{
+		"user_id":  userID,
+		"code":     code,
+		"timestamp": time.Now(),
+	})
+
 	logger.Info("new referral code generated", "userID", userID, "code", code)
 
 	return &dto.ReferralInfoResponse{
@@ -169,6 +183,14 @@ func (s *service) ApplyReferralCode(ctx context.Context, userID string, req dto.
 
 	cache.Delete(ctx, fmt.Sprintf("rider:profile:%s", userID))
 	cache.Delete(ctx, fmt.Sprintf("rider:profile:%s", referrer.ID))
+
+	s.publishProfileEvent(ctx, notifications.EventReferralCodeApplied, map[string]interface{}{
+		"user_id":      userID,
+		"referrer_id":  referrer.ID,
+		"code":         req.ReferralCode,
+		"bonus_amount": bonusAmount,
+		"timestamp":    time.Now(),
+	})
 
 	logger.Info("referral code applied successfully", "userID", userID, "referrerID", referrer.ID, "code", req.ReferralCode, "bonusAmount", bonusAmount)
 	return nil
@@ -336,4 +358,16 @@ func (s *service) GetRecentLocations(ctx context.Context, userID string) ([]*dto
 	}
 
 	return result, nil
+}
+
+func (s *service) publishProfileEvent(ctx context.Context, eventType notifications.EventType, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		return
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+			logger.Error("failed to publish profile event", "error", err, "eventType", eventType)
+		}
+	}()
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/umar5678/go-backend/internal/config"
 	"github.com/umar5678/go-backend/internal/models"
 	homeservicedto "github.com/umar5678/go-backend/internal/modules/homeservices/dto"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/wallet"
 	walletdto "github.com/umar5678/go-backend/internal/modules/wallet/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
@@ -23,11 +24,11 @@ import (
 const (
 	ProviderOfferTimeout = 60 * time.Second
 	HoldExpiryDuration   = 24 * time.Hour
-	DefaultSearchRadius  = 15000 // 15km in meters
+	DefaultSearchRadius  = 15000
 )
 
 type Service interface {
-	// Customer - Service Catalog
+
 	ListCategories(ctx context.Context) ([]*homeservicedto.ServiceCategoryResponse, error)
 	GetCategoryWithTabs(ctx context.Context, id uint) (*homeservicedto.CategoryWithTabsResponse, error)
 	GetAllCategorySlugs(ctx context.Context) ([]string, error)
@@ -35,13 +36,11 @@ type Service interface {
 	GetServiceDetails(ctx context.Context, id uint) (*homeservicedto.ServiceDetailResponse, error)
 	ListAddOns(ctx context.Context, categoryID uint) ([]*homeservicedto.AddOnResponse, error)
 
-	// Customer - Orders
 	CreateOrder(ctx context.Context, userID string, req homeservicedto.CreateOrderRequest) (*homeservicedto.OrderResponse, error)
 	GetMyOrders(ctx context.Context, userID string, query homeservicedto.ListOrdersQuery) ([]*homeservicedto.OrderListResponse, *response.PaginationMeta, error)
 	GetOrderDetails(ctx context.Context, userID, orderID string) (*homeservicedto.OrderResponse, error)
 	CancelOrder(ctx context.Context, userID, orderID string) error
 
-	// Provider - Orders
 	GetProviderOrders(ctx context.Context, providerID string, query homeservicedto.ListOrdersQuery) ([]*homeservicedto.OrderListResponse, *response.PaginationMeta, error)
 	RegisterProvider(ctx context.Context, userID string, req homeservicedto.RegisterProviderRequest) (*homeservicedto.ProviderProfileResponse, error)
 	AcceptOrder(ctx context.Context, providerID, orderID string) error
@@ -49,10 +48,8 @@ type Service interface {
 	StartOrder(ctx context.Context, providerID, orderID string) error
 	CompleteOrder(ctx context.Context, providerID, orderID string) error
 
-	// Provider Matching (async)
 	FindAndNotifyNextProvider(orderID string)
 
-	// Admin
 	CreateCategory(ctx context.Context, req homeservicedto.CreateCategoryRequest) (*homeservicedto.CategoryWithTabsResponse, error)
 	CreateTab(ctx context.Context, req homeservicedto.CreateTabRequest) (*homeservicedto.ServiceTabResponse, error)
 	CreateService(ctx context.Context, req homeservicedto.CreateServiceRequest) (*homeservicedto.ServiceDetailResponse, error)
@@ -61,20 +58,24 @@ type Service interface {
 }
 
 type service struct {
-	repo          Repository
-	walletService wallet.Service
-	cfg           *config.Config
+	repo            Repository
+	walletService   wallet.Service
+	cfg             *config.Config
+	eventProducer   notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository, walletService wallet.Service, cfg *config.Config) Service {
+	return NewServiceWithNotifications(repo, walletService, cfg, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, walletService wallet.Service, cfg *config.Config, eventProducer notificationsmodule.EventProducer) Service {
 	return &service{
 		repo:          repo,
 		walletService: walletService,
 		cfg:           cfg,
+		eventProducer: eventProducer,
 	}
 }
-
-// --- Customer - Service Catalog ---
 
 func (s *service) ListCategories(ctx context.Context) ([]*homeservicedto.ServiceCategoryResponse, error) {
 	categories, err := s.repo.ListCategories(ctx)
@@ -86,7 +87,6 @@ func (s *service) ListCategories(ctx context.Context) ([]*homeservicedto.Service
 	return homeservicedto.ToServiceCategoryList(categories), nil
 }
 
-// GetAllCategorySlugs returns all distinct category slugs from services table for dropdown
 func (s *service) GetAllCategorySlugs(ctx context.Context) ([]string, error) {
 	slugs, err := s.repo.GetAllCategorySlugs(ctx)
 	if err != nil {
@@ -168,20 +168,16 @@ func (s *service) ListAddOns(ctx context.Context, categoryID uint) ([]*homeservi
 	return responses, nil
 }
 
-// RegisterProvider registers a new service provider
 func (s *service) RegisterProvider(ctx context.Context, userID string, req homeservicedto.RegisterProviderRequest) (*homeservicedto.ProviderProfileResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// 1. Check if user is already a provider
 	_, err := s.repo.FindProviderByUserID(ctx, userID)
 	if err == nil {
 		return nil, response.BadRequest("User is already registered as a service provider")
 	}
 
-	// 2. Create provider profile with category-based assignment
-	// Provider is automatically assigned ALL services in their registered category
 	providerID := uuid.New().String()
 	provider := &models.ServiceProviderProfile{
 		ID:              providerID,
@@ -189,7 +185,7 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 		ServiceCategory: req.CategorySlug,
 		ServiceType:     req.CategorySlug,
 		Status:          models.SPStatusActive,
-		IsVerified:      true, // Auto-approve for now
+		IsVerified:      true,
 		IsAvailable:     true,
 	}
 
@@ -198,7 +194,6 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 		return nil, response.InternalServerError("Failed to create provider profile", err)
 	}
 
-	// 3. Register provider category selection (so provider receives notifications for this category)
 	if req.CategorySlug != "" {
 		category := &models.ProviderServiceCategory{
 			ProviderID:        providerID,
@@ -208,14 +203,10 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 			IsActive:          true,
 		}
 		if err := s.repo.AddProviderCategory(ctx, category); err != nil {
-			// log but don't block registration
 			logger.Error("failed to add provider category", "error", err, "providerID", providerID, "category", req.CategorySlug)
 		}
 	}
 
-	// 4. Dynamic service assignment
-	// Providers automatically get ALL services in their registered category
-	// This ensures they get access to services added in the future without manual updates
 	logger.Info("provider registered with category-based dynamic service assignment",
 		"providerID", providerID,
 		"userID", userID,
@@ -228,7 +219,6 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 		"category", req.CategorySlug,
 	)
 
-	// 5. Fetch complete profile for response
 	provider, _ = s.repo.GetProviderByID(ctx, providerID)
 
 	return &homeservicedto.ProviderProfileResponse{
@@ -246,26 +236,21 @@ func (s *service) RegisterProvider(ctx context.Context, userID string, req homes
 	}, nil
 }
 
-// --- Customer - Orders ---
 func (s *service) CreateOrder(ctx context.Context, userID string, req homeservicedto.CreateOrderRequest) (*homeservicedto.OrderResponse, error) {
 	req.SetDefaults()
-	// 1. Validate and set defaults
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// 2. Parse service date
 	serviceDate, err := time.Parse(time.RFC3339, req.ServiceDate)
 	if err != nil {
 		return nil, response.BadRequest("Invalid service date format. Use RFC3339")
 	}
 
-	// Ensure service date is in the future
 	if serviceDate.Before(time.Now()) {
 		return nil, response.BadRequest("Service date must be in the future")
 	}
 
-	// 3. Validate and build SelectedServices
 	var categorySlug string
 	var subtotal float64
 	selectedServices := models.SelectedServices{}
@@ -283,7 +268,6 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 			return nil, response.BadRequest(fmt.Sprintf("Service '%s' is not available", svc.Title))
 		}
 
-		// Extract category slug from first service
 		if i == 0 {
 			categorySlug = svc.CategorySlug
 		}
@@ -303,7 +287,6 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 		subtotal += price
 	}
 
-	// 4. Validate and build SelectedAddons
 	var selectedAddons models.SelectedAddons
 	if len(req.AddOnIDs) > 0 {
 		addOnServices, err := s.repo.GetAddOnsByIDs(ctx, req.AddOnIDs)
@@ -317,7 +300,7 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 			}
 
 			selectedAddons = append(selectedAddons, models.SelectedAddonItem{
-				AddonSlug: addon.Title, // Using title as slug since Addon model might not have slug
+				AddonSlug: addon.Title,
 				Title:     addon.Title,
 				Price:     addon.Price,
 				Quantity:  1,
@@ -327,8 +310,7 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 		}
 	}
 
-	// 5. Calculate fees
-	platformFee := subtotal * 0.10 // 10% platform fee
+	platformFee := subtotal * 0.10
 	totalPrice := subtotal + platformFee
 
 	// 6. Create wallet hold using existing wallet service (non-blocking for cash model)

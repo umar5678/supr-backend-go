@@ -1,4 +1,3 @@
-// internal/modules/pricing/service.go
 package pricing
 
 import (
@@ -8,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/umar5678/go-backend/internal/models"
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/pricing/dto"
 	vehiclesrepo "github.com/umar5678/go-backend/internal/modules/vehicles"
 	"github.com/umar5678/go-backend/internal/services/cache"
@@ -37,20 +37,26 @@ type Service interface {
 }
 
 type service struct {
-	repo         Repository
-	db           *gorm.DB
-	vehiclesRepo vehiclesrepo.Repository
-	calculator   *FareCalculator
-	surgeManager *SurgeManager
+	repo          Repository
+	db            *gorm.DB
+	vehiclesRepo  vehiclesrepo.Repository
+	calculator    *FareCalculator
+	surgeManager  *SurgeManager
+	eventProducer notifications.EventProducer
 }
 
 func NewService(repo Repository, db *gorm.DB, vehiclesRepo vehiclesrepo.Repository) Service {
+	return NewServiceWithNotifications(repo, db, vehiclesRepo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, db *gorm.DB, vehiclesRepo vehiclesrepo.Repository, eventProducer notifications.EventProducer) Service {
 	return &service{
-		repo:         repo,
-		vehiclesRepo: vehiclesRepo,
-		db:           db,
-		calculator:   NewFareCalculator(),
-		surgeManager: NewSurgeManager(repo),
+		repo:          repo,
+		vehiclesRepo:  vehiclesRepo,
+		db:            db,
+		calculator:    NewFareCalculator(),
+		surgeManager:  NewSurgeManager(repo),
+		eventProducer: eventProducer,
 	}
 }
 
@@ -302,6 +308,15 @@ func (s *service) CreateSurgeZone(ctx context.Context, req dto.CreateSurgeZoneRe
 	cacheKey := "surge:zones:active"
 	cache.Delete(ctx, cacheKey)
 
+	s.publishPricingEvent(ctx, notifications.EventUserVerified, map[string]interface{}{
+		"surge_zone_id": zone.ID,
+		"area_name":     zone.AreaName,
+		"multiplier":    zone.Multiplier,
+		"active_from":   zone.ActiveFrom,
+		"active_until":  zone.ActiveUntil,
+		"timestamp":     time.Now(),
+	})
+
 	result := &dto.CreateSurgeZoneResponse{
 		ID:          zone.ID,
 		AreaName:    zone.AreaName,
@@ -340,7 +355,6 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 		surgeReason = "normal"
 	}
 
-	// Also get zone-based surge if available
 	zoneMultiplier, _ := s.surgeManager.CalculateZoneBasedSurge(ctx, req.PickupLat, req.PickupLon)
 	if zoneMultiplier == 0 {
 		zoneMultiplier = 1.0
@@ -591,6 +605,12 @@ func (s *service) ChangeDestination(ctx context.Context, driverID string, req dt
 		"additionalCharge", additionalCharge,
 	)
 
+	s.publishPricingEvent(ctx, notifications.EventRideDestinationChanged, map[string]interface{}{
+		"ride_id":            req.RideID,
+		"additional_distance": additionalDistance,
+		"additional_charge":  additionalCharge,
+	})
+
 	return &dto.DestinationChangeResponse{
 		RideID:             req.RideID,
 		AdditionalDistance: additionalDistance,
@@ -776,24 +796,14 @@ func (s *service) CalculateETAEstimate(ctx context.Context, req dto.ETAEstimateR
 	}, nil
 }
 
-func (s *service) isRuleActiveNow(rule *models.SurgePricingRule) bool {
-	return true
-}
-
-func (s *service) calculateDemandMultiplier(demand *models.DemandTracking, rule *models.SurgePricingRule) float64 {
-	if demand == nil {
-		return rule.BaseMultiplier
+func (s *service) publishPricingEvent(ctx context.Context, eventType notifications.EventType, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		return
 	}
-	return demand.SurgeMultiplier
-}
 
-func (s *service) getSurgeReason(multiplier float64) string {
-	if multiplier > 2.0 {
-		return "high_demand"
-	} else if multiplier > 1.5 {
-		return "medium_demand"
-	} else if multiplier > 1.0 {
-		return "low_demand"
-	}
-	return "normal"
+	go func() {
+		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+			logger.Error("failed to publish pricing event", "error", err, "eventType", eventType)
+		}
+	}()
 }

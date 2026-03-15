@@ -12,6 +12,7 @@ import (
 	"github.com/umar5678/go-backend/internal/models"
 	documentdto "github.com/umar5678/go-backend/internal/modules/documents/dto"
 	imagekit "github.com/umar5678/go-backend/internal/services/imagekit"
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -32,12 +33,14 @@ type Service interface {
 type service struct {
 	repo Repository
 	cfg  *config.Config
+	eventProducer notifications.EventProducer
 }
 
-func NewService(repo Repository, cfg *config.Config) Service {
+func NewService(repo Repository, cfg *config.Config, eventProducer notifications.EventProducer) Service {
 	return &service{
-		repo: repo,
-		cfg:  cfg,
+		repo:         repo,
+		cfg:          cfg,
+		eventProducer: eventProducer,
 	}
 }
 
@@ -201,21 +204,23 @@ func (s *service) GetDocumentsPaginated(ctx context.Context, filters map[string]
 }
 
 func (s *service) VerifyDocument(ctx context.Context, adminID, docID, status, rejectionReason string) (*documentdto.VerifyDocumentResponse, error) {
-	// Validate status
+
 	if status != "verified" && status != "rejected" {
 		return nil, response.BadRequest("Invalid status. Must be 'verified' or 'rejected'")
 	}
 
-	// Get document
 	doc, err := s.repo.GetDocumentByID(ctx, docID)
 	if err != nil {
 		return nil, response.NotFoundError("Document")
 	}
 
-	// Update document status
 	now := time.Now()
 	if err := s.repo.UpdateDocumentStatus(ctx, docID, status, &adminID, &now, rejectionReason); err != nil {
 		logger.Error("failed to update document status", "error", err, "docID", docID)
+		s.publishDocumentsEvent(ctx, notifications.EventDocumentStatusUpdated, adminID, map[string]interface{}{
+			"document_id": docID,
+			"status":      status,
+		})
 		return nil, response.InternalServerError("Failed to verify document", err)
 	}
 
@@ -231,30 +236,23 @@ func (s *service) VerifyDocument(ctx context.Context, adminID, docID, status, re
 
 	if err := s.repo.CreateVerificationLog(ctx, log); err != nil {
 		logger.Error("failed to create verification log", "error", err, "docID", docID)
-		// Continue despite log error
 	}
 
-	// Update profile verification status based on document verification
 	if doc.DriverID != nil {
-		// Handle driver profile verification
-		if status == "rejected" {
-			// If any document is rejected, mark profile as not verified
+		switch status {
+		case "rejected":
 			if err := s.repo.UpdateDriverProfileVerification(ctx, *doc.DriverID, false); err != nil {
 				logger.Error("failed to update driver profile verification", "error", err, "driverID", *doc.DriverID)
-				// Continue - don't fail the operation
 			}
-		} else if status == "verified" {
-			// Check if all required documents are verified
+		case "verified":
 			verifiedCount, err := s.repo.CountVerifiedDocumentsByDriverID(ctx, *doc.DriverID)
 			if err != nil {
 				logger.Error("failed to count verified documents", "error", err, "driverID", *doc.DriverID)
 			} else {
-				// Required documents for driver: license, registration, insurance, profile-photo (4 documents)
 				requiredDocsCount := 4
 				if verifiedCount >= requiredDocsCount {
 					if err := s.repo.UpdateDriverProfileVerification(ctx, *doc.DriverID, true); err != nil {
 						logger.Error("failed to update driver profile verification", "error", err, "driverID", *doc.DriverID)
-						// Continue - don't fail the operation
 					}
 					logger.Info("driver profile marked as verified",
 						"driverID", *doc.DriverID,
@@ -263,25 +261,20 @@ func (s *service) VerifyDocument(ctx context.Context, adminID, docID, status, re
 			}
 		}
 	} else if doc.ServiceProviderID != nil {
-		// Handle service provider profile verification
-		if status == "rejected" {
-			// If any document is rejected, mark profile as not verified
+		switch status {
+		case "rejected":
 			if err := s.repo.UpdateServiceProviderProfileVerification(ctx, *doc.ServiceProviderID, false); err != nil {
 				logger.Error("failed to update service provider profile verification", "error", err, "providerID", *doc.ServiceProviderID)
-				// Continue - don't fail the operation
 			}
-		} else if status == "verified" {
-			// Check if all required documents are verified
+		case "verified":
 			verifiedCount, err := s.repo.CountVerifiedDocumentsByServiceProviderID(ctx, *doc.ServiceProviderID)
 			if err != nil {
 				logger.Error("failed to count verified documents", "error", err, "providerID", *doc.ServiceProviderID)
 			} else {
-				// Required documents for service provider: trade-license, profile-photo (2 documents)
 				requiredDocsCount := 2
 				if verifiedCount >= requiredDocsCount {
 					if err := s.repo.UpdateServiceProviderProfileVerification(ctx, *doc.ServiceProviderID, true); err != nil {
 						logger.Error("failed to update service provider profile verification", "error", err, "providerID", *doc.ServiceProviderID)
-						// Continue - don't fail the operation
 					}
 					logger.Info("service provider profile marked as verified",
 						"providerID", *doc.ServiceProviderID,
@@ -296,6 +289,10 @@ func (s *service) VerifyDocument(ctx context.Context, adminID, docID, status, re
 		"status", status,
 		"adminID", adminID)
 
+	s.publishDocumentsEvent(ctx, notifications.EventDocumentStatusUpdated, adminID, map[string]interface{}{
+		"document_id": docID,
+		"status":      status,
+	})
 	return &documentdto.VerifyDocumentResponse{
 		DocumentID:      docID,
 		Status:          status,
@@ -336,12 +333,9 @@ func (s *service) GetPendingDocuments(ctx context.Context) ([]*documentdto.Docum
 	return responses, nil
 }
 
-// InitializeDriverProfile initializes a newly created driver profile to require document verification
-// This ensures the driver must upload and have their documents verified before becoming active
 func (s *service) InitializeDriverProfile(ctx context.Context, driverID string) error {
 	logger.Info("initializing driver profile for document verification", "driverID", driverID)
 
-	// Ensure driver profile is not verified on creation
 	if err := s.repo.UpdateDriverProfileVerification(ctx, driverID, false); err != nil {
 		logger.Error("failed to initialize driver profile verification", "error", err, "driverID", driverID)
 		return fmt.Errorf("failed to initialize driver profile: %w", err)
@@ -351,12 +345,9 @@ func (s *service) InitializeDriverProfile(ctx context.Context, driverID string) 
 	return nil
 }
 
-// InitializeServiceProviderProfile initializes a newly created service provider profile to require document verification
-// This ensures the service provider must upload and have their documents verified before becoming active
 func (s *service) InitializeServiceProviderProfile(ctx context.Context, providerID string) error {
 	logger.Info("initializing service provider profile for document verification", "providerID", providerID)
 
-	// Ensure service provider profile is not verified on creation
 	if err := s.repo.UpdateServiceProviderProfileVerification(ctx, providerID, false); err != nil {
 		logger.Error("failed to initialize service provider profile verification", "error", err, "providerID", providerID)
 		return fmt.Errorf("failed to initialize service provider profile: %w", err)
@@ -365,8 +356,6 @@ func (s *service) InitializeServiceProviderProfile(ctx context.Context, provider
 	logger.Info("service provider profile initialized for document verification", "providerID", providerID)
 	return nil
 }
-
-// Helper functions
 
 func toDocumentResponse(doc *models.Document) *documentdto.DocumentResponse {
 	resp := &documentdto.DocumentResponse{
@@ -413,4 +402,29 @@ func isValidMimeType(mimeType string, allowed []string) bool {
 
 func getFileExt(filename string) string {
 	return strings.ToLower(filepath.Ext(filename))
+}
+
+
+func (s *service) publishDocumentsEvent(ctx context.Context, eventType notifications.EventType, userID string, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		logger.Debug("event producer not available, skipping event publication", "eventType", eventType, "userID", userID)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"user_id":   userID,
+		"timestamp": time.Now().UTC(),
+	}
+
+	for k, v := range data {
+		payload[k] = v
+	}
+
+	if err := s.eventProducer.PublishEventWithKey(ctx, eventType, userID, payload); err != nil {
+		logger.Error("failed to publish driver event",
+			"error", err,
+			"eventType", eventType,
+			"userID", userID,
+		)
+	}
 }

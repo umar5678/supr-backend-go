@@ -5,9 +5,11 @@ package admin
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/drivers"
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/serviceproviders"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
@@ -24,16 +26,22 @@ type Service interface {
 }
 
 type service struct {
-	repo    Repository
-	spRepo  serviceproviders.Repository
-	drvRepo drivers.Repository
+	repo          Repository
+	spRepo        serviceproviders.Repository
+	drvRepo       drivers.Repository
+	eventProducer notifications.EventProducer
 }
 
 func NewService(repo Repository, spRepo serviceproviders.Repository, drvRepo drivers.Repository) Service {
+	return NewServiceWithNotifications(repo, spRepo, drvRepo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, spRepo serviceproviders.Repository, drvRepo drivers.Repository, eventProducer notifications.EventProducer) Service {
 	return &service{
-		repo:    repo,
-		spRepo:  spRepo,
-		drvRepo: drvRepo,
+		repo:          repo,
+		spRepo:        spRepo,
+		drvRepo:       drvRepo,
+		eventProducer: eventProducer,
 	}
 }
 
@@ -98,6 +106,13 @@ func (s *service) SuspendUser(ctx context.Context, userID, reason string) error 
 		return response.InternalServerError("Failed to suspend user", err)
 	}
 
+	// Publish user suspended event
+	s.publishAdminEvent(ctx, notifications.EventUserSuspended, map[string]interface{}{
+		"user_id":   userID,
+		"reason":    reason,
+		"timestamp": time.Now(),
+	})
+
 	logger.Info("user suspended", "userID", userID, "reason", reason, user)
 	return nil
 }
@@ -161,4 +176,16 @@ func (s *service) ListServiceProviderProfiles(ctx context.Context, filters map[s
 		"page":      page,
 		"limit":     limit,
 	}, nil
+}
+
+func (s *service) publishAdminEvent(ctx context.Context, eventType notifications.EventType, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		return
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+			logger.Error("failed to publish admin event", "error", err, "eventType", eventType)
+		}
+	}()
 }

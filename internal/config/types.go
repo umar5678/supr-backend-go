@@ -15,6 +15,7 @@ type Config struct {
 	Upload    UploadConfig
 	Logger    LoggerConfig
 	WebSocket WebSocketConfig
+	Kafka     KafkaConfig
 }
 
 type AppConfig struct {

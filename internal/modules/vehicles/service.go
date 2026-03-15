@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/vehicles/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/logger"
@@ -18,11 +19,16 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo          Repository
+	eventProducer notifications.EventProducer
 }
 
 func NewService(repo Repository) Service {
-	return &service{repo: repo}
+	return NewServiceWithNotifications(repo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, eventProducer notifications.EventProducer) Service {
+	return &service{repo: repo, eventProducer: eventProducer}
 }
 
 func (s *service) GetAllVehicleTypes(ctx context.Context) ([]*dto.VehicleTypeResponse, error) {
@@ -99,4 +105,16 @@ func (s *service) GetVehicleTypeByID(ctx context.Context, id string) (*dto.Vehic
 	cache.SetJSON(ctx, cacheKey, result, 10*time.Minute)
 
 	return result, nil
+}
+
+func (s *service) publishVehicleEvent(ctx context.Context, eventType notifications.EventType, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		return
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+			logger.Error("failed to publish vehicle event", "error", err, "eventType", eventType)
+		}
+	}()
 }

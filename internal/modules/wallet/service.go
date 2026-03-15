@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/wallet/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/logger"
@@ -50,14 +51,20 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
-	db   *gorm.DB
+	repo          Repository
+	db            *gorm.DB
+	eventProducer notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository, db *gorm.DB) Service {
+	return NewServiceWithNotifications(repo, db, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, db *gorm.DB, eventProducer notificationsmodule.EventProducer) Service {
 	return &service{
-		repo: repo,
-		db:   db,
+		repo:          repo,
+		db:            db,
+		eventProducer: eventProducer,
 	}
 }
 
@@ -627,6 +634,9 @@ func (s *service) CreditWallet(ctx context.Context, userID string, amount float6
 
 	logger.Info("wallet credited", "userID", userID, "amount", amount, "transactionID", txn.ID, "type", transactionType)
 
+	// Publish payment processed event
+	s.publishPaymentEvent(ctx, notificationsmodule.EventPaymentProcessed, userID, amount, transactionType)
+
 	return txn, nil
 }
 
@@ -1132,6 +1142,32 @@ func (s *service) invalidateWalletCache(ctx context.Context, userID string) {
 	cache.Delete(ctx, fmt.Sprintf("wallet:user:%s", userID))
 }
 
+func (s *service) publishPaymentEvent(ctx context.Context, eventType notificationsmodule.EventType, userID string, amount float64, transactionType string) {
+	if s.eventProducer == nil {
+		logger.Debug("event producer not available, skipping payment event publication", "eventType", eventType, "userID", userID)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"user_id":            userID,
+		"amount":             amount,
+		"transaction_type":   transactionType,
+		"timestamp":          time.Now().UTC(),
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEventWithKey(ctx, eventType, userID, payload); err != nil {
+			logger.Error("failed to publish payment event",
+				"error", err,
+				"eventType", eventType,
+				"userID", userID,
+				"amount", amount,
+			)
+		}
+	}()
+}
+
 func stringPtr(s string) *string {
 	return &s
 }
+

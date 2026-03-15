@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/laundry/dto"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/ridepin"
 	"github.com/umar5678/go-backend/internal/modules/wallet"
 	"github.com/umar5678/go-backend/internal/utils/logger"
@@ -44,18 +45,24 @@ type Service interface {
 }
 
 type service struct {
-	repo           Repository
-	db             *gorm.DB
-	walletService  wallet.Service
-	ridePINService ridepin.Service
+	repo            Repository
+	db              *gorm.DB
+	walletService   wallet.Service
+	ridePINService  ridepin.Service
+	eventProducer   notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository, db *gorm.DB, walletService wallet.Service, ridePINService ridepin.Service) Service {
+	return NewServiceWithNotifications(repo, db, walletService, ridePINService, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, db *gorm.DB, walletService wallet.Service, ridePINService ridepin.Service, eventProducer notificationsmodule.EventProducer) Service {
 	return &service{
 		repo:           repo,
 		db:             db,
 		walletService:  walletService,
 		ridePINService: ridePINService,
+		eventProducer:  eventProducer,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	riderdto "github.com/umar5678/go-backend/internal/modules/riders/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/logger"
@@ -24,11 +25,16 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo          Repository
+	eventProducer notifications.EventProducer
 }
 
 func NewService(repo Repository) Service {
-	return &service{repo: repo}
+	return NewServiceWithNotifications(repo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, eventProducer notifications.EventProducer) Service {
+	return &service{repo: repo, eventProducer: eventProducer}
 }
 
 func (s *service) GetProfile(ctx context.Context, userID string) (*riderdto.RiderProfileResponse, error) {
@@ -94,6 +100,12 @@ func (s *service) UpdateProfile(ctx context.Context, userID string, req riderdto
 
 	logger.Info("rider profile updated", "userID", userID)
 
+	s.publishRiderEvent(ctx, notifications.EventRiderProfileUpdated, map[string]interface{}{
+		"user_id":   userID,
+		"profile_id": profile.ID,
+		"timestamp": time.Now(),
+	})
+
 	return riderdto.ToRiderProfileResponse(profile), nil
 }
 
@@ -132,6 +144,12 @@ func (s *service) CreateProfile(ctx context.Context, userID string) (*models.Rid
 
 	logger.Info("rider profile created", "userID", userID, "profileID", profile.ID)
 
+	s.publishRiderEvent(ctx, notifications.EventRiderProfileCreated, map[string]interface{}{
+		"user_id":   userID,
+		"profile_id": profile.ID,
+		"timestamp": time.Now(),
+	})
+
 	return profile, nil
 }
 
@@ -160,7 +178,25 @@ func (s *service) UpdateRating(ctx context.Context, userID string, newRating flo
 
 	cache.Delete(ctx, fmt.Sprintf("rider:profile:%s", userID))
 
+	s.publishRiderEvent(ctx, notifications.EventUserVerified, map[string]interface{}{
+		"user_id":   userID,
+		"rating":    newRating,
+		"timestamp": time.Now(),
+	})
+
 	logger.Info("rider rating updated", "userID", userID, "newRating", newRating)
 
 	return nil
+}
+
+func (s *service) publishRiderEvent(ctx context.Context, eventType notifications.EventType, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		return
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+			logger.Error("failed to publish rider event", "error", err, "eventType", eventType)
+		}
+	}()
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/umar5678/go-backend/internal/models"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -19,11 +20,19 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo          Repository
+	eventProducer notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository) Service {
-	return &service{repo: repo}
+	return NewServiceWithNotifications(repo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, eventProducer notificationsmodule.EventProducer) Service {
+	return &service{
+		repo:          repo,
+		eventProducer: eventProducer,
+	}
 }
 
 func (s *service) SendMessage(ctx context.Context, rideID, senderID, senderType, content string, metadata map[string]interface{}) (*models.MessageResponse, error) {
@@ -57,6 +66,15 @@ func (s *service) SendMessage(ctx context.Context, rideID, senderID, senderType,
 	if err != nil {
 		senderName = senderType
 	}
+
+	s.publishMessageEvent(ctx, notificationsmodule.EventMessageReceived, senderID, map[string]interface{}{
+		"ride_id":    rideID,
+		"content":    content,
+		"sender_id":  senderID,
+		"sender_type": senderType,
+		"metadata":   metadata,
+		"timestamp":  time.Now(),
+	})
 
 	return &models.MessageResponse{
 		ID:          msg.ID,
@@ -125,6 +143,11 @@ func (s *service) MarkAsRead(ctx context.Context, messageID, userID string) erro
 		return response.InternalServerError("Failed to mark as read", err)
 	}
 
+	s.publishMessageEvent(ctx, notificationsmodule.EventMessageRead, userID, map[string]interface{}{
+		"message_id": messageID,
+		"timestamp":  time.Now(),
+	})
+
 	return nil
 }
 
@@ -165,5 +188,35 @@ func (s *service) GetUnreadCount(ctx context.Context, rideID, userID string) (in
 		return 0, response.InternalServerError("Failed to get unread count", err)
 	}
 
+	s.publishMessageEvent(ctx, notificationsmodule.EventMessageUnreadCountRetrieved, userID, map[string]interface{}{
+		"ride_id": rideID,
+		"count":   count,
+	})
+
 	return count, nil
+}
+
+
+func (s *service) publishMessageEvent(ctx context.Context, eventType notificationsmodule.EventType, userID string, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		logger.Debug("event producer not available, skipping event publication", "eventType", eventType, "userID", userID)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"user_id":   userID,
+		"timestamp": time.Now().UTC(),
+	}
+
+	for k, v := range data {
+		payload[k] = v
+	}
+
+	if err := s.eventProducer.PublishEventWithKey(ctx, eventType, userID, payload); err != nil {
+		logger.Error("failed to publish message event",
+			"error", err,
+			"eventType", eventType,
+			"userID", userID,
+		)
+	}
 }

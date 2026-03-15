@@ -7,6 +7,7 @@ import (
 	"github.com/umar5678/go-backend/internal/config"
 	"github.com/umar5678/go-backend/internal/models"
 	authdto "github.com/umar5678/go-backend/internal/modules/auth/dto"
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/riders"
 	"github.com/umar5678/go-backend/internal/modules/serviceproviders"
 	"github.com/umar5678/go-backend/internal/services/cache"
@@ -36,6 +37,7 @@ type service struct {
 	cfg                    *config.Config
 	riderService           riders.Service
 	serviceProviderService serviceproviders.Service
+	eventProducer          notifications.EventProducer
 }
 
 func NewService(
@@ -44,11 +46,22 @@ func NewService(
 	riderService riders.Service,
 	serviceProviderService serviceproviders.Service,
 ) Service {
+	return NewServiceWithNotifications(repo, cfg, riderService, serviceProviderService, nil)
+}
+
+func NewServiceWithNotifications(
+	repo Repository,
+	cfg *config.Config,
+	riderService riders.Service,
+	serviceProviderService serviceproviders.Service,
+	eventProducer notifications.EventProducer,
+) Service {
 	return &service{
 		repo:                   repo,
 		cfg:                    cfg,
 		riderService:           riderService,
 		serviceProviderService: serviceProviderService,
+		eventProducer:          eventProducer,
 	}
 }
 
@@ -120,6 +133,13 @@ func (s *service) PhoneSignup(ctx context.Context, req authdto.PhoneSignupReques
 
 	s.repo.UpdateLastLogin(ctx, user.ID)
 
+	s.publishAuthEvent(ctx, notifications.EventUserRegistered, map[string]interface{}{
+		"user_id":   user.ID,
+		"phone":     req.Phone,
+		"role":      user.Role,
+		"timestamp": time.Now(),
+	})
+
 	authResp, err := s.generateAuthResponse(user)
 	if err != nil {
 		return nil, err
@@ -151,6 +171,13 @@ func (s *service) PhoneLogin(ctx context.Context, req authdto.PhoneLoginRequest)
 	}
 
 	s.repo.UpdateLastLogin(ctx, user.ID)
+
+	s.publishAuthEvent(ctx, notifications.EventUserVerified, map[string]interface{}{
+		"user_id":   user.ID,
+		"phone":     *req.Phone,
+		"role":      user.Role,
+		"timestamp": time.Now(),
+	})
 
 	authResp, err := s.generateAuthResponse(user)
 	if err != nil {
@@ -420,6 +447,11 @@ func (s *service) UpdateProfile(ctx context.Context, userID string, req authdto.
 
 	logger.Info("profile updated", "userId", userID)
 
+	s.publishAuthEvent(ctx, notifications.EventUserProfileUpdated, map[string]interface{}{
+		"user_id": userID,
+		"changes": req,
+	})
+
 	return authdto.ToUserResponse(user), nil
 }
 
@@ -482,4 +514,16 @@ func (s *service) createUserWallet(ctx context.Context, user *models.User) error
 	}
 
 	return s.repo.CreateWallet(ctx, wallet)
+}
+
+func (s *service) publishAuthEvent(ctx context.Context, eventType notifications.EventType, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		return
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+			logger.Error("failed to publish auth event", "error", err, "eventType", eventType)
+		}
+	}()
 }

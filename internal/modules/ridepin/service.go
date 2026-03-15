@@ -1,4 +1,3 @@
-// internal/modules/ridepin/service.go
 package ridepin
 
 import (
@@ -6,7 +5,9 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"time"
 
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -18,11 +19,16 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo          Repository
+	eventProducer notifications.EventProducer
 }
 
 func NewService(repo Repository) Service {
-	return &service{repo: repo}
+	return NewServiceWithNotifications(repo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, eventProducer notifications.EventProducer) Service {
+	return &service{repo: repo, eventProducer: eventProducer}
 }
 
 func (s *service) VerifyRidePIN(ctx context.Context, userID, pin string) error {
@@ -66,8 +72,26 @@ func (s *service) RegenerateRidePIN(ctx context.Context, userID string) (string,
 		return "", response.InternalServerError("Failed to regenerate PIN", err)
 	}
 
+	s.publishRidePinEvent(ctx, notifications.EventRidePINRegenerated, map[string]interface{}{
+		"user_id":   userID,
+		"pin":       newPIN,
+		"timestamp": time.Now(),
+	})
+
 	logger.Info("ride PIN regenerated", "userID", userID)
 	return newPIN, nil
+}
+
+func (s *service) publishRidePinEvent(ctx context.Context, eventType notifications.EventType, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		return
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+			logger.Error("failed to publish ridepin event", "error", err, "eventType", eventType)
+		}
+	}()
 }
 
 func generateRidePIN() string {

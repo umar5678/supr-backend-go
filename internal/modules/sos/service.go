@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/modules/sos/dto"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
@@ -26,14 +27,20 @@ type Service interface {
 }
 
 type service struct {
-	repo   Repository
-	userDB *gorm.DB
+	repo          Repository
+	userDB        *gorm.DB
+	eventProducer notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository, db *gorm.DB) Service {
+	return NewServiceWithNotifications(repo, db, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, db *gorm.DB, eventProducer notificationsmodule.EventProducer) Service {
 	return &service{
-		repo:   repo,
-		userDB: db,
+		repo:          repo,
+		userDB:        db,
+		eventProducer: eventProducer,
 	}
 }
 
@@ -83,6 +90,14 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 		"rideID", req.RideID,
 		"location", fmt.Sprintf("%f,%f", req.Latitude, req.Longitude),
 	)
+
+	// Publish SOS alert event
+	s.publishSOSEvent(ctx, notificationsmodule.EventSOSAlert, alert.ID, userID, map[string]interface{}{
+		"rideID":    req.RideID,
+		"latitude":  req.Latitude,
+		"longitude": req.Longitude,
+		"severity":  "critical",
+	})
 
 	return dto.ToSOSAlertResponse(alert), nil
 }
@@ -338,4 +353,31 @@ func (s *service) notifySafetyTeam(ctx context.Context, alert *models.SOSAlert) 
 	if err := s.repo.MarkSafetyTeamNotified(ctx, alert.ID); err != nil {
 		logger.Error("failed to mark safety team notified", "error", err, "alertID", alert.ID)
 	}
+}
+
+func (s *service) publishSOSEvent(ctx context.Context, eventType notificationsmodule.EventType, alertID, userID string, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		logger.Debug("event producer not available, skipping SOS event publication", "eventType", eventType, "alertID", alertID)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"alert_id":  alertID,
+		"user_id":   userID,
+		"timestamp": time.Now().UTC(),
+	}
+
+	for k, v := range data {
+		payload[k] = v
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEventWithKey(ctx, eventType, alertID, payload); err != nil {
+			logger.Error("failed to publish SOS event",
+				"error", err,
+				"eventType", eventType,
+				"alertID", alertID,
+			)
+		}
+	}()
 }

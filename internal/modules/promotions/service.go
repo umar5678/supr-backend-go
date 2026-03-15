@@ -8,6 +8,7 @@ import (
     "time"
 
     "github.com/umar5678/go-backend/internal/models"
+    "github.com/umar5678/go-backend/internal/modules/notifications"
     "github.com/umar5678/go-backend/internal/modules/promotions/dto"
     "github.com/umar5678/go-backend/internal/utils/logger"
     "github.com/umar5678/go-backend/internal/utils/response"
@@ -25,11 +26,19 @@ type Service interface {
 }
 
 type service struct {
-    repo Repository
+    repo          Repository
+    eventProducer notifications.EventProducer
 }
 
 func NewService(repo Repository) Service {
-    return &service{repo: repo}
+    return NewServiceWithNotifications(repo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, eventProducer notifications.EventProducer) Service {
+    return &service{
+        repo:          repo,
+        eventProducer: eventProducer,
+    }
 }
 
 func (s *service) CreatePromoCode(ctx context.Context, req dto.CreatePromoCodeRequest) (*dto.PromoCodeResponse, error) {

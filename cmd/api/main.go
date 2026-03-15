@@ -32,6 +32,8 @@ import (
 	homeservicesProvider "github.com/umar5678/go-backend/internal/modules/homeservices/provider"
 	"github.com/umar5678/go-backend/internal/modules/laundry"
 	"github.com/umar5678/go-backend/internal/modules/messages"
+	"github.com/umar5678/go-backend/internal/modules/notifications"
+	notificationcontroller "github.com/umar5678/go-backend/internal/modules/notifications/controller"
 	"github.com/umar5678/go-backend/internal/modules/pricing"
 	"github.com/umar5678/go-backend/internal/modules/profile"
 	"github.com/umar5678/go-backend/internal/modules/promotions"
@@ -112,11 +114,6 @@ func main() {
 	wsManager := websocket.NewManager(wsConfig, db)
 	wsServer := websocket.NewServer(wsManager)
 
-	// Initialize admin support chat service
-	adminSupportRepo := admin_support_chat.NewRepository(db)
-	adminSupportService := admin_support_chat.NewService(adminSupportRepo)
-	websocketutils.Initialize(wsManager, adminSupportService)
-
 	handlers.RegisterAllHandlers(wsManager)
 
 	if err := wsManager.Start(); err != nil {
@@ -124,6 +121,27 @@ func main() {
 	}
 
 	logger.Info("websocket system initialized successfully")
+
+	// Initialize Notification System
+	notificationSystem, err := notifications.NewNotificationSystem(
+		context.Background(),
+		db,
+		cfg.Kafka,
+	)
+	if err != nil {
+		logger.Fatal("failed to initialize notification system", "error", err)
+	}
+	defer func() {
+		if err := notificationSystem.Stop(); err != nil {
+			logger.Error("error stopping notification system", "error", err)
+		}
+	}()
+
+	if err := notificationSystem.Start(context.Background()); err != nil {
+		logger.Fatal("failed to start notification system", "error", err)
+	}
+
+	logger.Info("notification system initialized and started successfully")
 
 	// Start order expiration background job
 	orderExpirationService := homeservices.NewOrderExpirationService(db)
@@ -168,14 +186,14 @@ func main() {
 		v1.Use(middleware.RateLimit(cfg.Server.RateLimit))
 
 		ridersRepo := riders.NewRepository(db)
-		ridersService := riders.NewService(ridersRepo)
+		ridersService := riders.NewServiceWithNotifications(ridersRepo, notificationSystem.GetProducer())
 		ridersHandler := riders.NewHandler(ridersService)
 
 		spRepo := serviceproviders.NewRepository(db)
 		spService := serviceproviders.NewService(spRepo)
 
 		authRepo := auth.NewRepository(db)
-		authService := auth.NewService(authRepo, cfg, ridersService, spService)
+		authService := auth.NewServiceWithNotifications(authRepo, cfg, ridersService, spService, notificationSystem.GetProducer())
 		authHandler := auth.NewHandler(authService)
 		authMiddleware := middleware.Auth(cfg)
 		auth.RegisterRoutes(v1, authHandler, authMiddleware)
@@ -183,67 +201,73 @@ func main() {
 		riders.RegisterRoutes(v1, ridersHandler, authMiddleware)
 
 		walletRepo := wallet.NewRepository(db)
-		walletService := wallet.NewService(walletRepo, db)
+		walletService := wallet.NewServiceWithNotifications(walletRepo, db, notificationSystem.GetProducer())
 		walletHandler := wallet.NewHandler(walletService)
 		wallet.RegisterRoutes(v1, walletHandler, authMiddleware)
 
 		vehiclesRepo := vehicles.NewRepository(db)
-		vehiclesService := vehicles.NewService(vehiclesRepo)
+		vehiclesService := vehicles.NewServiceWithNotifications(vehiclesRepo, notificationSystem.GetProducer())
 		vehiclesHandler := vehicles.NewHandler(vehiclesService)
 		vehicles.RegisterRoutes(v1, vehiclesHandler)
 
 		driversRepo := drivers.NewRepository(db)
-		driversService := drivers.NewService(driversRepo, walletService, db)
+		driversService := drivers.NewServiceWithNotifications(driversRepo, walletService, db, notificationSystem.GetProducer())
 		driversHandler := drivers.NewHandler(driversService)
 		drivers.RegisterRoutes(v1, driversHandler, authMiddleware)
 
 		trackingRepo := tracking.NewRepository(db)
-		trackingService := tracking.NewService(trackingRepo)
+		trackingService := tracking.NewServiceWithNotifications(trackingRepo, notificationSystem.GetProducer())
 		trackingHandler := tracking.NewHandler(trackingService)
 		tracking.RegisterRoutes(v1, trackingHandler, authMiddleware)
 
 		pricingRepo := pricing.NewRepository(db)
-		pricingService := pricing.NewService(pricingRepo, db, vehiclesRepo)
+		pricingService := pricing.NewServiceWithNotifications(pricingRepo, db, vehiclesRepo, notificationSystem.GetProducer())
 		pricingHandler := pricing.NewHandler(pricingService)
 		pricing.RegisterRoutes(v1, pricingHandler, authMiddleware)
 
 		adminRepo := admin.NewRepository(db)
-		adminService := admin.NewService(adminRepo, spRepo, driversRepo)
+		adminService := admin.NewServiceWithNotifications(adminRepo, spRepo, driversRepo, notificationSystem.GetProducer())
 		adminHandler := admin.NewHandler(adminService)
 		admin.RegisterRoutes(v1, adminHandler, authMiddleware)
 
 		profileRepo := profile.NewRepository(db)
-		profileService := profile.NewService(profileRepo, walletService)
+		profileService := profile.NewServiceWithNotifications(profileRepo, walletService, notificationSystem.GetProducer())
 		profileHandler := profile.NewHandler(profileService)
 		profile.RegisterRoutes(v1, profileHandler, authMiddleware)
 
 		promotionsRepo := promotions.NewRepository(db)
-		promotionsService := promotions.NewService(promotionsRepo)
+		promotionsService := promotions.NewServiceWithNotifications(promotionsRepo, notificationSystem.GetProducer())
 		promotionsHandler := promotions.NewHandler(promotionsService)
 		promotions.RegisterRoutes(v1, promotionsHandler, authMiddleware)
 
 		fraudRepo := fraud.NewRepository(db)
-		fraudService := fraud.NewService(fraudRepo)
+		fraudService := fraud.NewServiceWithNotifications(fraudRepo, notificationSystem.GetProducer())
 		fraudHandler := fraud.NewHandler(fraudService)
 		fraud.RegisterRoutes(v1, fraudHandler, authMiddleware)
 
 		sosRepo := sos.NewRepository(db)
-		sosService := sos.NewService(sosRepo, db)
+		sosService := sos.NewServiceWithNotifications(sosRepo, db, notificationSystem.GetProducer())
 		sosHandler := sos.NewHandler(sosService)
 		sos.RegisterRoutes(v1, sosHandler, authMiddleware)
 
 		ridePinRepo := ridepin.NewRepository(db)
-		ridePinService := ridepin.NewService(ridePinRepo)
+		ridePinService := ridepin.NewServiceWithNotifications(ridePinRepo, notificationSystem.GetProducer())
 
 		messagesRepo := messages.NewRepository(db)
-		messagesService := messages.NewService(messagesRepo)
+		messagesService := messages.NewServiceWithNotifications(messagesRepo, notificationSystem.GetProducer())
 		messagesHandler := messages.NewHandler(messagesService)
 		messages.RegisterRoutes(v1, messagesHandler, authMiddleware)
 
 		handlers.RegisterMessageHandlers(wsManager, messagesService)
 
+		notifController := notificationcontroller.NewNotificationController(
+			notificationSystem.GetNotificationService(),
+			notificationSystem.GetPushService(),
+		)
+		notifController.RegisterRoutes(v1)
+
 		homeServicesRepo := homeservices.NewRepository(db)
-		homeServicesService := homeservices.NewService(homeServicesRepo, walletService, cfg)
+		homeServicesService := homeservices.NewServiceWithNotifications(homeServicesRepo, walletService, cfg, notificationSystem.GetProducer())
 		homeServicesHandler := homeservices.NewHandler(homeServicesService)
 		homeservices.RegisterRoutes(v1, homeServicesHandler, authMiddleware)
 
@@ -261,7 +285,7 @@ func main() {
 		)
 
 		ridesRepo := rides.NewRepository(db)
-		ridesService := rides.NewService(
+		ridesService := rides.NewServiceWithNotifications(
 			ridesRepo,
 			driversRepo,
 			ridersRepo,
@@ -276,6 +300,7 @@ func main() {
 			fraudService,
 			batchingService,
 			adminRepo,
+			notificationSystem.GetProducer(),
 		)
 		ridesHandler := rides.NewHandler(ridesService)
 		rides.RegisterRoutes(v1, ridesHandler, authMiddleware)
@@ -312,9 +337,12 @@ func main() {
 			authMiddleware,
 		)
 
-		laundry.RegisterRoutes(router, db, cfg, walletService, ridePinService)
+		laundry.RegisterRoutesWithNotifications(router, db, cfg, walletService, ridePinService, notificationSystem.GetProducer())
 
-		// Register admin support chat routes with WebSocket broadcast
+		adminSupportRepo := admin_support_chat.NewRepository(db)
+		adminSupportService := admin_support_chat.NewService(adminSupportRepo, notificationSystem.GetProducer())
+		websocketutils.Initialize(wsManager, adminSupportService)
+
 		admin_support_chat.RegisterRoutesWithBroadcast(
 			v1,
 			cfg,
@@ -322,9 +350,8 @@ func main() {
 			websocketutils.BroadcastAdminSupportMessage,
 		)
 
-		// Documents module for handling document uploads and verification
 		documentsRepo := documents.NewRepository(db)
-		documentsService := documents.NewService(documentsRepo, cfg)
+		documentsService := documents.NewService(documentsRepo, cfg, notificationSystem.GetProducer())
 		documentsHandler := documents.NewHandler(documentsService)
 		documents.RegisterRoutes(v1, documentsHandler, authMiddleware)
 

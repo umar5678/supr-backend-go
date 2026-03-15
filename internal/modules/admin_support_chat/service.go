@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/umar5678/go-backend/internal/models"
+	"github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -24,11 +25,12 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo        Repository
+	eventProducer notifications.EventProducer
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, eventProducer notifications.EventProducer) Service {
+	return &service{repo: repo, eventProducer: eventProducer}
 }
 
 func isAdminRole(role string) bool {
@@ -110,6 +112,11 @@ func (s *service) GetUserConversations(ctx context.Context, userID string, page,
 		logger.Error("failed to get user conversations", "error", err, "userId", userID)
 		return nil, 0, response.InternalServerError("Failed to retrieve conversations", err)
 	}
+
+	s.publishAdminChatEvent(ctx, notifications.EventUserConversationsRetrieved, userID, map[string]interface{}{
+		"conversation_ids": conversationIDs,
+		"total":            total,
+	})
 
 	return conversationIDs, total, nil
 }
@@ -295,4 +302,29 @@ func (s *service) DeleteConversation(ctx context.Context, conversationID string)
 
 	logger.Info("conversation deleted", "conversationId", conversationID)
 	return nil
+}
+
+
+func (s *service) publishAdminChatEvent(ctx context.Context, eventType notifications.EventType, userID string, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		logger.Debug("event producer not available, skipping event publication", "eventType", eventType, "userID", userID)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"user_id":   userID,
+		"timestamp": time.Now().UTC(),
+	}
+
+	for k, v := range data {
+		payload[k] = v
+	}
+
+	if err := s.eventProducer.PublishEventWithKey(ctx, eventType, userID, payload); err != nil {
+		logger.Error("failed to publish driver event",
+			"error", err,
+			"eventType", eventType,
+			"userID", userID,
+		)
+	}
 }

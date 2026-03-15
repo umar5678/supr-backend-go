@@ -8,6 +8,7 @@ import (
 
 	"github.com/umar5678/go-backend/internal/models"
 	driverdto "github.com/umar5678/go-backend/internal/modules/drivers/dto"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	walletservice "github.com/umar5678/go-backend/internal/modules/wallet"
 	walletdto "github.com/umar5678/go-backend/internal/modules/wallet/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
@@ -36,16 +37,22 @@ type Service interface {
 }
 
 type service struct {
-	repo          Repository
-	walletService walletservice.Service
-	db            *gorm.DB
+	repo            Repository
+	walletService   walletservice.Service
+	db              *gorm.DB
+	eventProducer   notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository, walletService walletservice.Service, db *gorm.DB) Service {
+	return NewServiceWithNotifications(repo, walletService, db, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, walletService walletservice.Service, db *gorm.DB, eventProducer notificationsmodule.EventProducer) Service {
 	return &service{
 		repo:          repo,
 		walletService: walletService,
 		db:            db,
+		eventProducer: eventProducer,
 	}
 }
 
@@ -111,6 +118,12 @@ func (s *service) RegisterDriver(ctx context.Context, userID string, req driverd
 		"userID", userID,
 		"vehicleType", req.Vehicle.VehicleTypeID,
 	)
+
+	// Publish driver registered event
+	s.publishDriverEvent(ctx, notificationsmodule.EventUserRegistered, userID, map[string]interface{}{
+		"driverID": driver.ID,
+		"vehicleType": req.Vehicle.VehicleTypeID,
+	})
 
 	return driverdto.ToDriverProfileResponse(driver), nil
 }
@@ -821,3 +834,28 @@ func (s *service) ListDriverProfiles(ctx context.Context, filters map[string]int
 
 	return responses, total, nil
 }
+
+func (s *service) publishDriverEvent(ctx context.Context, eventType notificationsmodule.EventType, userID string, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		logger.Debug("event producer not available, skipping event publication", "eventType", eventType, "userID", userID)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"user_id":   userID,
+		"timestamp": time.Now().UTC(),
+	}
+
+	for k, v := range data {
+		payload[k] = v
+	}
+
+	if err := s.eventProducer.PublishEventWithKey(ctx, eventType, userID, payload); err != nil {
+		logger.Error("failed to publish driver event",
+			"error", err,
+			"eventType", eventType,
+			"userID", userID,
+		)
+	}
+}
+

@@ -3,9 +3,11 @@ package fraud
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
 	"github.com/umar5678/go-backend/internal/modules/fraud/dto"
+	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -20,27 +22,25 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo          Repository
+	eventProducer notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository) Service {
-	return &service{repo: repo}
+	return NewServiceWithNotifications(repo, nil)
+}
+
+func NewServiceWithNotifications(repo Repository, eventProducer notificationsmodule.EventProducer) Service {
+	return &service{
+		repo:          repo,
+		eventProducer: eventProducer,
+	}
 }
 
 func (s *service) DetectFraudPatterns(ctx context.Context, rideID string) error {
-	// This should be called after each completed ride
-	// Run multiple detection algorithms in parallel
-
-	// 1. Check for frequent cancellations
 	go s.detectFrequentCancellations(context.Background(), rideID)
-
-	// 2. Check for same rider-driver pairs
 	go s.detectCollusionPattern(context.Background(), rideID)
-
-	// 3. Check for short distance high fare
 	go s.detectShortDistanceHighFare(context.Background(), rideID)
-
-	// 4. Check for location gaming
 	go s.detectLocationGaming(context.Background(), rideID)
 
 	return nil
@@ -276,7 +276,6 @@ func (s *service) GetFraudStats(ctx context.Context) (*dto.FraudStatsResponse, e
 }
 
 func (s *service) CheckUserRiskScore(ctx context.Context, userID string) (int, error) {
-	// Calculate user risk score based on flagged patterns
 	var patterns []*models.FraudPattern
 	s.repo.List(ctx, map[string]interface{}{
 		"userID": userID,
@@ -295,3 +294,30 @@ func (s *service) CheckUserRiskScore(ctx context.Context, userID string) (int, e
 	avgRisk := totalRisk / len(patterns)
 	return avgRisk, nil
 }
+
+func (s *service) publishFraudEvent(ctx context.Context, eventType notificationsmodule.EventType, userID string, data map[string]interface{}) {
+	if s.eventProducer == nil {
+		logger.Debug("event producer not available, skipping fraud event publication", "eventType", eventType, "userID", userID)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"user_id":   userID,
+		"timestamp": time.Now().UTC(),
+	}
+
+	for k, v := range data {
+		payload[k] = v
+	}
+
+	go func() {
+		if err := s.eventProducer.PublishEventWithKey(ctx, eventType, userID, payload); err != nil {
+			logger.Error("failed to publish fraud event",
+				"error", err,
+				"eventType", eventType,
+				"userID", userID,
+			)
+		}
+	}()
+}
+
