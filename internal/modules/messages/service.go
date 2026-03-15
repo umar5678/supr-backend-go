@@ -68,12 +68,12 @@ func (s *service) SendMessage(ctx context.Context, rideID, senderID, senderType,
 	}
 
 	s.publishMessageEvent(ctx, notificationsmodule.EventMessageReceived, senderID, map[string]interface{}{
-		"ride_id":    rideID,
-		"content":    content,
-		"sender_id":  senderID,
+		"ride_id":     rideID,
+		"content":     content,
+		"sender_id":   senderID,
 		"sender_type": senderType,
-		"metadata":   metadata,
-		"timestamp":  time.Now(),
+		"metadata":    metadata,
+		"timestamp":   time.Now(),
 	})
 
 	return &models.MessageResponse{
@@ -195,7 +195,6 @@ func (s *service) GetUnreadCount(ctx context.Context, rideID, userID string) (in
 
 	return count, nil
 }
-
 
 func (s *service) publishMessageEvent(ctx context.Context, eventType notificationsmodule.EventType, userID string, data map[string]interface{}) {
 	if s.eventProducer == nil {

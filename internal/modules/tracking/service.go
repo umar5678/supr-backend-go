@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/umar5678/go-backend/internal/models"
-	"github.com/umar5678/go-backend/internal/modules/tracking/dto"
 	notificationsmodule "github.com/umar5678/go-backend/internal/modules/notifications"
+	"github.com/umar5678/go-backend/internal/modules/tracking/dto"
 	"github.com/umar5678/go-backend/internal/services/cache"
 	"github.com/umar5678/go-backend/internal/utils/location"
 	"github.com/umar5678/go-backend/internal/utils/logger"
@@ -454,7 +454,6 @@ func (s *service) isDriverAvailable(ctx context.Context, driverID string) (bool,
 
 	return true, nil
 }
-
 
 func (s *service) StartLocationStreaming(ctx context.Context, rideID, driverID, riderID string, interval time.Duration) {
 	ticker := time.NewTicker(interval)

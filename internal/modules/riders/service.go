@@ -101,9 +101,9 @@ func (s *service) UpdateProfile(ctx context.Context, userID string, req riderdto
 	logger.Info("rider profile updated", "userID", userID)
 
 	s.publishRiderEvent(ctx, notifications.EventRiderProfileUpdated, map[string]interface{}{
-		"user_id":   userID,
+		"user_id":    userID,
 		"profile_id": profile.ID,
-		"timestamp": time.Now(),
+		"timestamp":  time.Now(),
 	})
 
 	return riderdto.ToRiderProfileResponse(profile), nil
@@ -145,9 +145,9 @@ func (s *service) CreateProfile(ctx context.Context, userID string) (*models.Rid
 	logger.Info("rider profile created", "userID", userID, "profileID", profile.ID)
 
 	s.publishRiderEvent(ctx, notifications.EventRiderProfileCreated, map[string]interface{}{
-		"user_id":   userID,
+		"user_id":    userID,
 		"profile_id": profile.ID,
-		"timestamp": time.Now(),
+		"timestamp":  time.Now(),
 	})
 
 	return profile, nil
@@ -195,7 +195,9 @@ func (s *service) publishRiderEvent(ctx context.Context, eventType notifications
 	}
 
 	go func() {
-		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+		// Use background context to prevent cancellation when HTTP request completes
+		bgCtx := context.Background()
+		if err := s.eventProducer.PublishEvent(bgCtx, eventType, data); err != nil {
 			logger.Error("failed to publish rider event", "error", err, "eventType", eventType)
 		}
 	}()

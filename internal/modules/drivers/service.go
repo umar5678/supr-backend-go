@@ -37,10 +37,10 @@ type Service interface {
 }
 
 type service struct {
-	repo            Repository
-	walletService   walletservice.Service
-	db              *gorm.DB
-	eventProducer   notificationsmodule.EventProducer
+	repo          Repository
+	walletService walletservice.Service
+	db            *gorm.DB
+	eventProducer notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository, walletService walletservice.Service, db *gorm.DB) Service {
@@ -121,7 +121,7 @@ func (s *service) RegisterDriver(ctx context.Context, userID string, req driverd
 
 	// Publish driver registered event
 	s.publishDriverEvent(ctx, notificationsmodule.EventUserRegistered, userID, map[string]interface{}{
-		"driverID": driver.ID,
+		"driverID":    driver.ID,
 		"vehicleType": req.Vehicle.VehicleTypeID,
 	})
 
@@ -858,4 +858,3 @@ func (s *service) publishDriverEvent(ctx context.Context, eventType notification
 		)
 	}
 }
-

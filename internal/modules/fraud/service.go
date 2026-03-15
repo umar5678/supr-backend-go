@@ -311,7 +311,9 @@ func (s *service) publishFraudEvent(ctx context.Context, eventType notifications
 	}
 
 	go func() {
-		if err := s.eventProducer.PublishEventWithKey(ctx, eventType, userID, payload); err != nil {
+		// Use background context to prevent cancellation when HTTP request completes
+		bgCtx := context.Background()
+		if err := s.eventProducer.PublishEventWithKey(bgCtx, eventType, userID, payload); err != nil {
 			logger.Error("failed to publish fraud event",
 				"error", err,
 				"eventType", eventType,
@@ -320,4 +322,3 @@ func (s *service) publishFraudEvent(ctx context.Context, eventType notifications
 		}
 	}()
 }
-

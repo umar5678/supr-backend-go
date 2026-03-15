@@ -885,10 +885,10 @@ func (s *service) sendRideRequestToDriver(
 	)
 
 	s.publishRideEvent(ctx, notificationsmodule.EventRideRequestSent, ride.ID, ride.RiderID, driver.DriverID, map[string]interface{}{
-		"driver_id": driver.DriverID,
+		"driver_id":  driver.DriverID,
 		"request_id": requestID,
-		"distance":  driver.Distance,
-		"eta":       driver.ETA,
+		"distance":   driver.Distance,
+		"eta":        driver.ETA,
 	})
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -1053,8 +1053,8 @@ func (s *service) AcceptRide(ctx context.Context, userID, rideID string) (*dto.R
 	)
 
 	s.publishRideEvent(ctx, notificationsmodule.EventRideAccepted, rideID, ride.RiderID, driverID, map[string]interface{}{
-		"driverName":   driver.User.Name,
-		"status":       "accepted",
+		"driverName": driver.User.Name,
+		"status":     "accepted",
 	})
 
 	freshRide, err := s.repo.FindRideByID(ctx, rideID)
@@ -1578,9 +1578,9 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 	}
 
 	s.publishRideEvent(ctx, notificationsmodule.EventRideCompleted, rideID, ride.RiderID, driverUserID, map[string]interface{}{
-		"status":      "completed",
-		"fare":        actualFare,
-		"earnings":    driverEarnings,
+		"status":   "completed",
+		"fare":     actualFare,
+		"earnings": driverEarnings,
 	})
 
 	go func() {
@@ -2676,10 +2676,10 @@ func (s *service) CancelRide(ctx context.Context, userID, rideID string, req dto
 		driverID = *ride.DriverID
 	}
 	s.publishRideEvent(ctx, notificationsmodule.EventRideCancelled, rideID, ride.RiderID, driverID, map[string]interface{}{
-		"status":       "cancelled",
-		"cancelledBy":  cancelledBy,
-		"reason":       req.Reason,
-		"riderFee":     riderCancellationFee,
+		"status":        "cancelled",
+		"cancelledBy":   cancelledBy,
+		"reason":        req.Reason,
+		"riderFee":      riderCancellationFee,
 		"driverPenalty": driverPenalty,
 	})
 
@@ -2774,9 +2774,9 @@ func (s *service) publishRideEvent(ctx context.Context, eventType notificationsm
 	}
 
 	payload := map[string]interface{}{
-		"rideId":   rideID,
-		"riderId":  riderID,
-		"driverId": driverID,
+		"rideId":    rideID,
+		"riderId":   riderID,
+		"driverId":  driverID,
 		"timestamp": time.Now().UTC(),
 	}
 
@@ -2785,9 +2785,10 @@ func (s *service) publishRideEvent(ctx context.Context, eventType notificationsm
 	}
 
 	go func() {
-		if err := s.eventProducer.PublishEventWithKey(ctx, eventType, rideID, payload); err != nil {
+		// Use background context to prevent cancellation when HTTP request completes
+		bgCtx := context.Background()
+		if err := s.eventProducer.PublishEventWithKey(bgCtx, eventType, rideID, payload); err != nil {
 			logger.Error("failed to publish ride event", "error", err, "eventType", eventType, "rideID", rideID)
 		}
 	}()
 }
-

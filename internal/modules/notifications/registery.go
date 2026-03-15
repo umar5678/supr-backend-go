@@ -11,19 +11,19 @@ const (
 	EventFraudPatternDetected EventType = "fraud.pattern.detected"
 	EventFraudAlertCreated    EventType = "fraud.alert.created"
 
-	EventRideRequested EventType = "ride.requested"
-	EventRideAccepted  EventType = "ride.accepted"
-	EventRideStarted   EventType = "ride.started"
-	EventRideCompleted EventType = "ride.completed"
-	EventRideCancelled EventType = "ride.cancelled"
-	EventRideRequestSent EventType = "ride.request.sent"
+	EventRideRequested                EventType = "ride.requested"
+	EventRideAccepted                 EventType = "ride.accepted"
+	EventRideStarted                  EventType = "ride.started"
+	EventRideCompleted                EventType = "ride.completed"
+	EventRideCancelled                EventType = "ride.cancelled"
+	EventRideRequestSent              EventType = "ride.request.sent"
 	EventRideRequestCancelledBySystem EventType = "ride.request.cancelled_by_system"
-	EventRideRequestAlreadyAccepted EventType = "ride.request.already_accepted"
-	EventRideRequestAccepted EventType = "ride.request.accepted"
-	EventRideRequestRejected EventType = "ride.request.rejected"
-	EventRideRequestExpired EventType = "ride.request.expired"
-	EventHighRiskRider EventType = "ride.high_risk_rider"
-	EventDriverArrived EventType = "ride.driver.arrived"
+	EventRideRequestAlreadyAccepted   EventType = "ride.request.already_accepted"
+	EventRideRequestAccepted          EventType = "ride.request.accepted"
+	EventRideRequestRejected          EventType = "ride.request.rejected"
+	EventRideRequestExpired           EventType = "ride.request.expired"
+	EventHighRiskRider                EventType = "ride.high_risk_rider"
+	EventDriverArrived                EventType = "ride.driver.arrived"
 
 	EventPaymentProcessed EventType = "payment.processed"
 	EventPaymentFailed    EventType = "payment.failed"
@@ -37,27 +37,27 @@ const (
 	EventUserVerified   EventType = "user.verified"
 	EventUserSuspended  EventType = "user.suspended"
 
-	EventSOSAlert    EventType = "sos.alert"
-	EventSOSTriggered           EventType = "sos.triggered"
-	EventSOSResolved            EventType = "sos.resolved"
+	EventSOSAlert     EventType = "sos.alert"
+	EventSOSTriggered EventType = "sos.triggered"
+	EventSOSResolved  EventType = "sos.resolved"
 
 	EventPromoCodeApplied EventType = "promo.applied"
 	EventPromoCodeExpired EventType = "promo.expired"
 
-	EventMessageReceived EventType = "message.received"
-	EventMessageRead     EventType = "message.read"
+	EventMessageReceived             EventType = "message.received"
+	EventMessageRead                 EventType = "message.read"
 	EventMessageUnreadCountRetrieved EventType = "message.unread_count.retrieved"
 
-	EventReferralCodeGenerated EventType = "referral.code.generated"
-	EventReferralCodeApplied   EventType = "referral.code.applied"
-	EventKYCSubmitted          EventType = "kyc.submitted"
-	EventLocationSaved         EventType = "location.saved"
+	EventReferralCodeGenerated   EventType = "referral.code.generated"
+	EventReferralCodeApplied     EventType = "referral.code.applied"
+	EventKYCSubmitted            EventType = "kyc.submitted"
+	EventLocationSaved           EventType = "location.saved"
 	EventUserVerificationPending EventType = "user.verification.pending"
 
-	EventPhoneSignup  EventType = "auth.phone.signup"
-	EventPhoneLogin   EventType = "auth.phone.login"
-	EventEmailSignup  EventType = "auth.email.signup"
-	EventEmailLogin   EventType = "auth.email.login"
+	EventPhoneSignup EventType = "auth.phone.signup"
+	EventPhoneLogin  EventType = "auth.phone.login"
+	EventEmailSignup EventType = "auth.email.signup"
+	EventEmailLogin  EventType = "auth.email.login"
 
 	EventRiderProfileCreated EventType = "rider.profile.created"
 	EventRiderProfileUpdated EventType = "rider.profile.updated"
@@ -79,18 +79,17 @@ const (
 	EventDriverOffline         EventType = "tracking.driver.offline"
 
 	EventUserConversationsRetrieved EventType = "admin.user.conversations.retrieved"
-	EventUserConversationResolved    EventType = "admin.user.conversation.resolved"
+	EventUserConversationResolved   EventType = "admin.user.conversation.resolved"
 
-	EventDocumentStatusUpdated       EventType = "admin.document.status.updated"
+	EventDocumentStatusUpdated EventType = "admin.document.status.updated"
 
-	EventUserProfileUpdated          EventType = "admin.user.profile.updated"
+	EventUserProfileUpdated EventType = "admin.user.profile.updated"
 
 	EventRideDestinationChanged EventType = "ride.destination.changed"
 	EventRideRouteUpdated       EventType = "ride.route.updated"
 	EventRideUpdated            EventType = "ride.updated"
 	EventRideAssigned           EventType = "ride.assigned"
 	EventInvalidRidePINAttempt  EventType = "ride.pin.invalid_attempt"
-
 
 	EventOrderPlaced       EventType = "food:order:placed"
 	EventOrderAccepted     EventType = "food:order:accepted"
@@ -180,7 +179,7 @@ func (r *EventRegistry) registerDefaultSchemas() {
 		{EventPhoneLogin, "auth-events", "auth", "Phone login", "v1"},
 		{EventEmailSignup, "auth-events", "auth", "Email signup", "v1"},
 		{EventEmailLogin, "auth-events", "auth", "Email login", "v1"},
-		
+
 		{EventRiderProfileCreated, "rider-events", "riders", "Rider profile created", "v1"},
 		{EventRiderProfileUpdated, "rider-events", "riders", "Rider profile updated", "v1"},
 		{EventRiderRatingUpdated, "rider-events", "riders", "Rider rating updated", "v1"},

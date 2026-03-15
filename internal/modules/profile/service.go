@@ -14,7 +14,6 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
-
 type WalletService interface {
 	CreditWallet(ctx context.Context, userID string, amount float64, transactionType, referenceID, description string, metadata map[string]interface{}) (*models.WalletTransaction, error)
 }
@@ -113,8 +112,8 @@ func (s *service) GenerateReferralCode(ctx context.Context, userID string) (*dto
 	}
 
 	s.publishProfileEvent(ctx, notifications.EventReferralCodeGenerated, map[string]interface{}{
-		"user_id":  userID,
-		"code":     code,
+		"user_id":   userID,
+		"code":      code,
 		"timestamp": time.Now(),
 	})
 
@@ -366,7 +365,9 @@ func (s *service) publishProfileEvent(ctx context.Context, eventType notificatio
 	}
 
 	go func() {
-		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+		// Use background context to prevent cancellation when HTTP request completes
+		bgCtx := context.Background()
+		if err := s.eventProducer.PublishEvent(bgCtx, eventType, data); err != nil {
 			logger.Error("failed to publish profile event", "error", err, "eventType", eventType)
 		}
 	}()

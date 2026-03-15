@@ -1149,14 +1149,16 @@ func (s *service) publishPaymentEvent(ctx context.Context, eventType notificatio
 	}
 
 	payload := map[string]interface{}{
-		"user_id":            userID,
-		"amount":             amount,
-		"transaction_type":   transactionType,
-		"timestamp":          time.Now().UTC(),
+		"user_id":          userID,
+		"amount":           amount,
+		"transaction_type": transactionType,
+		"timestamp":        time.Now().UTC(),
 	}
 
 	go func() {
-		if err := s.eventProducer.PublishEventWithKey(ctx, eventType, userID, payload); err != nil {
+		// Use background context to prevent cancellation when HTTP request completes
+		bgCtx := context.Background()
+		if err := s.eventProducer.PublishEventWithKey(bgCtx, eventType, userID, payload); err != nil {
 			logger.Error("failed to publish payment event",
 				"error", err,
 				"eventType", eventType,
@@ -1170,4 +1172,3 @@ func (s *service) publishPaymentEvent(ctx context.Context, eventType notificatio
 func stringPtr(s string) *string {
 	return &s
 }
-

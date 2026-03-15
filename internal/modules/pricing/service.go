@@ -606,9 +606,9 @@ func (s *service) ChangeDestination(ctx context.Context, driverID string, req dt
 	)
 
 	s.publishPricingEvent(ctx, notifications.EventRideDestinationChanged, map[string]interface{}{
-		"ride_id":            req.RideID,
+		"ride_id":             req.RideID,
 		"additional_distance": additionalDistance,
-		"additional_charge":  additionalCharge,
+		"additional_charge":   additionalCharge,
 	})
 
 	return &dto.DestinationChangeResponse{
@@ -802,7 +802,9 @@ func (s *service) publishPricingEvent(ctx context.Context, eventType notificatio
 	}
 
 	go func() {
-		if err := s.eventProducer.PublishEvent(ctx, eventType, data); err != nil {
+		// Use background context to prevent cancellation when HTTP request completes
+		bgCtx := context.Background()
+		if err := s.eventProducer.PublishEvent(bgCtx, eventType, data); err != nil {
 			logger.Error("failed to publish pricing event", "error", err, "eventType", eventType)
 		}
 	}()

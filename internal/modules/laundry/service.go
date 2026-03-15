@@ -45,11 +45,11 @@ type Service interface {
 }
 
 type service struct {
-	repo            Repository
-	db              *gorm.DB
-	walletService   wallet.Service
-	ridePINService  ridepin.Service
-	eventProducer   notificationsmodule.EventProducer
+	repo           Repository
+	db             *gorm.DB
+	walletService  wallet.Service
+	ridePINService ridepin.Service
+	eventProducer  notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository, db *gorm.DB, walletService wallet.Service, ridePINService ridepin.Service) Service {

@@ -28,7 +28,6 @@ const (
 )
 
 type Service interface {
-
 	ListCategories(ctx context.Context) ([]*homeservicedto.ServiceCategoryResponse, error)
 	GetCategoryWithTabs(ctx context.Context, id uint) (*homeservicedto.CategoryWithTabsResponse, error)
 	GetAllCategorySlugs(ctx context.Context) ([]string, error)
@@ -58,10 +57,10 @@ type Service interface {
 }
 
 type service struct {
-	repo            Repository
-	walletService   wallet.Service
-	cfg             *config.Config
-	eventProducer   notificationsmodule.EventProducer
+	repo          Repository
+	walletService wallet.Service
+	cfg           *config.Config
+	eventProducer notificationsmodule.EventProducer
 }
 
 func NewService(repo Repository, walletService wallet.Service, cfg *config.Config) Service {
