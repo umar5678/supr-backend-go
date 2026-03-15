@@ -264,7 +264,7 @@ func main() {
 			notificationSystem.GetNotificationService(),
 			notificationSystem.GetPushService(),
 		)
-		notifController.RegisterRoutes(v1)
+		notifController.RegisterRoutes(v1, authMiddleware)
 
 		homeServicesRepo := homeservices.NewRepository(db)
 		homeServicesService := homeservices.NewServiceWithNotifications(homeServicesRepo, walletService, cfg, notificationSystem.GetProducer())

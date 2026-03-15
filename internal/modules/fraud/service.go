@@ -276,11 +276,13 @@ func (s *service) GetFraudStats(ctx context.Context) (*dto.FraudStatsResponse, e
 }
 
 func (s *service) CheckUserRiskScore(ctx context.Context, userID string) (int, error) {
-	var patterns []*models.FraudPattern
-	s.repo.List(ctx, map[string]interface{}{
+	patterns, _, err := s.repo.List(ctx, map[string]interface{}{
 		"userID": userID,
 		"status": "flagged",
 	}, 1, 100)
+	if err != nil {
+		return 0, response.InternalServerError("Failed to list fraud patterns for user", err)
+	}
 
 	if len(patterns) == 0 {
 		return 0, nil

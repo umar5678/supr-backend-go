@@ -46,8 +46,9 @@ func NewNotificationController(notifService service.NotificationService, pushSer
 	}
 }
 
-func (c *NotificationController) RegisterRoutes(rg *gin.RouterGroup) {
+func (c *NotificationController) RegisterRoutes(rg *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
 	notifications := rg.Group("/notifications")
+	notifications.Use(authMiddleware)
 	{
 		notifications.GET("", c.GetNotifications)
 		notifications.GET("/unread/count", c.GetUnreadCount)

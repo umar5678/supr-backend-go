@@ -80,7 +80,7 @@ func OptionalAuth(cfg *config.Config) gin.HandlerFunc {
 		claims, err := jwt.ValidateToken(parts[1], cfg.JWT.Secret, cfg.JWT.Issuer)
 		if err == nil {
 			c.Set("userID", claims.UserID)
-			c.Set("role", claims.Role) // ← FIXED: was "userRole"
+			c.Set("role", claims.Role)
 		}
 
 		c.Next()
