@@ -263,6 +263,7 @@ func main() {
 		notifController := notificationcontroller.NewNotificationController(
 			notificationSystem.GetNotificationService(),
 			notificationSystem.GetPushService(),
+			cfg,
 		)
 		notifController.RegisterRoutes(v1, authMiddleware)
 

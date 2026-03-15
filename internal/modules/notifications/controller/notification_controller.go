@@ -7,8 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
+	"github.com/umar5678/go-backend/internal/config"
 	"github.com/umar5678/go-backend/internal/modules/notifications/dto"
 	"github.com/umar5678/go-backend/internal/modules/notifications/service"
+	"github.com/umar5678/go-backend/internal/utils/jwt"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -29,12 +31,14 @@ type NotificationController struct {
 	notifService service.NotificationService
 	pushService  service.PushService
 	upgrader     websocket.Upgrader
+	cfg          *config.Config
 }
 
-func NewNotificationController(notifService service.NotificationService, pushService service.PushService) *NotificationController {
+func NewNotificationController(notifService service.NotificationService, pushService service.PushService, cfg *config.Config) *NotificationController {
 	return &NotificationController{
 		notifService: notifService,
 		pushService:  pushService,
+		cfg:          cfg,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -60,12 +64,12 @@ func (c *NotificationController) RegisterRoutes(rg *gin.RouterGroup, authMiddlew
 		notifications.POST("/push-token", c.RegisterPushToken)
 		notifications.DELETE("/push-token", c.UnregisterPushToken)
 
-		// WebSocket for real-time notifications
-		notifications.GET("/ws/push", c.SubscribePush)
-
 		// Stats (for admin)
 		notifications.GET("/stats", c.GetPushStats)
 	}
+
+	// WebSocket endpoint - registered without auth middleware since it handles auth via token query param
+	rg.GET("/notifications/ws/push", c.SubscribePush)
 }
 
 // GetNotifications godoc
@@ -332,15 +336,24 @@ func (c *NotificationController) UnregisterPushToken(ctx *gin.Context) {
 // @Router /notifications/ws/push [get]
 // @Security BearerAuth
 func (c *NotificationController) SubscribePush(ctx *gin.Context) {
-	userIDStr, exists := ctx.Get("userID")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	// Extract token from query parameter for WebSocket
+	token := ctx.Query("token")
+	if token == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "token required"})
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr.(string))
+	// Validate the token
+	claims, err := jwt.ValidateToken(token, c.cfg.JWT.Secret, c.cfg.JWT.Issuer)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+		return
+	}
+
+	// Parse user ID from token
+	userID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id in token"})
 		return
 	}
 
