@@ -15,6 +15,8 @@ import (
 type EventHandler interface {
 	Handle(ctx context.Context, event *ConsumedEvent) error
 	EventType() EventType
+	// CanHandle returns true if this handler can process the given event type
+	CanHandle(eventType EventType) bool
 }
 
 type ConsumedEvent struct {
@@ -37,7 +39,7 @@ type KafkaConsumer struct {
 	registry    *EventRegistry
 	db          *gorm.DB
 	config      *ConsumerConfig
-	handlers    map[EventType]EventHandler
+	handlers    []EventHandler
 	dlqProducer EventProducer
 	stopChan    chan struct{}
 }
@@ -92,20 +94,15 @@ func NewKafkaConsumer(
 		registry:    registry,
 		db:          db,
 		config:      config,
-		handlers:    make(map[EventType]EventHandler),
+		handlers:    make([]EventHandler, 0),
 		dlqProducer: dlqProducer,
 		stopChan:    make(chan struct{}),
 	}
 }
 
 func (c *KafkaConsumer) Subscribe(handler EventHandler) error {
-	eventType := handler.EventType()
-
-	if _, exists := c.handlers[eventType]; exists {
-		return fmt.Errorf("handler for event type %s already registered", eventType)
-	}
-
-	c.handlers[eventType] = handler
+	// Add handler to the list - no duplicate checking needed with slice
+	c.handlers = append(c.handlers, handler)
 	return nil
 }
 
@@ -190,9 +187,16 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 		Headers:      headers,
 	}
 
-	// Get handler
-	handler, exists := c.handlers[eventType]
-	if !exists {
+	// Find a handler that can handle this event type
+	var handler EventHandler
+	for _, h := range c.handlers {
+		if h.CanHandle(eventType) {
+			handler = h
+			break
+		}
+	}
+
+	if handler == nil {
 		fmt.Printf("No handler for event type %s\n", eventType)
 		return nil
 	}

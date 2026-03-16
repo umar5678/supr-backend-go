@@ -62,16 +62,13 @@ func NewNotificationSystem(
 		consumers = append(consumers, consumer)
 	}
 
-	// Register event handlers for all consumers
-	// These handlers transform Kafka events into WebSocket notifications
+
 	ns := &NotificationSystem{
 		producer:            producer,
 		consumers:           consumers,
 		pushService:         pushSvc,
 		notificationService: notifSvc,
 	}
-	
-	// Subscribe handlers to all consumers
 	for _, consumer := range consumers {
 		ns.registerEventHandlers(consumer)
 	}

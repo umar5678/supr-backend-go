@@ -26,6 +26,33 @@ func (h *RideEventHandler) EventType() EventType {
 	return EventRideRequested // Base event type for ride events consumer
 }
 
+func (h *RideEventHandler) CanHandle(eventType EventType) bool {
+	// Handle all ride-related events
+	switch eventType {
+	case EventRideRequestSent,
+		EventRideAccepted,
+		EventRideAssigned,
+		EventRideStarted,
+		EventRideCompleted,
+		EventRideCancelled,
+		EventRideRequested,
+		EventRideRequestCancelledBySystem,
+		EventRideRequestAlreadyAccepted,
+		EventRideRequestAccepted,
+		EventRideRequestRejected,
+		EventRideRequestExpired,
+		EventHighRiskRider,
+		EventDriverArrived,
+		EventInvalidRidePINAttempt,
+		EventRideDestinationChanged,
+		EventRideRouteUpdated,
+		EventRideUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
 func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) error {
 	eventTypeStr := event.Headers["event_type"]
 
@@ -161,6 +188,18 @@ func (h *PaymentEventHandler) EventType() EventType {
 	return EventPaymentProcessed // Base event type for payment events consumer
 }
 
+func (h *PaymentEventHandler) CanHandle(eventType EventType) bool {
+	// Handle all payment-related events
+	switch eventType {
+	case EventPaymentProcessed,
+		EventPaymentFailed,
+		EventRefundIssued:
+		return true
+	default:
+		return false
+	}
+}
+
 func (h *PaymentEventHandler) Handle(ctx context.Context, event *ConsumedEvent) error {
 	eventTypeStr := event.Headers["event_type"]
 
@@ -236,6 +275,18 @@ func (h *SOSEventHandler) EventType() EventType {
 	return EventSOSAlert // Base event type for SOS events consumer
 }
 
+func (h *SOSEventHandler) CanHandle(eventType EventType) bool {
+	// Handle all SOS-related events
+	switch eventType {
+	case EventSOSAlert,
+		EventSOSTriggered,
+		EventSOSResolved:
+		return true
+	default:
+		return false
+	}
+}
+
 func (h *SOSEventHandler) Handle(ctx context.Context, event *ConsumedEvent) error {
 	eventTypeStr := event.Headers["event_type"]
 
@@ -302,6 +353,18 @@ func (h *FraudEventHandler) EventType() EventType {
 	return EventFraudPatternDetected // Base event type for fraud events consumer
 }
 
+func (h *FraudEventHandler) CanHandle(eventType EventType) bool {
+	// Handle all fraud-related events
+	switch eventType {
+	case EventFraudPatternDetected,
+		EventFraudAlertCreated,
+		EventHighRiskRider:
+		return true
+	default:
+		return false
+	}
+}
+
 func (h *FraudEventHandler) Handle(ctx context.Context, event *ConsumedEvent) error {
 	eventTypeStr := event.Headers["event_type"]
 
@@ -364,6 +427,18 @@ func NewUserEventHandler(pushService notificationservice.PushService) *UserEvent
 
 func (h *UserEventHandler) EventType() EventType {
 	return EventUserRegistered // Base event type for user events consumer
+}
+
+func (h *UserEventHandler) CanHandle(eventType EventType) bool {
+	// Handle all user-related events
+	switch eventType {
+	case EventUserRegistered,
+		EventUserVerified,
+		EventUserSuspended:
+		return true
+	default:
+		return false
+	}
 }
 
 func (h *UserEventHandler) Handle(ctx context.Context, event *ConsumedEvent) error {
