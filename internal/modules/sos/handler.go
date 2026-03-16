@@ -115,15 +115,20 @@ func (h *Handler) ListSOS(c *gin.Context) {
 		return
 	}
 
+	role, _ := c.Get("role")
+	filterUserID := ""
+	if role != "admin" {
+		filterUserID = userID.(string)
+	}
+
 	var req dto.ListSOSRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.Error(response.BadRequest("Invalid query parameters: " + err.Error()))
 		return
 	}
-
 	req.SetDefaults()
 
-	alerts, total, err := h.service.ListSOS(c.Request.Context(), userID.(string), req)
+	alerts, total, err := h.service.ListSOS(c.Request.Context(), filterUserID, req)
 	if err != nil {
 		c.Error(err)
 		return
