@@ -63,9 +63,13 @@ func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 		return fmt.Errorf("failed to unmarshal ride event payload: %w", err)
 	}
 
+	// Check for rider_id or riderId (both formats supported)
 	riderID, ok := payload["rider_id"].(string)
 	if !ok {
-		logger.Warn("missing rider_id in ride event", "event_type", eventTypeStr)
+		riderID, ok = payload["riderId"].(string)
+	}
+	if !ok {
+		logger.Warn("missing rider_id/riderId in ride event", "event_type", eventTypeStr)
 		return fmt.Errorf("missing rider_id in ride event")
 	}
 
@@ -76,6 +80,9 @@ func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 	}
 
 	driverID, _ := payload["driver_id"].(string)
+	if driverID == "" {
+		driverID, _ = payload["driverId"].(string)
+	}
 
 	// Create notification message based on event type
 	var notificationMsg string
@@ -211,7 +218,10 @@ func (h *PaymentEventHandler) Handle(ctx context.Context, event *ConsumedEvent) 
 
 	userID, ok := payload["user_id"].(string)
 	if !ok {
-		logger.Warn("missing user_id in payment event", "event_type", eventTypeStr)
+		userID, ok = payload["userId"].(string)
+	}
+	if !ok {
+		logger.Warn("missing user_id/userId in payment event", "event_type", eventTypeStr)
 		return fmt.Errorf("missing user_id in payment event")
 	}
 
@@ -298,7 +308,10 @@ func (h *SOSEventHandler) Handle(ctx context.Context, event *ConsumedEvent) erro
 
 	riderID, ok := payload["rider_id"].(string)
 	if !ok {
-		logger.Warn("missing rider_id in SOS event", "event_type", eventTypeStr)
+		riderID, ok = payload["riderId"].(string)
+	}
+	if !ok {
+		logger.Warn("missing rider_id/riderId in SOS event", "event_type", eventTypeStr)
 		return fmt.Errorf("missing rider_id in SOS event")
 	}
 
@@ -376,7 +389,10 @@ func (h *FraudEventHandler) Handle(ctx context.Context, event *ConsumedEvent) er
 
 	userID, ok := payload["user_id"].(string)
 	if !ok {
-		logger.Warn("missing user_id in fraud event", "event_type", eventTypeStr)
+		userID, ok = payload["userId"].(string)
+	}
+	if !ok {
+		logger.Warn("missing user_id/userId in fraud event", "event_type", eventTypeStr)
 		return fmt.Errorf("missing user_id in fraud event")
 	}
 
@@ -452,7 +468,10 @@ func (h *UserEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 
 	userID, ok := payload["user_id"].(string)
 	if !ok {
-		logger.Warn("missing user_id in user event", "event_type", eventTypeStr)
+		userID, ok = payload["userId"].(string)
+	}
+	if !ok {
+		logger.Warn("missing user_id/userId in user event", "event_type", eventTypeStr)
 		return fmt.Errorf("missing user_id in user event")
 	}
 

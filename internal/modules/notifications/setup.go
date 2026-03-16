@@ -62,7 +62,6 @@ func NewNotificationSystem(
 		consumers = append(consumers, consumer)
 	}
 
-
 	ns := &NotificationSystem{
 		producer:            producer,
 		consumers:           consumers,
@@ -151,4 +150,3 @@ func (ns *NotificationSystem) registerEventHandlers(consumer *KafkaConsumer) {
 		logger.Error("failed to subscribe to user handler", "error", err)
 	}
 }
-
