@@ -128,15 +128,17 @@ func (s *LocalPushService) SendPush(ctx context.Context, userID uuid.UUID, title
 		Metadata: dataBytes,
 	}
 
+	logger.Info("attempting to persist notification to database", "userID", userID, "title", title, "channel", models.ChannelPush)
 	if err := s.db.WithContext(ctx).Create(notification).Error; err != nil {
-		logger.Error("failed to persist push notification", "error", err, "userID", userID)
+		logger.Error("FAILED to persist push notification to database", "error", err, "userID", userID, "title", title)
 		return fmt.Errorf("failed to persist notification: %w", err)
 	}
+	logger.Info("notification successfully persisted to database", "userID", userID, "title", title, "notificationID", notification.ID)
 
 	// Broadcast to real-time subscribers
 	s.BroadcastToUser(userID, message)
 
-	logger.Info("push notification sent", "userID", userID, "title", title)
+	logger.Info("push notification sent (both persisted and broadcasted)", "userID", userID, "title", title)
 	return nil
 }
 
