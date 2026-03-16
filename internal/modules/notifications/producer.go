@@ -121,7 +121,7 @@ func (p *KafkaProducer) PublishEventWithKey(ctx context.Context, eventType Event
 		},
 	}
 
-	// Publish to Kafka
+	// Publish to Kafka topic for the specific event type
 	writer := p.getWriter(schema.Topic)
 	err = writer.WriteMessages(ctx, message)
 

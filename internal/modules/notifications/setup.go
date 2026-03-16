@@ -14,7 +14,7 @@ import (
 // NotificationSystem manages all notification components
 type NotificationSystem struct {
 	producer            EventProducer
-	consumer            *KafkaConsumer
+	consumers           []*KafkaConsumer
 	pushService         service.PushService
 	notificationService service.NotificationService
 }
@@ -39,46 +39,63 @@ func NewNotificationSystem(
 	registry := NewEventRegistry()
 	producer := NewKafkaProducer(producerConfig, registry, db)
 
-	// Initialize Kafka consumer with DLQ producer
-	// Subscribe to notification topic for all system events
-	consumerConfig := DefaultConsumerConfig(kafkaConfig.Brokers, "notification-consumer", "notification-events")
-	consumer := NewKafkaConsumer(
-		consumerConfig,
-		registry,
-		db,
-		producer, // Use same producer for DLQ
-	)
+	topicsToListen := []string{
+		"ride-events",
+		"payment-events",
+		"fraud-events",
+		"sos-events",
+		"user-events",
+		"profile-events",
+		"auth-events",
+		"pricing-events",
+	}
 
-	logger.Info("notification system initialized successfully")
+	var consumers []*KafkaConsumer
+	for _, topic := range topicsToListen {
+		consumerConfig := DefaultConsumerConfig(kafkaConfig.Brokers, "notification-consumer", topic)
+		consumer := NewKafkaConsumer(
+			consumerConfig,
+			registry,
+			db,
+			producer, // Use same producer for DLQ
+		)
+		consumers = append(consumers, consumer)
+	}
+
+	logger.Info("notification system initialized successfully", "consumer_count", len(consumers))
 
 	return &NotificationSystem{
 		producer:            producer,
-		consumer:            consumer,
+		consumers:           consumers,
 		pushService:         pushSvc,
 		notificationService: notifSvc,
 	}, nil
 }
 
-// Start begins event consumption
 func (ns *NotificationSystem) Start(ctx context.Context) error {
-	go func() {
-		if err := ns.consumer.Start(ctx); err != nil {
-			logger.Error("notification consumer error", "error", err)
-		}
-	}()
-	logger.Info("notification system started")
+	for i, consumer := range ns.consumers {
+		go func(idx int, c *KafkaConsumer) {
+			if err := c.Start(ctx); err != nil {
+				logger.Error("notification consumer error", "consumer_index", idx, "error", err)
+			}
+		}(i, consumer)
+	}
+	logger.Info("notification system started", "active_consumers", len(ns.consumers))
 	return nil
 }
 
 // Stop gracefully shuts down the notification system
 func (ns *NotificationSystem) Stop() error {
-	logger.Info("stopping notification system...")
-	if err := ns.consumer.Stop(); err != nil {
-		logger.Error("failed to stop consumer", "error", err)
-		return err
+	logger.Info("stopping notification system...", "consumer_count", len(ns.consumers))
+	var lastErr error
+	for _, consumer := range ns.consumers {
+		if err := consumer.Stop(); err != nil {
+			logger.Error("failed to stop consumer", "error", err)
+			lastErr = err
+		}
 	}
 	logger.Info("notification system stopped")
-	return nil
+	return lastErr
 }
 
 // GetProducer returns the event producer
