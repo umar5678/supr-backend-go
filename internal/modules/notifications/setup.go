@@ -17,6 +17,7 @@ type NotificationSystem struct {
 	consumers           []*KafkaConsumer
 	pushService         service.PushService
 	notificationService service.NotificationService
+	db                  *gorm.DB
 }
 
 // NewNotificationSystem initializes all notification components
@@ -67,6 +68,7 @@ func NewNotificationSystem(
 		consumers:           consumers,
 		pushService:         pushSvc,
 		notificationService: notifSvc,
+		db:                  db,
 	}
 	for _, consumer := range consumers {
 		ns.registerEventHandlers(consumer)
@@ -121,7 +123,7 @@ func (ns *NotificationSystem) GetNotificationService() service.NotificationServi
 // registerEventHandlers registers all event handlers with a consumer
 func (ns *NotificationSystem) registerEventHandlers(consumer *KafkaConsumer) {
 	// Handler for ride events
-	rideHandler := NewRideEventHandler(ns.pushService)
+	rideHandler := NewRideEventHandler(ns.pushService, ns.db)
 	if err := consumer.Subscribe(rideHandler); err != nil {
 		logger.Error("failed to subscribe to ride handler", "error", err)
 	}

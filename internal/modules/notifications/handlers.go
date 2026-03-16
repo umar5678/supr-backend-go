@@ -9,16 +9,19 @@ import (
 	"github.com/umar5678/go-backend/internal/models"
 	notificationservice "github.com/umar5678/go-backend/internal/modules/notifications/service"
 	"github.com/umar5678/go-backend/internal/utils/logger"
+	"gorm.io/gorm"
 )
 
 // RideEventHandler handles ride-related events
 type RideEventHandler struct {
 	pushService notificationservice.PushService
+	db          *gorm.DB
 }
 
-func NewRideEventHandler(pushService notificationservice.PushService) *RideEventHandler {
+func NewRideEventHandler(pushService notificationservice.PushService, db *gorm.DB) *RideEventHandler {
 	return &RideEventHandler{
 		pushService: pushService,
+		db:          db,
 	}
 }
 
@@ -166,18 +169,32 @@ func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 
 	// If driver exists, also notify them for certain events
 	if driverID != "" {
-		driverUUID, err := uuid.Parse(driverID)
-		if err == nil {
-			switch EventType(eventTypeStr) {
-			case EventRideAccepted, EventRideStarted, EventRideCompleted:
-				if err := h.pushService.SendPush(ctx, driverUUID, "Ride Update", notificationMsg, metadataMap); err != nil {
-					logger.Error("failed to send push notification to driver", "error", err, "driver_id", driverID)
+		// driverID is the driver profile ID, we need to get the user ID
+		driverUserID, err := h.getDriverUserID(ctx, driverID)
+		if err == nil && driverUserID != "" {
+			driverUserUUID, err := uuid.Parse(driverUserID)
+			if err == nil {
+				switch EventType(eventTypeStr) {
+				case EventRideAccepted, EventRideStarted, EventRideCompleted:
+					if err := h.pushService.SendPush(ctx, driverUserUUID, "Ride Update", notificationMsg, metadataMap); err != nil {
+						logger.Error("failed to send push notification to driver", "error", err, "driver_id", driverID)
+					}
 				}
 			}
 		}
 	}
 
 	return nil
+}
+
+// getDriverUserID retrieves the user ID for a given driver profile ID
+func (h *RideEventHandler) getDriverUserID(ctx context.Context, driverProfileID string) (string, error) {
+	var driverProfile models.DriverProfile
+	if err := h.db.WithContext(ctx).Where("id = ?", driverProfileID).First(&driverProfile).Error; err != nil {
+		logger.Warn("could not find driver profile", "driver_id", driverProfileID, "error", err)
+		return "", err
+	}
+	return driverProfile.UserID, nil
 }
 
 // PaymentEventHandler handles payment-related events
