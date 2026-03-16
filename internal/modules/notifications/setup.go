@@ -62,14 +62,23 @@ func NewNotificationSystem(
 		consumers = append(consumers, consumer)
 	}
 
-	logger.Info("notification system initialized successfully", "consumer_count", len(consumers))
-
-	return &NotificationSystem{
+	// Register event handlers for all consumers
+	// These handlers transform Kafka events into WebSocket notifications
+	ns := &NotificationSystem{
 		producer:            producer,
 		consumers:           consumers,
 		pushService:         pushSvc,
 		notificationService: notifSvc,
-	}, nil
+	}
+	
+	// Subscribe handlers to all consumers
+	for _, consumer := range consumers {
+		ns.registerEventHandlers(consumer)
+	}
+
+	logger.Info("notification system initialized successfully", "consumer_count", len(consumers))
+
+	return ns, nil
 }
 
 func (ns *NotificationSystem) Start(ctx context.Context) error {
@@ -112,3 +121,37 @@ func (ns *NotificationSystem) GetPushService() service.PushService {
 func (ns *NotificationSystem) GetNotificationService() service.NotificationService {
 	return ns.notificationService
 }
+
+// registerEventHandlers registers all event handlers with a consumer
+func (ns *NotificationSystem) registerEventHandlers(consumer *KafkaConsumer) {
+	// Handler for ride events
+	rideHandler := NewRideEventHandler(ns.pushService)
+	if err := consumer.Subscribe(rideHandler); err != nil {
+		logger.Error("failed to subscribe to ride handler", "error", err)
+	}
+
+	// Handler for payment events
+	paymentHandler := NewPaymentEventHandler(ns.pushService)
+	if err := consumer.Subscribe(paymentHandler); err != nil {
+		logger.Error("failed to subscribe to payment handler", "error", err)
+	}
+
+	// Handler for SOS events
+	sosHandler := NewSOSEventHandler(ns.pushService)
+	if err := consumer.Subscribe(sosHandler); err != nil {
+		logger.Error("failed to subscribe to SOS handler", "error", err)
+	}
+
+	// Handler for fraud events
+	fraudHandler := NewFraudEventHandler(ns.pushService)
+	if err := consumer.Subscribe(fraudHandler); err != nil {
+		logger.Error("failed to subscribe to fraud handler", "error", err)
+	}
+
+	// Handler for user events
+	userHandler := NewUserEventHandler(ns.pushService)
+	if err := consumer.Subscribe(userHandler); err != nil {
+		logger.Error("failed to subscribe to user handler", "error", err)
+	}
+}
+
