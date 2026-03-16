@@ -91,8 +91,8 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 		"location", fmt.Sprintf("%f,%f", req.Latitude, req.Longitude),
 	)
 
-	// Publish SOS alert event
-	s.publishSOSEvent(ctx, notificationsmodule.EventSOSAlert, alert.ID, userID, map[string]interface{}{
+	// Publish SOS alert event - use background context to ensure notification reaches admins
+	s.publishSOSEvent(context.Background(), notificationsmodule.EventSOSAlert, alert.ID, userID, map[string]interface{}{
 		"rideID":    req.RideID,
 		"latitude":  req.Latitude,
 		"longitude": req.Longitude,
@@ -144,8 +144,6 @@ func (s *service) ListSOS(ctx context.Context, userID string, req dto.ListSOSReq
 	if userID == "" {
 		return nil, 0, response.BadRequest("User ID is required")
 	}
-
-	req.SetDefaults()
 
 	alerts, total, err := s.repo.List(ctx, userID, req.Status, req.Page, req.Limit)
 	if err != nil {
@@ -322,6 +320,14 @@ func (s *service) notifyEmergencyContacts(ctx context.Context, alert *models.SOS
 		"message": "SOS Alert from your emergency contact",
 	})
 
+	s.publishSOSEvent(ctx, notificationsmodule.EventSOSAlert, alert.ID, alert.UserID, map[string]interface{}{
+		"location": map[string]float64{
+			"latitude":  alert.Latitude,
+			"longitude": alert.Longitude,
+		},
+		"message": "SOS Alert from your emergency contact",
+	})
+
 	if err := s.repo.MarkEmergencyContactsNotified(ctx, alert.ID); err != nil {
 		logger.Error("failed to mark emergency contacts notified", "error", err, "alertID", alert.ID)
 	}
@@ -333,6 +339,13 @@ func (s *service) notifySafetyTeam(ctx context.Context, alert *models.SOSAlert) 
 			logger.Error("panic in notifySafetyTeam", "recover", r, "alertID", alert.ID)
 		}
 	}()
+	
+	s.publishSOSEvent(context.Background(), notificationsmodule.EventSOSAlert, alert.ID, alert.UserID, map[string]interface{}{
+		"rideId":    alert.RideID,
+		"latitude":  alert.Latitude,
+		"longitude": alert.Longitude,
+		"timestamp": alert.CreatedAt,
+	})
 
 	websocketutil.BroadcastToRole("admin", websocket.TypeSOSAlert, map[string]interface{}{
 		"type":      "sos_alert",
@@ -372,7 +385,9 @@ func (s *service) publishSOSEvent(ctx context.Context, eventType notificationsmo
 	}
 
 	go func() {
-		if err := s.eventProducer.PublishEventWithKey(ctx, eventType, alertID, payload); err != nil {
+		// Use background context to prevent cancellation when HTTP request completes
+		bgCtx := context.Background()
+		if err := s.eventProducer.PublishEventWithKey(bgCtx, eventType, alertID, payload); err != nil {
 			logger.Error("failed to publish SOS event",
 				"error", err,
 				"eventType", eventType,

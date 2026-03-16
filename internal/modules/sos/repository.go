@@ -73,16 +73,15 @@ func (r *repository) List(ctx context.Context, userID string, status string, pag
 	var alerts []*models.SOSAlert
 	var total int64
 
-	query := r.db.WithContext(ctx).Model(&models.SOSAlert{})
-
+	base := r.db.WithContext(ctx).Model(&models.SOSAlert{})
 	if userID != "" {
-		query = query.Where("user_id = ?", userID)
+		base = base.Where("user_id = ?", userID)
 	}
 	if status != "" {
-		query = query.Where("status = ?", status)
+		base = base.Where("status = ?", status)
 	}
 
-	if err := query.Count(&total).Error; err != nil {
+	if err := base.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count SOS alerts: %w", err)
 	}
 
@@ -91,7 +90,8 @@ func (r *repository) List(ctx context.Context, userID string, status string, pag
 	}
 
 	offset := (page - 1) * limit
-	if err := query.
+
+	if err := base.
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
