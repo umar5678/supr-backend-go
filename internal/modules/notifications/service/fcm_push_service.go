@@ -19,12 +19,12 @@ import (
 )
 
 type FCMPushService struct {
-	db            *gorm.DB
-	notifRepo     repository.NotificationRepository
-	fcmClient     *messaging.Client
-	mu            sync.RWMutex
-	subscribers   map[uuid.UUID][]PushSubscriber
-	pushQueue     map[uuid.UUID][]PushMessage // kept for Stats() compatibility
+	db          *gorm.DB
+	notifRepo   repository.NotificationRepository
+	fcmClient   *messaging.Client
+	mu          sync.RWMutex
+	subscribers map[uuid.UUID][]PushSubscriber
+	pushQueue   map[uuid.UUID][]PushMessage // kept for Stats() compatibility
 }
 
 func NewFCMPushService(
@@ -241,16 +241,16 @@ func (s *FCMPushService) sendViaFCM(
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
 			Notification: &messaging.AndroidNotification{
-				ChannelID:    "high_importance_channel",
-				Priority:     messaging.PriorityHigh,
-				Sound:        "default",
-				ClickAction:  "FLUTTER_NOTIFICATION_CLICK",
+				ChannelID:   "high_importance_channel",
+				Priority:    messaging.PriorityHigh,
+				Sound:       "default",
+				ClickAction: "FLUTTER_NOTIFICATION_CLICK",
 			},
 		},
 		// Critical for background delivery on iOS
 		APNS: &messaging.APNSConfig{
 			Headers: map[string]string{
-				"apns-priority": "10",
+				"apns-priority":  "10",
 				"apns-push-type": "alert",
 			},
 			Payload: &messaging.APNSPayload{

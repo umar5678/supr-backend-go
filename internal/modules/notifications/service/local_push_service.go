@@ -125,6 +125,12 @@ func (s *LocalPushService) SendPush(ctx context.Context, userID uuid.UUID, title
 
 	s.BroadcastToUser(userID, message)
 
+	// Update status to sent after successful broadcast
+	if err := s.db.WithContext(ctx).Model(notification).Update("status", models.NotificationStatusSent).Error; err != nil {
+		logger.Warn("failed to update notification status to sent", "error", err, "notificationID", notification.ID)
+		// Non-fatal: notification was persisted and broadcasted, status update is best-effort
+	}
+
 	logger.Info("push notification sent (both persisted and broadcasted)", "userID", userID, "title", title)
 	return nil
 }

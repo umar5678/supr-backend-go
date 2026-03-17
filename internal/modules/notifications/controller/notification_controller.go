@@ -376,7 +376,21 @@ func (c *NotificationController) SubscribePush(ctx *gin.Context) {
 			[]byte(`{"error":"Failed to subscribe"}`))
 		return
 	}
-	defer subscribable.UnsubscribeFromUser(userID, subscriberID)
+	defer func() {
+		subscribable.UnsubscribeFromUser(userID, subscriberID)
+		close(msgChan)
+	}()
+
+	// Pump incoming WebSocket messages (ping/close frames) so the connection
+	// is properly torn down when the client disconnects.
+	go func() {
+		for {
+			if _, _, err := ws.ReadMessage(); err != nil {
+				subscribable.UnsubscribeFromUser(userID, subscriberID)
+				return
+			}
+		}
+	}()
 
 	for msg := range msgChan {
 		if err := ws.WriteJSON(msg); err != nil {
@@ -393,9 +407,12 @@ func (c *NotificationController) SubscribePush(ctx *gin.Context) {
 // @Success 200 {object} response.Response
 // @Router /notifications/stats [get]
 func (c *NotificationController) GetPushStats(ctx *gin.Context) {
-	if localPush, ok := c.pushService.(*service.LocalPushService); ok {
-		stats := localPush.Stats()
-		response.Success(ctx, stats, "Push service statistics")
+	type statsProvider interface {
+		Stats() map[string]interface{}
+	}
+
+	if sp, ok := c.pushService.(statsProvider); ok {
+		response.Success(ctx, sp.Stats(), "Push service statistics")
 		return
 	}
 

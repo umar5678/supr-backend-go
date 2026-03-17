@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -49,7 +50,10 @@ func ToNotificationDTO(n *models.Notification) *NotificationDTO {
 	}
 
 	if len(n.Metadata) > 0 {
-		dto.Metadata = make(map[string]interface{})
+		metadata := make(map[string]interface{})
+		if err := json.Unmarshal(n.Metadata, &metadata); err == nil {
+			dto.Metadata = metadata
+		}
 	}
 
 	return dto

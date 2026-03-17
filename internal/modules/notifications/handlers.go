@@ -140,22 +140,7 @@ func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 		return nil
 	}
 
-	metadataJSON, err := json.Marshal(metadataMap)
-	if err != nil {
-		logger.Error("failed to marshal notification metadata", "error", err)
-		return fmt.Errorf("failed to marshal notification metadata: %w", err)
-	}
-
-	notification := &models.Notification{
-		UserID:   riderUUID,
-		Title:    "Ride Update",
-		Message:  notificationMsg,
-		Channel:  models.ChannelInApp,
-		Status:   models.NotificationStatusPending,
-		Metadata: metadataJSON,
-	}
-
-	if err := h.pushService.SendPush(ctx, riderUUID, notification.Title, notification.Message, metadataMap); err != nil {
+	if err := h.pushService.SendPush(ctx, riderUUID, "Ride Update", notificationMsg, metadataMap); err != nil {
 		logger.Error("failed to send push notification to rider", "error", err, "rider_id", riderID)
 	}
 
