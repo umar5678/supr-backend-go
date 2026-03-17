@@ -28,7 +28,7 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/homeservices"
 	homeservicesAdmin "github.com/umar5678/go-backend/internal/modules/homeservices/admin"
 	homeservicesCustomer "github.com/umar5678/go-backend/internal/modules/homeservices/customer"
-	_ "github.com/umar5678/go-backend/internal/modules/homeservices/dto" // Alias for clarity
+	_ "github.com/umar5678/go-backend/internal/modules/homeservices/dto"
 	homeservicesProvider "github.com/umar5678/go-backend/internal/modules/homeservices/provider"
 	"github.com/umar5678/go-backend/internal/modules/laundry"
 	"github.com/umar5678/go-backend/internal/modules/messages"
@@ -128,6 +128,7 @@ func main() {
 		cfg.Kafka,
 		cfg.Firebase.CredentialsFile,
 		cfg.Firebase,
+		wsManager,
 	)
 	if err != nil {
 		logger.Fatal("failed to initialize notification system", "error", err)

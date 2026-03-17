@@ -22,6 +22,7 @@ type FCMPushService struct {
 	db          *gorm.DB
 	notifRepo   repository.NotificationRepository
 	fcmClient   *messaging.Client
+	wsNotifier  WSNotifier
 	mu          sync.RWMutex
 	subscribers map[uuid.UUID][]PushSubscriber
 	pushQueue   map[uuid.UUID][]PushMessage // kept for Stats() compatibility
@@ -307,7 +308,11 @@ func (s *FCMPushService) cleanupFailedTokens(
 	}
 }
 
-// ---- WebSocket subscriber methods (same as your LocalPushService) ----
+func (s *FCMPushService) SetWSNotifier(ws WSNotifier) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.wsNotifier = ws
+}
 
 func (s *FCMPushService) SubscribeToUser(
 	userID uuid.UUID,
@@ -351,6 +356,27 @@ func (s *FCMPushService) broadcastToUser(
 	userID uuid.UUID,
 	message PushMessage,
 ) {
+	s.mu.RLock()
+	ws := s.wsNotifier
+	s.mu.RUnlock()
+
+	if ws != nil {
+		if err := ws.SendNotification(userID.String(), map[string]interface{}{
+			"type":    "notification",
+			"title":   message.Title,
+			"body":    message.Body,
+			"data":    message.Data,
+			"id":      message.ID,
+			"sent_at": message.Timestamp,
+		}); err != nil {
+			logger.Warn("ws notification delivery failed",
+				"userID", userID, "error", err,
+			)
+		} else {
+			logger.Info("notification delivered via main websocket", "userID", userID)
+		}
+	}
+
 	s.mu.RLock()
 	subs, exists := s.subscribers[userID]
 	s.mu.RUnlock()

@@ -192,6 +192,11 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 		return nil
 	}
 
+	if !c.tryClaimEvent(ctx, eventID) {
+		fmt.Printf("Event %s already claimed by another goroutine, skipping\n", eventID)
+		return nil
+	}
+
 	var lastErr error
 	for attempt := 0; attempt <= c.config.MaxRetries; attempt++ {
 		if attempt > 0 {
@@ -203,10 +208,6 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 			lastErr = err
 			fmt.Printf("Attempt %d failed for event %s: %v\n", attempt+1, eventID, err)
 			continue
-		}
-
-		if err := c.markProcessed(ctx, eventID); err != nil {
-			fmt.Printf("Failed to mark event as processed: %v\n", err)
 		}
 
 		return nil
@@ -230,13 +231,21 @@ func (c *KafkaConsumer) isProcessed(ctx context.Context, eventID uuid.UUID) bool
 	return err == nil && count > 0
 }
 
-func (c *KafkaConsumer) markProcessed(ctx context.Context, eventID uuid.UUID) error {
+func (c *KafkaConsumer) tryClaimEvent(ctx context.Context, eventID uuid.UUID) bool {
 	processedEvent := &models.ProcessedEvent{
 		EventID:       eventID,
 		ConsumerGroup: c.config.GroupID,
 	}
 
-	return c.db.WithContext(ctx).Create(processedEvent).Error
+	result := c.db.WithContext(ctx).
+		Where("event_id = ? AND consumer_group = ?", eventID, c.config.GroupID).
+		FirstOrCreate(processedEvent)
+
+	if result.Error != nil {
+		return false
+	}
+
+	return result.RowsAffected == 1
 }
 
 func (c *KafkaConsumer) sendToDLQ(ctx context.Context, event *ConsumedEvent, processingErr error) error {

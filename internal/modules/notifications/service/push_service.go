@@ -8,6 +8,10 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
+type WSNotifier interface {
+	SendNotification(userID string, notification interface{}) error
+}
+
 type PushService interface {
 	SendPush(ctx context.Context, userID uuid.UUID, title, body string, data map[string]interface{}) error
 	RegisterToken(ctx context.Context, userID uuid.UUID, token, deviceID, deviceOS string) error
@@ -16,6 +20,7 @@ type PushService interface {
 	GetUserTokens(ctx context.Context, userID uuid.UUID) ([]PushToken, error)
 	SubscribeToUser(userID uuid.UUID, subscriberID string, msgChan chan PushMessage) error
 	UnsubscribeFromUser(userID uuid.UUID, subscriberID string) error
+	SetWSNotifier(ws WSNotifier)
 }
 
 func SendSecurityAlert(ctx context.Context, svc PushService, userID uuid.UUID, patternID string, riskScore float64) error {
@@ -27,7 +32,7 @@ func SendSecurityAlert(ctx context.Context, svc PushService, userID uuid.UUID, p
 
 	body := "Unusual activity detected on your account"
 	if riskScore > 80 {
-		body = "⚠️ High-risk suspicious activity detected on your account"
+		body = "High-risk suspicious activity detected on your account"
 	}
 
 	if err := svc.SendPush(ctx, userID, "Security Alert", body, data); err != nil {

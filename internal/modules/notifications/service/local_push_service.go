@@ -30,10 +30,11 @@ func (PushToken) TableName() string {
 }
 
 type LocalPushService struct {
-	db        *gorm.DB
-	notifRepo repository.NotificationRepository
-	mu        sync.RWMutex
-	pushQueue map[uuid.UUID][]PushMessage
+	db          *gorm.DB
+	notifRepo   repository.NotificationRepository
+	wsNotifier  WSNotifier
+	mu          sync.RWMutex
+	pushQueue   map[uuid.UUID][]PushMessage
 	subscribers map[uuid.UUID][]PushSubscriber
 }
 
@@ -59,6 +60,12 @@ func NewLocalPushService(db *gorm.DB, notifRepo repository.NotificationRepositor
 		pushQueue:   make(map[uuid.UUID][]PushMessage),
 		subscribers: make(map[uuid.UUID][]PushSubscriber),
 	}
+}
+
+func (s *LocalPushService) SetWSNotifier(ws WSNotifier) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.wsNotifier = ws
 }
 
 func (s *LocalPushService) RegisterToken(ctx context.Context, userID uuid.UUID, token, deviceID, deviceOS string) error {
@@ -125,10 +132,8 @@ func (s *LocalPushService) SendPush(ctx context.Context, userID uuid.UUID, title
 
 	s.BroadcastToUser(userID, message)
 
-	// Update status to sent after successful broadcast
 	if err := s.db.WithContext(ctx).Model(notification).Update("status", models.NotificationStatusSent).Error; err != nil {
 		logger.Warn("failed to update notification status to sent", "error", err, "notificationID", notification.ID)
-		// Non-fatal: notification was persisted and broadcasted, status update is best-effort
 	}
 
 	logger.Info("push notification sent (both persisted and broadcasted)", "userID", userID, "title", title)
@@ -235,6 +240,26 @@ func (s *LocalPushService) UnsubscribeFromUser(userID uuid.UUID, subscriberID st
 }
 
 func (s *LocalPushService) BroadcastToUser(userID uuid.UUID, message PushMessage) {
+	s.mu.RLock()
+	ws := s.wsNotifier
+	s.mu.RUnlock()
+
+	if ws != nil {
+		if err := ws.SendNotification(userID.String(), map[string]interface{}{
+			"type":    "notification",
+			"title":   message.Title,
+			"body":    message.Body,
+			"data":    message.Data,
+			"id":      message.ID,
+			"sent_at": message.Timestamp,
+		}); err != nil {
+			logger.Warn("ws notification delivery failed", "userID", userID, "error", err)
+		} else {
+			logger.Info("notification delivered via main websocket", "userID", userID)
+		}
+	}
+
+	// Also send to any dedicated push subscribers (e.g. /notifications/ws/push)
 	s.mu.RLock()
 	subscribers, exists := s.subscribers[userID]
 	s.mu.RUnlock()

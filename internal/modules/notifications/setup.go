@@ -25,9 +25,11 @@ func NewNotificationSystem(
 	kafkaConfig config.KafkaConfig,
 	firebaseCredentialsFile string,
 	firebaseCfg config.FirebaseConfig,
+	wsNotifier service.WSNotifier,
 ) (*NotificationSystem, error) {
 	notifRepo := repository.NewNotificationRepository(db)
 	pushSvc := service.NewLocalPushService(db, notifRepo)
+	pushSvc.SetWSNotifier(wsNotifier)
 	notifSvc := service.NewNotificationService(notifRepo)
 
 	producerConfig := DefaultProducerConfig(kafkaConfig.Brokers)
@@ -68,12 +70,10 @@ func NewNotificationSystem(
 		ns.registerEventHandlers(consumer)
 	}
 
-	// Initialize Firebase if credentials provided, otherwise use local
 	if firebaseCredentialsFile != "" || firebaseCfg.CredentialsJSON != "" {
 		var fcmSvc *service.FCMPushService
 		var err error
 
-		// Try JSON credentials first (from env), then file path
 		if firebaseCfg.CredentialsJSON != "" {
 			fcmSvc, err = service.NewFCMPushServiceFromJSON(db, notifRepo, firebaseCfg.CredentialsJSON)
 		} else if firebaseCredentialsFile != "" {
@@ -85,6 +85,7 @@ func NewNotificationSystem(
 				"error", err,
 			)
 		} else {
+			fcmSvc.SetWSNotifier(wsNotifier)
 			ns.pushService = fcmSvc
 			logger.Info("using FCM push service")
 		}
