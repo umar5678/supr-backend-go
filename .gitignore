@@ -48,6 +48,10 @@ tmp/
 
 # Frontend build artifacts (if applicable, e.g., if Gin serves a frontend)
 dist/
+
+# Firebase credentials - NEVER commit credentials files
+*-firebase-adminsdk-*.json
+firebase-*.json
 build/
 
 log
@@ -66,3 +70,5 @@ AVAILABLE_CARS_IMPLEMENTATION.md
 # SQL Scripts
 DELETE_NON_ECONOMY_DRIVERS.sql
 DELETE_NON_ECONOMY_DRIVERS_SIMPLE.sql
+
+supr-7b469-firebase-adminsdk-fbsvc-cb07e32cd4.json

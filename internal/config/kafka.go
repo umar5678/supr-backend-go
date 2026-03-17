@@ -55,5 +55,6 @@ type TwilioConfig struct {
 }
 
 type FirebaseConfig struct {
-    CredentialsFile string `mapstructure:"credentials_file"`
+	CredentialsFile string `mapstructure:"credentials_file" env:"FIREBASE_CREDENTIALS_FILE"`
+	CredentialsJSON string `mapstructure:"credentials_json" env:"FIREBASE_CREDENTIALS_JSON"`
 }

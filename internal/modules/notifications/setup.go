@@ -23,6 +23,8 @@ func NewNotificationSystem(
 	ctx context.Context,
 	db *gorm.DB,
 	kafkaConfig config.KafkaConfig,
+	firebaseCredentialsFile string,
+	firebaseCfg config.FirebaseConfig,
 ) (*NotificationSystem, error) {
 	notifRepo := repository.NewNotificationRepository(db)
 	pushSvc := service.NewLocalPushService(db, notifRepo)
@@ -50,7 +52,7 @@ func NewNotificationSystem(
 			consumerConfig,
 			registry,
 			db,
-			producer, // Use same producer for DLQ
+			producer,
 		)
 		consumers = append(consumers, consumer)
 	}
@@ -64,6 +66,28 @@ func NewNotificationSystem(
 	}
 	for _, consumer := range consumers {
 		ns.registerEventHandlers(consumer)
+	}
+
+	// Initialize Firebase if credentials provided, otherwise use local
+	if firebaseCredentialsFile != "" || firebaseCfg.CredentialsJSON != "" {
+		var fcmSvc *service.FCMPushService
+		var err error
+
+		// Try JSON credentials first (from env), then file path
+		if firebaseCfg.CredentialsJSON != "" {
+			fcmSvc, err = service.NewFCMPushServiceFromJSON(db, notifRepo, firebaseCfg.CredentialsJSON)
+		} else if firebaseCredentialsFile != "" {
+			fcmSvc, err = service.NewFCMPushService(db, notifRepo, firebaseCredentialsFile)
+		}
+
+		if err != nil {
+			logger.Error("FCM init failed, falling back to local",
+				"error", err,
+			)
+		} else {
+			ns.pushService = fcmSvc
+			logger.Info("using FCM push service")
+		}
 	}
 
 	logger.Info("notification system initialized successfully", "consumer_count", len(consumers))

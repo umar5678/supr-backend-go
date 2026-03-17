@@ -47,6 +47,11 @@ func NewNotificationController(notifService service.NotificationService, pushSer
 	}
 }
 
+type WebSocketSubscribable interface {
+	SubscribeToUser(userID uuid.UUID, subscriberID string, msgChan chan service.PushMessage) error
+	UnsubscribeFromUser(userID uuid.UUID, subscriberID string) error
+}
+
 func (c *NotificationController) RegisterRoutes(rg *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
 	notifications := rg.Group("/notifications")
 	notifications.Use(authMiddleware)
@@ -344,7 +349,7 @@ func (c *NotificationController) SubscribePush(ctx *gin.Context) {
 
 	userID, err := uuid.Parse(claims.UserID)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id in token"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
 		return
 	}
 
@@ -358,22 +363,25 @@ func (c *NotificationController) SubscribePush(ctx *gin.Context) {
 	msgChan := make(chan service.PushMessage, 10)
 	subscriberID := uuid.New().String()
 
-	if localPush, ok := c.pushService.(*service.LocalPushService); ok {
-		if err := localPush.SubscribeToUser(userID, subscriberID, msgChan); err != nil {
-			logger.Error("failed to subscribe to push", "error", err)
-			ws.WriteMessage(websocket.TextMessage, []byte(`{"error":"Failed to subscribe"}`))
-			return
-		}
-		defer localPush.UnsubscribeFromUser(userID, subscriberID)
+	subscribable, ok := c.pushService.(WebSocketSubscribable)
+	if !ok {
+		ws.WriteMessage(websocket.TextMessage,
+			[]byte(`{"error":"Push service doesn't support WebSocket"}`))
+		return
+	}
 
-		for msg := range msgChan {
-			if err := ws.WriteJSON(msg); err != nil {
-				logger.Error("failed to write to websocket", "error", err)
-				break
-			}
+	if err := subscribable.SubscribeToUser(userID, subscriberID, msgChan); err != nil {
+		logger.Error("subscribe failed", "error", err)
+		ws.WriteMessage(websocket.TextMessage,
+			[]byte(`{"error":"Failed to subscribe"}`))
+		return
+	}
+	defer subscribable.UnsubscribeFromUser(userID, subscriberID)
+
+	for msg := range msgChan {
+		if err := ws.WriteJSON(msg); err != nil {
+			break
 		}
-	} else {
-		ws.WriteMessage(websocket.TextMessage, []byte(`{"error":"Push service not available"}`))
 	}
 }
 

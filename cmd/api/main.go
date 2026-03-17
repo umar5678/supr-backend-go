@@ -126,6 +126,8 @@ func main() {
 		context.Background(),
 		db,
 		cfg.Kafka,
+		cfg.Firebase.CredentialsFile,
+		cfg.Firebase,
 	)
 	if err != nil {
 		logger.Fatal("failed to initialize notification system", "error", err)

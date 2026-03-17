@@ -16,6 +16,7 @@ type Config struct {
 	Logger    LoggerConfig
 	WebSocket WebSocketConfig
 	Kafka     KafkaConfig
+	Firebase  FirebaseConfig
 }
 
 type AppConfig struct {

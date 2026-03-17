@@ -232,6 +232,9 @@ func LoadConfig() (*Config, error) {
 		cfg.WebSocket.AOFSyncPolicy = aofSync
 	}
 
+	cfg.Firebase.CredentialsFile = v.GetString("FIREBASE_CREDENTIALS_FILE")
+	cfg.Firebase.CredentialsJSON = v.GetString("FIREBASE_CREDENTIALS_JSON")
+
 	return &cfg, nil
 }
 
