@@ -18,7 +18,7 @@ import (
 
 type Service interface {
 	TriggerSOS(ctx context.Context, userID string, req dto.TriggerSOSRequest) (*dto.SOSAlertResponse, error)
-	GetSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error)
+	GetSOS(ctx context.Context, userID, alertID string, isAdmin bool) (*dto.SOSAlertResponse, error)
 	GetActiveSOS(ctx context.Context, userID string) (*dto.SOSAlertResponse, error)
 	ListSOS(ctx context.Context, userID string, req dto.ListSOSRequest) ([]*dto.SOSAlertListResponse, int64, error)
 	ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) (*dto.SOSAlertResponse, error)
@@ -102,9 +102,9 @@ func (s *service) TriggerSOS(ctx context.Context, userID string, req dto.Trigger
 	return dto.ToSOSAlertResponse(alert), nil
 }
 
-func (s *service) GetSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error) {
-	if userID == "" || alertID == "" {
-		return nil, response.BadRequest("User ID and Alert ID are required")
+func (s *service) GetSOS(ctx context.Context, userID, alertID string, isAdmin bool) (*dto.SOSAlertResponse, error) {
+	if alertID == "" {
+		return nil, response.BadRequest("Alert ID is required")
 	}
 
 	alert, err := s.repo.FindByID(ctx, alertID)
@@ -116,7 +116,8 @@ func (s *service) GetSOS(ctx context.Context, userID, alertID string) (*dto.SOSA
 		return nil, response.InternalServerError("Failed to fetch SOS alert", err)
 	}
 
-	if alert.UserID != userID {
+	// Allow access if user owns the alert or is an admin
+	if alert.UserID != userID && !isAdmin {
 		return nil, response.ForbiddenError("Unauthorized")
 	}
 
@@ -335,7 +336,7 @@ func (s *service) notifySafetyTeam(ctx context.Context, alert *models.SOSAlert) 
 			logger.Error("panic in notifySafetyTeam", "recover", r, "alertID", alert.ID)
 		}
 	}()
-	
+
 	s.publishSOSEvent(context.Background(), notificationsmodule.EventSOSAlert, alert.ID, alert.UserID, map[string]interface{}{
 		"rideId":    alert.RideID,
 		"latitude":  alert.Latitude,

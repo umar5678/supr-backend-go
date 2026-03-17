@@ -60,13 +60,16 @@ func (h *Handler) GetSOS(c *gin.Context) {
 		return
 	}
 
+	role, _ := c.Get("role")
+	isAdmin := role == "admin"
+
 	alertID := c.Param("id")
 	if alertID == "" {
 		c.Error(response.BadRequest("Alert ID is required"))
 		return
 	}
 
-	alert, err := h.service.GetSOS(c.Request.Context(), userID.(string), alertID)
+	alert, err := h.service.GetSOS(c.Request.Context(), userID.(string), alertID, isAdmin)
 	if err != nil {
 		c.Error(err)
 		return
