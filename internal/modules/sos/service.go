@@ -21,8 +21,8 @@ type Service interface {
 	GetSOS(ctx context.Context, userID, alertID string, isAdmin bool) (*dto.SOSAlertResponse, error)
 	GetActiveSOS(ctx context.Context, userID string) (*dto.SOSAlertResponse, error)
 	ListSOS(ctx context.Context, userID string, req dto.ListSOSRequest) ([]*dto.SOSAlertListResponse, int64, error)
-	ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) (*dto.SOSAlertResponse, error)
-	CancelSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error)
+	ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest, isAdmin bool) (*dto.SOSAlertResponse, error)
+	CancelSOS(ctx context.Context, userID, alertID string, isAdmin bool) (*dto.SOSAlertResponse, error)
 	UpdateSOSLocation(ctx context.Context, userID, alertID string, latitude, longitude float64) (*dto.SOSAlertResponse, error)
 }
 
@@ -156,9 +156,9 @@ func (s *service) ListSOS(ctx context.Context, userID string, req dto.ListSOSReq
 	return result, total, nil
 }
 
-func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest) (*dto.SOSAlertResponse, error) {
-	if userID == "" || alertID == "" {
-		return nil, response.BadRequest("User ID and Alert ID are required")
+func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dto.ResolveSOSRequest, isAdmin bool) (*dto.SOSAlertResponse, error) {
+	if alertID == "" {
+		return nil, response.BadRequest("Alert ID is required")
 	}
 
 	alert, err := s.repo.FindByID(ctx, alertID)
@@ -169,7 +169,8 @@ func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dt
 		return nil, response.InternalServerError("Failed to fetch SOS alert", err)
 	}
 
-	if alert.UserID != userID {
+	// Allow access if user owns the alert or is an admin
+	if alert.UserID != userID && !isAdmin {
 		return nil, response.ForbiddenError("You can only resolve your own alerts")
 	}
 
@@ -194,9 +195,9 @@ func (s *service) ResolveSOS(ctx context.Context, userID, alertID string, req dt
 	return dto.ToSOSAlertResponse(updatedAlert), nil
 }
 
-func (s *service) CancelSOS(ctx context.Context, userID, alertID string) (*dto.SOSAlertResponse, error) {
-	if userID == "" || alertID == "" {
-		return nil, response.BadRequest("User ID and Alert ID are required")
+func (s *service) CancelSOS(ctx context.Context, userID, alertID string, isAdmin bool) (*dto.SOSAlertResponse, error) {
+	if alertID == "" {
+		return nil, response.BadRequest("Alert ID is required")
 	}
 
 	alert, err := s.repo.FindByID(ctx, alertID)
@@ -207,7 +208,8 @@ func (s *service) CancelSOS(ctx context.Context, userID, alertID string) (*dto.S
 		return nil, response.InternalServerError("Failed to fetch SOS alert", err)
 	}
 
-	if alert.UserID != userID {
+	// Allow access if user owns the alert or is an admin
+	if alert.UserID != userID && !isAdmin {
 		return nil, response.ForbiddenError("You can only cancel your own alerts")
 	}
 

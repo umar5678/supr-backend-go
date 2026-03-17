@@ -158,6 +158,9 @@ func (h *Handler) ResolveSOS(c *gin.Context) {
 		return
 	}
 
+	role, _ := c.Get("role")
+	isAdmin := role == "admin"
+
 	alertID := c.Param("id")
 	if alertID == "" {
 		c.Error(response.BadRequest("Alert ID is required"))
@@ -166,11 +169,10 @@ func (h *Handler) ResolveSOS(c *gin.Context) {
 
 	var req dto.ResolveSOSRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// Allow empty body - notes are optional
 		req = dto.ResolveSOSRequest{}
 	}
 
-	alert, err := h.service.ResolveSOS(c.Request.Context(), userID.(string), alertID, req)
+	alert, err := h.service.ResolveSOS(c.Request.Context(), userID.(string), alertID, req, isAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -193,13 +195,16 @@ func (h *Handler) CancelSOS(c *gin.Context) {
 		return
 	}
 
+	role, _ := c.Get("role")
+	isAdmin := role == "admin"
+
 	alertID := c.Param("id")
 	if alertID == "" {
 		c.Error(response.BadRequest("Alert ID is required"))
 		return
 	}
 
-	alert, err := h.service.CancelSOS(c.Request.Context(), userID.(string), alertID)
+	alert, err := h.service.CancelSOS(c.Request.Context(), userID.(string), alertID, isAdmin)
 	if err != nil {
 		c.Error(err)
 		return

@@ -1464,7 +1464,7 @@ func (s *service) CompleteRide(ctx context.Context, userID, rideID string, req d
 			resolveReq := sosdto.ResolveSOSRequest{
 				Notes: "Ride completed successfully",
 			}
-			s.sosService.ResolveSOS(ctx, ride.RiderID, activeSOS.ID, resolveReq)
+			s.sosService.ResolveSOS(ctx, ride.RiderID, activeSOS.ID, resolveReq, false)
 			logger.Info("Auto-resolved SOS alert on ride completion", "sosID", activeSOS.ID)
 		}
 	}
