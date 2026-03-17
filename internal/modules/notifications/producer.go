@@ -63,13 +63,13 @@ func (p *KafkaProducer) getWriter(topic string) *kafka.Writer {
 	writer := &kafka.Writer{
 		Addr:         kafka.TCP(p.config.Brokers...),
 		Topic:        topic,
-		Balancer:     &kafka.Hash{}, // Consistent hashing for key-based partitioning
+		Balancer:     &kafka.Hash{}, 
 		MaxAttempts:  p.config.MaxRetries,
 		BatchSize:    p.config.BatchSize,
 		BatchTimeout: p.config.FlushInterval,
 		WriteTimeout: p.config.Timeout,
 		Compression:  p.config.Compression,
-		Async:        false, // Synchronous for reliability
+		Async:        false,
 	}
 
 	p.writers[topic] = writer
@@ -81,19 +81,16 @@ func (p *KafkaProducer) PublishEvent(ctx context.Context, eventType EventType, p
 }
 
 func (p *KafkaProducer) PublishEventWithKey(ctx context.Context, eventType EventType, key string, payload interface{}) error {
-	// Get topic from registry
 	schema, err := p.registry.Get(eventType)
 	if err != nil {
 		return fmt.Errorf("failed to get event schema: %w", err)
 	}
 
-	// Marshal payload
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	// Create event record
 	event := &models.Event{
 		ID:           uuid.New(),
 		EventType:    string(eventType),
@@ -103,12 +100,10 @@ func (p *KafkaProducer) PublishEventWithKey(ctx context.Context, eventType Event
 		RetryCount:   0,
 	}
 
-	// Persist event to database for audit trail
 	if err := p.db.WithContext(ctx).Create(event).Error; err != nil {
 		return fmt.Errorf("failed to persist event: %w", err)
 	}
 
-	// Create Kafka message
 	message := kafka.Message{
 		Key:   []byte(key),
 		Value: payloadBytes,
@@ -121,11 +116,9 @@ func (p *KafkaProducer) PublishEventWithKey(ctx context.Context, eventType Event
 		},
 	}
 
-	// Publish to Kafka topic for the specific event type
 	writer := p.getWriter(schema.Topic)
 	err = writer.WriteMessages(ctx, message)
 
-	// Update event status
 	now := time.Now()
 	if err != nil {
 		event.Status = models.EventStatusFailed
@@ -137,7 +130,6 @@ func (p *KafkaProducer) PublishEventWithKey(ctx context.Context, eventType Event
 	}
 
 	if updateErr := p.db.WithContext(ctx).Save(event).Error; updateErr != nil {
-		// Log but don't fail - event was published
 		fmt.Printf("Failed to update event status: %v\n", updateErr)
 	}
 

@@ -94,7 +94,7 @@ func (r *RateCustomerRequest) Validate() error {
 type ListAvailableOrdersQuery struct {
 	shared.PaginationParams
 	CategorySlug string `form:"category"`
-	Date         string `form:"date"` // YYYY-MM-DD
+	Date         string `form:"date"` 
 	SortBy       string `form:"sortBy" binding:"omitempty,oneof=created_at booking_date distance price"`
 	SortDesc     bool   `form:"sortDesc"`
 }
@@ -109,8 +109,8 @@ func (q *ListAvailableOrdersQuery) SetDefaults() {
 type ListMyOrdersQuery struct {
 	shared.PaginationParams
 	Status   string `form:"status"`
-	FromDate string `form:"fromDate"` // YYYY-MM-DD
-	ToDate   string `form:"toDate"`   // YYYY-MM-DD
+	FromDate string `form:"fromDate"` 
+	ToDate   string `form:"toDate"`   
 	SortBy   string `form:"sortBy" binding:"omitempty,oneof=created_at booking_date completed_at"`
 	SortDesc bool   `form:"sortDesc"`
 }
@@ -130,8 +130,8 @@ func (q *ListMyOrdersQuery) Validate() error {
 }
 
 type EarningsQuery struct {
-	FromDate string `form:"fromDate" binding:"required"` // YYYY-MM-DD
-	ToDate   string `form:"toDate" binding:"required"`   // YYYY-MM-DD
+	FromDate string `form:"fromDate" binding:"required"` 
+	ToDate   string `form:"toDate" binding:"required"`   
 	GroupBy  string `form:"groupBy" binding:"omitempty,oneof=day week month"`
 }
 

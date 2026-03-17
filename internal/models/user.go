@@ -6,7 +6,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// UserRole represents the role of a user
 type UserRole string
 
 const (
@@ -18,15 +17,14 @@ const (
 	RoleHandyman        UserRole = "handyman"
 )
 
-// UserStatus represents the status of a user account
 type UserStatus string
 
 const (
 	StatusActive              UserStatus = "active"
 	StatusSuspended           UserStatus = "suspended"
 	StatusBanned              UserStatus = "banned"
-	StatusPendingVerification UserStatus = "pending_verification" // ADDED for Drivers
-	StatusPendingApproval     UserStatus = "pending_approval"     // ADDED for service providers
+	StatusPendingVerification UserStatus = "pending_verification" 
+	StatusPendingApproval     UserStatus = "pending_approval"     
 )
 
 type User struct {

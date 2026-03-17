@@ -82,7 +82,6 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	// Broadcast via WebSocket
 	if h.broadcastFunc != nil {
 		broadcastData := map[string]interface{}{
 			"id":             message.ID,

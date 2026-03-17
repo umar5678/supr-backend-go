@@ -141,10 +141,6 @@ func (s *service) GetActiveSOS(ctx context.Context, userID string) (*dto.SOSAler
 }
 
 func (s *service) ListSOS(ctx context.Context, userID string, req dto.ListSOSRequest) ([]*dto.SOSAlertListResponse, int64, error) {
-	if userID == "" {
-		return nil, 0, response.BadRequest("User ID is required")
-	}
-
 	alerts, total, err := s.repo.List(ctx, userID, req.Status, req.Page, req.Limit)
 	if err != nil {
 		logger.Error("failed to list SOS alerts", "error", err, "userID", userID)

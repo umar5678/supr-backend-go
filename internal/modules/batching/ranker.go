@@ -215,7 +215,6 @@ func (dr *DriverRanker) calculateCompletionScore(ctx context.Context, driverID s
 		completionRate = 1.0 - stats.CancellationRate
 	}
 
-	// Cap at 1.0
 	if completionRate > 1.0 {
 		completionRate = 1.0
 	}

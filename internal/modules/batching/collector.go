@@ -61,7 +61,6 @@ func (bc *BatchCollector) AddRequest(ctx context.Context, req dto.RideRequestInf
 	var b *batch
 
 	if !exists {
-		// Create new batch
 		batchID = uuid.New().String()
 		b = &batch{
 			ID:            batchID,

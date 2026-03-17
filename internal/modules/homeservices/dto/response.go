@@ -12,35 +12,28 @@ type ProviderProfileResponse struct {
 	UserID string                `json:"userId"`
 	User   *authdto.UserResponse `json:"user,omitempty"`
 
-	// Business Information
 	BusinessName    *string `json:"businessName,omitempty"`
 	Description     *string `json:"description,omitempty"`
-	ServiceCategory string  `json:"serviceCategory"` // delivery, handyman, general_service
+	ServiceCategory string  `json:"serviceCategory"`
 
-	// Verification & Documents
 	Status           string   `json:"status"`
 	IsVerified       bool     `json:"isVerified"`
 	VerificationDocs []string `json:"verificationDocs,omitempty"`
 
-	// Ratings & Performance
 	Rating        float64 `json:"rating"`
 	TotalReviews  int     `json:"totalReviews"`
 	CompletedJobs int     `json:"completedJobs"`
 
-	// Availability
 	IsAvailable  bool     `json:"isAvailable"`
 	WorkingHours *string  `json:"workingHours,omitempty"`
 	ServiceAreas []string `json:"serviceAreas,omitempty"`
 
-	// Financial
 	HourlyRate *float64 `json:"hourlyRate,omitempty"`
 	Currency   string   `json:"currency"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
-
-// CategoryWithTabsResponse - Complete category with tabs
 type CategoryWithTabsResponse struct {
 	ID          uint                 `json:"id"`
 	Name        string               `json:"name"`
@@ -54,7 +47,6 @@ type CategoryWithTabsResponse struct {
 	Tabs        []ServiceTabResponse `json:"tabs"`
 }
 
-// ServiceTabResponse - Tab with services count
 type ServiceTabResponse struct {
 	ID            uint      `json:"id"`
 	CategoryID    uint      `json:"categoryId"`
@@ -70,7 +62,6 @@ type ServiceTabResponse struct {
 	CreatedAt     time.Time `json:"createdAt"`
 }
 
-// ServiceCategoryResponse for category listings
 type ServiceCategoryResponse struct {
 	ID          uint      `json:"id"`
 	Name        string    `json:"name"`
@@ -101,7 +92,6 @@ func ToServiceCategoryList(cats []models.ServiceCategory) []*ServiceCategoryResp
 	return result
 }
 
-// ServiceResponse for detailed service info (legacy - consider using ServiceDetailResponse)
 type ServiceResponse struct {
 	ID                  uint                     `json:"id"`
 	CategoryID          uint                     `json:"categoryId"`
@@ -119,7 +109,6 @@ type ServiceResponse struct {
 	Options             []ServiceOptionResponse  `json:"options,omitempty"`
 }
 
-// ServiceListResponse - Service in list view
 type ServiceListResponse struct {
 	ID                 uint      `json:"id"`
 	CategoryID         uint      `json:"categoryId"`
@@ -135,7 +124,6 @@ type ServiceListResponse struct {
 	CreatedAt          time.Time `json:"createdAt"`
 }
 
-// ServiceDetailResponse - Detailed service view
 type ServiceDetailResponse struct {
 	ID                  uint                    `json:"id"`
 	CategoryID          uint                    `json:"categoryId"`
@@ -184,7 +172,6 @@ type ServiceOptionChoiceResponse struct {
 	DurationModifierMinutes int     `json:"durationModifierMinutes"`
 }
 
-// Helper function to calculate discount percentage
 func calculateDiscountPercentage(originalPrice, basePrice float64) int {
 	if originalPrice > 0 && basePrice < originalPrice {
 		return int(((originalPrice - basePrice) / originalPrice) * 100)
@@ -265,7 +252,6 @@ func ToServiceListResponses(svcs []*models.Service) []*ServiceListResponse {
 	return result
 }
 
-// AddOnResponse
 type AddOnResponse struct {
 	ID              uint    `json:"id"`
 	CategoryID      uint    `json:"categoryId"`
@@ -279,7 +265,6 @@ type AddOnResponse struct {
 	SortOrder       int     `json:"sortOrder"`
 }
 
-// OrderResponse for order details
 type OrderResponse struct {
 	ID             string               `json:"id"`
 	Code           string               `json:"code"`
@@ -311,8 +296,8 @@ type OrderListResponse struct {
 	Status         string    `json:"status"`
 	Address        string    `json:"address"`
 	ServiceDate    time.Time `json:"serviceDate"`
-	QuantityOfPros int       `json:"quantityOfPros"` //  NEW
-	HoursOfService float64   `json:"hoursOfService"` //  NEW
+	QuantityOfPros int       `json:"quantityOfPros"` 
+	HoursOfService float64   `json:"hoursOfService"` 
 	Total          float64   `json:"total"`
 	CreatedAt      time.Time `json:"createdAt"`
 }
@@ -342,8 +327,6 @@ type ProviderResponse struct {
 	Rating        float64 `json:"rating"`
 	CompletedJobs int     `json:"completedJobs"`
 }
-
-// ==================== CONVERTERS ====================
 
 func ToCategoryWithTabsResponse(cat *models.ServiceCategory) *CategoryWithTabsResponse {
 	resp := &CategoryWithTabsResponse{
@@ -378,7 +361,6 @@ func ToCategoryWithTabsResponse(cat *models.ServiceCategory) *CategoryWithTabsRe
 	return resp
 }
 
-// ToOrderResponseFromNew converts ServiceOrderNew to OrderResponse with all details
 func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
 	if orderNew == nil {
 		return nil
@@ -392,21 +374,16 @@ func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
 		Status:         orderNew.Status,
 		Address:        orderNew.CustomerInfo.Address,
 		ServiceDate:    orderNew.CreatedAt,
-		Frequency:      "once", // Default value
+		Frequency:      "once", 
 		QuantityOfPros: orderNew.BookingInfo.QuantityOfPros,
-		HoursOfService: 0, // Not in ServiceOrderNew
 		Subtotal:       orderNew.Subtotal,
-		Discount:       0, // Not in ServiceOrderNew
-		SurgeFee:       0, // Not in ServiceOrderNew
 		PlatformFee:    orderNew.PlatformCommission,
 		Total:          orderNew.TotalPrice,
-		CouponCode:     nil, // Not in ServiceOrderNew
 		CreatedAt:      orderNew.CreatedAt,
 		AcceptedAt:     orderNew.ProviderAcceptedAt,
 		CompletedAt:    orderNew.ProviderCompletedAt,
 	}
 
-	// Populate Items from SelectedServices JSONB
 	if len(orderNew.SelectedServices) > 0 {
 		resp.Items = make([]OrderItemResponse, len(orderNew.SelectedServices))
 		for i, svc := range orderNew.SelectedServices {
@@ -415,13 +392,11 @@ func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
 				ServiceName:     svc.Title,
 				BasePrice:       svc.Price,
 				CalculatedPrice: svc.Price * float64(svc.Quantity),
-				DurationMinutes: 0, // Not in SelectedServiceItem
 				SelectedOptions: make(map[string]interface{}),
 			}
 		}
 	}
 
-	// Populate AddOns from SelectedAddons JSONB
 	if len(orderNew.SelectedAddons) > 0 {
 		resp.AddOns = make([]OrderAddOnResponse, len(orderNew.SelectedAddons))
 		for i, addon := range orderNew.SelectedAddons {
@@ -432,13 +407,11 @@ func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
 		}
 	}
 
-	// Populate Provider information if assigned
 	if orderNew.AssignedProvider != nil {
 		providerName := "Service Provider"
 		var providerPhone *string
 		var providerPhoto *string
 
-		// Get name, phone and photo from User if available
 		if orderNew.AssignedProvider.User != nil {
 			providerName = orderNew.AssignedProvider.User.Name
 			providerPhone = orderNew.AssignedProvider.User.Phone
@@ -458,67 +431,6 @@ func ToOrderResponseFromNew(orderNew *models.ServiceOrderNew) *OrderResponse {
 	return resp
 }
 
-// func ToOrderResponse(order *models.ServiceOrder) *OrderResponse {
-//     resp := &OrderResponse{
-//         ID:          order.ID,
-//         Code:        order.Code,
-//         UserID:      order.UserID,
-//         ProviderID:  order.ProviderID,
-//         Status:      order.Status,
-//         Address:     order.Address,
-//         ServiceDate: order.ServiceDate,
-//         Frequency:   order.Frequency,
-//         Subtotal:    order.Subtotal,
-//         Discount:    order.Discount,
-//         SurgeFee:    order.SurgeFee,
-//         PlatformFee: order.PlatformFee,
-//         Total:       order.Total,
-//         CouponCode:  order.CouponCode,
-//         CreatedAt:   order.CreatedAt,
-//         AcceptedAt:  order.AcceptedAt,
-//         CompletedAt: order.CompletedAt,
-//     }
-
-//     if len(order.Items) > 0 {
-//         resp.Items = make([]OrderItemResponse, len(order.Items))
-//         for i, item := range order.Items {
-//             resp.Items[i] = OrderItemResponse{
-//                 ID:              item.ID,
-//                 ServiceID:       item.ServiceID,
-//                 ServiceName:     item.ServiceName,
-//                 BasePrice:       item.BasePrice,
-//                 CalculatedPrice: item.CalculatedPrice,
-//                 DurationMinutes: item.DurationMinutes,
-//                 SelectedOptions: item.SelectedOptions,
-//             }
-//         }
-//     }
-
-//     if len(order.AddOns) > 0 {
-//         resp.AddOns = make([]OrderAddOnResponse, len(order.AddOns))
-//         for i, addon := range order.AddOns {
-//             resp.AddOns[i] = OrderAddOnResponse{
-//                 ID:      addon.ID,
-//                 AddOnID: addon.AddOnID,
-//                 Title:   addon.Title,
-//                 Price:   addon.Price,
-//             }
-//         }
-//     }
-
-//     if order.Provider != nil && order.Provider.User != nil {
-//         resp.Provider = &ProviderResponse{
-//             ID:            order.Provider.ID,
-//             Name:          order.Provider.User.Name,
-//             Photo:         order.Provider.Photo,
-//             Rating:        order.Provider.Rating,
-//             CompletedJobs: order.Provider.CompletedJobs,
-//         }
-//     }
-
-//     return resp
-// }
-
 func ToOrderListResponse(order *models.ServiceOrderNew) *OrderListResponse {
 	return &OrderListResponse{
 		ID:             order.ID,
@@ -527,7 +439,6 @@ func ToOrderListResponse(order *models.ServiceOrderNew) *OrderListResponse {
 		Address:        order.CustomerInfo.Address,
 		ServiceDate:    order.CreatedAt,
 		QuantityOfPros: order.BookingInfo.QuantityOfPros,
-		HoursOfService: 0, // Not in ServiceOrderNew
 		Total:          order.TotalPrice,
 		CreatedAt:      order.CreatedAt,
 	}

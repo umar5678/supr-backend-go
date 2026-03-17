@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -312,7 +311,6 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 	platformFee := subtotal * 0.10
 	totalPrice := subtotal + platformFee
 
-	// 6. Create wallet hold using existing wallet service (non-blocking for cash model)
 	var holdID *string
 	holdReq := walletdto.HoldFundsRequest{
 		Amount:        totalPrice,
@@ -324,13 +322,11 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 	holdResp, err := s.walletService.HoldFunds(ctx, userID, holdReq)
 	if err != nil {
 		logger.Warn("failed to create payment tracking hold", "error", err, "total", totalPrice)
-		// Don't fail the order - cash payment doesn't require wallet authorization
 	} else {
 		holdID = &holdResp.ID
 		logger.Info("payment hold created for tracking", "holdID", holdResp.ID, "amount", totalPrice)
 	}
 
-	// 7. Create order using ServiceOrderNew
 	order := &models.ServiceOrderNew{
 		ID:          uuid.New().String(),
 		OrderNumber: s.generateOrderCode(),
@@ -370,7 +366,6 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 	}
 
 	if err := s.repo.CreateOrder(ctx, order); err != nil {
-		// Release hold if order creation fails and hold was successful
 		if holdID != nil {
 			releaseReq := walletdto.ReleaseHoldRequest{HoldID: *holdID}
 			s.walletService.ReleaseHold(ctx, userID, releaseReq)
@@ -381,14 +376,11 @@ func (s *service) CreateOrder(ctx context.Context, userID string, req homeservic
 
 	logger.Info("order created", "orderID", order.ID, "userID", userID, "total", totalPrice)
 
-	// 8. Trigger async provider search
 	go s.FindAndNotifyNextProvider(order.ID)
 
-	// Convert to DTO response using the customer DTO converter
 	return homeservicedto.ToOrderResponseFromNew(order), nil
 }
 
-// Helper function to check if services use hourly pricing
 func (s *service) isHourlyPricing(services []*models.Service) bool {
 	for _, svc := range services {
 		if svc.PricingModel == "hourly" {
@@ -398,9 +390,7 @@ func (s *service) isHourlyPricing(services []*models.Service) bool {
 	return false
 }
 
-// ✅ Generate unique order code
 func (s *service) generateOrderCode() string {
-	// Format: HS-YYYY-NNNNNN (HS = Home Service)
 	year := time.Now().Year()
 	random := rand.Intn(999999)
 	return fmt.Sprintf("HS-%d-%06d", year, random)
@@ -422,7 +412,6 @@ func (s *service) GetMyOrders(ctx context.Context, userID string, query homeserv
 }
 
 func (s *service) GetOrderDetails(ctx context.Context, userID, orderID string) (*homeservicedto.OrderResponse, error) {
-	// Fetch ServiceOrderNew directly for rich details
 	orderNew, err := s.repo.GetOrderByIDWithDetails(ctx, orderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -437,13 +426,11 @@ func (s *service) GetOrderDetails(ctx context.Context, userID, orderID string) (
 		return nil, response.NotFoundError("Order")
 	}
 
-	// Verify ownership
 	if orderNew.CustomerID != userID {
 		logger.Warn("unauthorized order access attempt", "orderID", orderID, "requestUserID", userID, "orderUserID", orderNew.CustomerID)
 		return nil, response.ForbiddenError("You don't have access to this order")
 	}
 
-	// Convert to OrderResponse with full details from ServiceOrderNew
 	return homeservicedto.ToOrderResponseFromNew(orderNew), nil
 }
 
@@ -456,17 +443,14 @@ func (s *service) CancelOrder(ctx context.Context, CustomerID, orderID string) e
 		return response.InternalServerError("Failed to fetch order", err)
 	}
 
-	// Verify ownership
 	if order.CustomerID != CustomerID {
 		return response.ForbiddenError("You don't have access to this order")
 	}
 
-	// Check if order can be cancelled
 	if order.Status == "completed" || order.Status == "cancelled" {
 		return response.BadRequest("Cannot cancel order in current status")
 	}
 
-	// Release wallet hold using existing wallet service
 	if order.WalletHoldID != nil {
 		releaseReq := walletdto.ReleaseHoldRequest{
 			HoldID: *order.WalletHoldID,
@@ -476,7 +460,6 @@ func (s *service) CancelOrder(ctx context.Context, CustomerID, orderID string) e
 		}
 	}
 
-	// Update order status
 	if err := s.repo.UpdateOrderStatus(ctx, orderID, "cancelled"); err != nil {
 		return response.InternalServerError("Failed to cancel order", err)
 	}
@@ -485,8 +468,6 @@ func (s *service) CancelOrder(ctx context.Context, CustomerID, orderID string) e
 
 	return nil
 }
-
-// --- Provider - Orders ---
 
 func (s *service) GetProviderOrders(ctx context.Context, providerID string, query homeservicedto.ListOrdersQuery) ([]*homeservicedto.OrderListResponse, *response.PaginationMeta, error) {
 	query.SetDefaults()
@@ -506,27 +487,21 @@ func (s *service) GetProviderOrders(ctx context.Context, providerID string, quer
 func (s *service) AcceptOrder(ctx context.Context, providerID, orderID string) error {
 	offerKey := fmt.Sprintf("provider:%s:current_offer", providerID)
 
-	// 1. Verify the offer is still valid
 	val, err := cache.Get(ctx, offerKey)
 	if err != nil || val != orderID {
 		return response.ForbiddenError("Offer expired or invalid")
 	}
 
-	// 2. Assign provider to order
 	if err := s.repo.AssignProviderToOrder(ctx, providerID, orderID); err != nil {
 		logger.Error("failed to assign provider to order", "error", err, "providerID", providerID, "orderID", orderID)
 		return response.InternalServerError("Failed to accept order", err)
 	}
 
-	// 3. Delete offer key to prevent timeout logic
 	cache.Delete(ctx, offerKey)
 
-	// 4. Update provider status
 	s.repo.UpdateProviderStatus(ctx, providerID, "busy")
 
 	logger.Info("provider accepted order", "providerID", providerID, "orderID", orderID)
-
-	// TODO: Send notification to customer
 
 	return nil
 }
@@ -534,18 +509,15 @@ func (s *service) AcceptOrder(ctx context.Context, providerID, orderID string) e
 func (s *service) RejectOrder(ctx context.Context, providerID, orderID string) error {
 	offerKey := fmt.Sprintf("provider:%s:current_offer", providerID)
 
-	// Verify the offer exists
 	val, err := cache.Get(ctx, offerKey)
 	if err != nil || val != orderID {
 		return response.ForbiddenError("No active offer for this order")
 	}
 
-	// Delete the offer
 	cache.Delete(ctx, offerKey)
 
 	logger.Info("provider rejected order", "providerID", providerID, "orderID", orderID)
 
-	// Trigger finding next provider
 	go s.FindAndNotifyNextProvider(orderID)
 
 	return nil
@@ -588,7 +560,6 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string)
 		return response.BadRequest("Order must be in progress to complete")
 	}
 
-	// 1. Capture the wallet hold using existing wallet service
 	if order.WalletHoldID != nil {
 		captureReq := walletdto.CaptureHoldRequest{
 			HoldID:      *order.WalletHoldID,
@@ -600,27 +571,23 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string)
 		}
 	}
 
-	// 2. Transfer funds to provider using existing wallet service
 	provider, err := s.repo.GetProviderByID(ctx, providerID)
 	if err == nil && provider != nil {
 		providerAmount := order.TotalPrice - order.PlatformCommission
 		transferReq := walletdto.TransferFundsRequest{
-			RecipientID: provider.UserID, // Use provider's UserID for wallet transfer
+			RecipientID: provider.UserID,
 			Amount:      providerAmount,
 			Description: fmt.Sprintf("Earnings from order %s", order.OrderNumber),
 		}
 		if _, err := s.walletService.TransferFunds(ctx, order.CustomerID, transferReq); err != nil {
 			logger.Error("failed to transfer to provider", "error", err, "providerID", providerID)
-			// Don't fail the completion, but log for manual reconciliation
 		}
 	}
 
-	// 3. Update order status
 	if err := s.repo.UpdateOrderStatus(ctx, orderID, "completed"); err != nil {
 		return response.InternalServerError("Failed to complete order", err)
 	}
 
-	// 4. Update provider status back to available
 	s.repo.UpdateProviderStatus(ctx, providerID, "available")
 
 	logger.Info("order completed", "providerID", providerID, "orderID", orderID)
@@ -631,14 +598,12 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string)
 func (s *service) FindAndNotifyNextProvider(orderID string) {
 	ctx := context.Background()
 
-	// 2. Fetch order
 	order, err := s.repo.GetOrderByID(ctx, orderID)
 	if err != nil {
 		logger.Error("failed to fetch order for matching", "error", err, "orderID", orderID)
 		return
 	}
 
-	// 3. Get service slugs from order items
 	var serviceSlugs []string
 	fullOrder, _ := s.repo.GetOrderByIDWithDetails(ctx, orderID)
 	if fullOrder != nil {
@@ -652,7 +617,6 @@ func (s *service) FindAndNotifyNextProvider(orderID string) {
 		return
 	}
 
-	// Get order's category slug for filtering providers
 	orderCategorySlug := order.CategorySlug
 	if orderCategorySlug == "" {
 		logger.Error("order has no category slug", "orderID", orderID)
@@ -661,7 +625,6 @@ func (s *service) FindAndNotifyNextProvider(orderID string) {
 
 	if err := s.repo.UpdateOrderStatus(ctx, orderID, "pending"); err != nil {
 		logger.Error("failed to update order status", "error", err, "orderID", orderID)
-		// Release wallet hold on error
 		if order.WalletHoldID != nil {
 			releaseReq := walletdto.ReleaseHoldRequest{HoldID: *order.WalletHoldID}
 			s.walletService.ReleaseHold(ctx, order.CustomerID, releaseReq)
@@ -674,8 +637,6 @@ func (s *service) FindAndNotifyNextProvider(orderID string) {
 		"category", orderCategorySlug,
 		"status", "pending")
 }
-
-// --- Admin - Service Management ---
 
 func (s *service) CreateCategory(ctx context.Context, req homeservicedto.CreateCategoryRequest) (*homeservicedto.CategoryWithTabsResponse, error) {
 	category := &models.ServiceCategory{
@@ -699,7 +660,6 @@ func (s *service) CreateCategory(ctx context.Context, req homeservicedto.CreateC
 }
 
 func (s *service) CreateTab(ctx context.Context, req homeservicedto.CreateTabRequest) (*homeservicedto.ServiceTabResponse, error) {
-	// Verify category exists
 	_, err := s.repo.GetCategoryByID(ctx, req.CategoryID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -725,6 +685,12 @@ func (s *service) CreateTab(ctx context.Context, req homeservicedto.CreateTabReq
 		return nil, response.InternalServerError("Failed to create tab", err)
 	}
 
+	servicesCount, err := s.repo.CountServicesByTabID(ctx, tab.ID)
+	if err != nil {
+		logger.Warn("failed to count services for tab", "tabID", tab.ID, "error", err)
+		servicesCount = 0
+	}
+
 	response := &homeservicedto.ServiceTabResponse{
 		ID:            tab.ID,
 		CategoryID:    tab.CategoryID,
@@ -737,7 +703,7 @@ func (s *service) CreateTab(ctx context.Context, req homeservicedto.CreateTabReq
 		IsActive:      tab.IsActive,
 		SortOrder:     tab.SortOrder,
 		CreatedAt:     tab.CreatedAt,
-		ServicesCount: 0, // You might want to calculate this
+		ServicesCount: int(servicesCount),
 	}
 
 	logger.Info("tab created", "tabID", tab.ID, "name", tab.Name)
@@ -746,7 +712,7 @@ func (s *service) CreateTab(ctx context.Context, req homeservicedto.CreateTabReq
 }
 
 func (s *service) CreateService(ctx context.Context, req homeservicedto.CreateServiceRequest) (*homeservicedto.ServiceDetailResponse, error) {
-	// Verify category exists
+
 	_, err := s.repo.GetCategoryByID(ctx, req.CategoryID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -755,7 +721,6 @@ func (s *service) CreateService(ctx context.Context, req homeservicedto.CreateSe
 		return nil, response.InternalServerError("Failed to verify category", err)
 	}
 
-	// Verify tab exists
 	_, err = s.repo.GetTabByID(ctx, req.TabID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -786,7 +751,6 @@ func (s *service) CreateService(ctx context.Context, req homeservicedto.CreateSe
 
 	logger.Info("service created", "serviceID", service.ID, "name", service.Name)
 
-	// Fetch the complete service with relations
 	completeService, err := s.repo.GetServiceWithOptions(ctx, service.ID)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to fetch created service", err)
@@ -808,7 +772,6 @@ func (s *service) UpdateService(ctx context.Context, id uint, req homeservicedto
 		return nil, response.InternalServerError("Failed to fetch service", err)
 	}
 
-	// Apply updates
 	if req.CategoryID != nil {
 		service.CategoryID = *req.CategoryID
 	}
@@ -841,7 +804,6 @@ func (s *service) UpdateService(ctx context.Context, id uint, req homeservicedto
 
 	logger.Info("service updated", "serviceID", id)
 
-	// Fetch the complete service with relations
 	completeService, err := s.repo.GetServiceWithOptions(ctx, id)
 	if err != nil {
 		return nil, response.InternalServerError("Failed to fetch updated service", err)
@@ -851,7 +813,6 @@ func (s *service) UpdateService(ctx context.Context, id uint, req homeservicedto
 }
 
 func (s *service) CreateAddOn(ctx context.Context, req homeservicedto.CreateAddOnRequest) (*homeservicedto.AddOnResponse, error) {
-	// Verify category exists
 	_, err := s.repo.GetCategoryByID(ctx, req.CategoryID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -882,27 +843,22 @@ func (s *service) CreateAddOn(ctx context.Context, req homeservicedto.CreateAddO
 	return homeservicedto.ToAddOnResponse(addOn), nil
 }
 
-// --- Helper Functions ---
-
 func (s *service) calculateItemPrice(svc *models.Service, selectedOptions []homeservicedto.SelectedOptionRequest) (float64, int, models.JSONBMap, error) {
 	price := svc.BasePrice
 	duration := svc.BaseDurationMinutes
 	optionsMap := make(models.JSONBMap)
 
-	// Build a map of option IDs for quick lookup
 	optionsById := make(map[uint]*models.ServiceOption)
 	for i := range svc.Options {
 		optionsById[svc.Options[i].ID] = &svc.Options[i]
 	}
 
-	// Process each selected option
 	for _, selOpt := range selectedOptions {
 		option, exists := optionsById[selOpt.OptionID]
 		if !exists {
 			return 0, 0, nil, fmt.Errorf("invalid option ID: %d", selOpt.OptionID)
 		}
 
-		// Find the choice and apply price/duration modifiers
 		if selOpt.ChoiceID != nil {
 			choiceFound := false
 			for _, choice := range option.Choices {
@@ -918,12 +874,10 @@ func (s *service) calculateItemPrice(svc *models.Service, selectedOptions []home
 				return 0, 0, nil, fmt.Errorf("invalid choice ID %d for option %d", *selOpt.ChoiceID, selOpt.OptionID)
 			}
 		} else if selOpt.Value != nil {
-			// For text/quantity type options
 			optionsMap[fmt.Sprintf("option_%d", selOpt.OptionID)] = *selOpt.Value
 		}
 	}
 
-	// Validate required options are provided
 	for _, option := range svc.Options {
 		if option.IsRequired {
 			if _, exists := optionsMap[fmt.Sprintf("option_%d", option.ID)]; !exists {
@@ -936,15 +890,27 @@ func (s *service) calculateItemPrice(svc *models.Service, selectedOptions []home
 }
 
 func (s *service) calculateSurgeFee(lat, lon float64, serviceDate time.Time) float64 {
-	// Simple time-based surge
 	hour := serviceDate.Hour()
 	if hour >= 17 && hour <= 21 {
-		return 5.00 // Peak hours
+		return 5.00
 	}
 
-	// TODO: Query surge_zones table for location-based surge
+	// Query surge_zones table for location-based surge
+	ctx := context.Background()
+	multiplier, err := s.repo.GetSurgeMultiplierByLocation(ctx, lat, lon)
+	if err != nil {
+		logger.Warn("failed to get surge multiplier", "lat", lat, "lon", lon, "error", err)
+		return 0.00
+	}
 
-	return 0.00
+	// If multiplier is 1.0, there's no surge
+	if multiplier <= 1.0 {
+		return 0.00
+	}
+
+	// Calculate base surge fee based on multiplier (e.g., 1.5x multiplier = 5.00 fee)
+	surgeFee := (multiplier - 1.0) * 10.0
+	return surgeFee
 }
 
 func (s *service) calculateDiscountPercentage(originalPrice, basePrice float64) int {
@@ -952,25 +918,4 @@ func (s *service) calculateDiscountPercentage(originalPrice, basePrice float64) 
 		return int(((originalPrice - basePrice) / originalPrice) * 100)
 	}
 	return 0
-}
-
-// Utility functions
-func (s *service) contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *service) parseCommaSeparated(str string) []string {
-	if str == "" {
-		return []string{}
-	}
-	return strings.Split(str, ",")
-}
-
-func (s *service) joinCommaSeparated(slice []string) string {
-	return strings.Join(slice, ",")
 }

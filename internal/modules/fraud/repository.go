@@ -15,13 +15,13 @@ type Repository interface {
 	Update(ctx context.Context, pattern *models.FraudPattern) error
 	Review(ctx context.Context, patternID, reviewerID, status, notes string) error
 
-	// Pattern detection queries
 	CheckFrequentCancellations(ctx context.Context, userID string, days int) (int, error)
 	CheckSameRiderDriverPair(ctx context.Context, riderID, driverID string, days int) (int, error)
 	CheckShortDistanceHighFare(ctx context.Context, rideID string) (bool, error)
 	CheckLocationGaming(ctx context.Context, userID string, days int) (bool, error)
 
-	// Statistics
+	FindRideByID(ctx context.Context, rideID string) (*models.Ride, error)
+
 	GetFraudStats(ctx context.Context) (map[string]interface{}, error)
 }
 
@@ -121,9 +121,8 @@ func (r *repository) CheckShortDistanceHighFare(ctx context.Context, rideID stri
 		return false, err
 	}
 
-	// Flag if actual distance < 1km but fare > $10
 	if ride.ActualDistance != nil && *ride.ActualDistance < 1.0 &&
-		ride.ActualFare != nil && *ride.ActualFare > 10.0 {
+		ride.ActualFare != nil && *ride.ActualFare > 400.0 {
 		return true, nil
 	}
 
@@ -131,7 +130,6 @@ func (r *repository) CheckShortDistanceHighFare(ctx context.Context, rideID stri
 }
 
 func (r *repository) CheckLocationGaming(ctx context.Context, userID string, days int) (bool, error) {
-	// Check for multiple rides with same exact pickup/dropoff within short time
 	var count int64
 	err := r.db.WithContext(ctx).Raw(`
         SELECT COUNT(DISTINCT DATE_TRUNC('hour', requested_at))
@@ -145,15 +143,21 @@ func (r *repository) CheckLocationGaming(ctx context.Context, userID string, day
 	return count > 0, err
 }
 
+func (r *repository) FindRideByID(ctx context.Context, rideID string) (*models.Ride, error) {
+	var ride models.Ride
+	err := r.db.WithContext(ctx).
+		Where("id = ?", rideID).
+		First(&ride).Error
+	return &ride, err
+}
+
 func (r *repository) GetFraudStats(ctx context.Context) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 
-	// Total patterns
 	var total int64
 	r.db.WithContext(ctx).Model(&models.FraudPattern{}).Count(&total)
 	stats["total"] = total
 
-	// By status
 	var statusCounts []struct {
 		Status string
 		Count  int64
@@ -168,7 +172,6 @@ func (r *repository) GetFraudStats(ctx context.Context) (map[string]interface{},
 		stats[sc.Status] = sc.Count
 	}
 
-	// By type
 	var typeCounts []struct {
 		Type  string
 		Count int64
@@ -185,7 +188,6 @@ func (r *repository) GetFraudStats(ctx context.Context) (map[string]interface{},
 	}
 	stats["byType"] = byType
 
-	// High risk count (>= 80)
 	var highRisk int64
 	r.db.WithContext(ctx).
 		Model(&models.FraudPattern{}).

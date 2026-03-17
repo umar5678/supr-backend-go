@@ -35,7 +35,7 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		c.Set("userID", claims.UserID)
-		c.Set("role", claims.Role) // ← standardized key
+		c.Set("role", claims.Role)
 
 		c.Next()
 	}
@@ -43,7 +43,7 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 
 func RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userRole, exists := c.Get("role") // ← matches Auth
+		userRole, exists := c.Get("role")
 		if !exists {
 			c.Error(response.ForbiddenError("Insufficient permissions"))
 			c.Abort()

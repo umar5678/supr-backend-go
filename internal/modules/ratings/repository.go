@@ -19,20 +19,16 @@ type Repository interface {
 	RateDriver(ctx context.Context, rideID string, rating int, comment string) error
 	RateRider(ctx context.Context, rideID string, rating int, comment string) error
 
-	// Get ratings
 	GetDriverRating(ctx context.Context, driverID string) (float64, error)
 	GetRiderRating(ctx context.Context, riderID string) (float64, error)
 	GetDriverProfile(ctx context.Context, userID string) (*models.DriverProfile, error)
 	GetRiderProfile(ctx context.Context, userID string) (*models.RiderProfile, error)
 
-	// Create profiles if not exists
 	CreateRiderProfile(ctx context.Context, profile *models.RiderProfile) error
 
-	// Update profiles
 	UpdateDriverRating(ctx context.Context, driverID string) error
 	UpdateRiderRating(ctx context.Context, riderID string) error
 
-	// Rating breakdown
 	GetDriverRatingBreakdown(ctx context.Context, driverID string) (map[int]int, error)
 	GetRiderRatingBreakdown(ctx context.Context, riderID string) (map[int]int, error)
 }

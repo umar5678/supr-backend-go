@@ -38,14 +38,12 @@ func (h *HealthChecker) Check(ctx context.Context) *HealthStatus {
 		Services:  make(map[string]ServiceHealth),
 	}
 
-	// Check database
 	dbHealth := h.checkDatabase(ctx)
 	status.Services["database"] = dbHealth
 	if dbHealth.Status != "healthy" {
 		status.Status = "unhealthy"
 	}
 
-	// Check Kafka
 	kafkaHealth := h.checkKafka(ctx)
 	status.Services["kafka"] = kafkaHealth
 	if kafkaHealth.Status != "healthy" {

@@ -12,19 +12,15 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
 )
 
-// Repository defines the interface for admin home services data access
 type Repository interface {
-	// Service operations
 	CreateService(ctx context.Context, service *models.ServiceNew) error
 	GetServiceByID(ctx context.Context, id string) (*models.ServiceNew, error)
 	GetServiceBySlug(ctx context.Context, slug string) (*models.ServiceNew, error)
 	UpdateService(ctx context.Context, service *models.ServiceNew) error
-	// UpdateHomeCleaningService(ctx context.Context, service *models.HomeCleaningService) error
 	DeleteService(ctx context.Context, id string) error
 	ListServices(ctx context.Context, query dto.ListServicesQuery) ([]*models.ServiceNew, int64, error)
 	ServiceSlugExists(ctx context.Context, slug string, excludeID string) (bool, error)
 
-	// Addon operations
 	CreateAddon(ctx context.Context, addon *models.Addon) error
 	GetAddonByID(ctx context.Context, id string) (*models.Addon, error)
 	GetAddonBySlug(ctx context.Context, slug string) (*models.Addon, error)
@@ -33,22 +29,18 @@ type Repository interface {
 	ListAddons(ctx context.Context, query dto.ListAddonsQuery) ([]*models.Addon, int64, error)
 	AddonSlugExists(ctx context.Context, slug string, excludeID string) (bool, error)
 
-	// Category operations
 	GetServicesByCategory(ctx context.Context, categorySlug string) ([]*models.ServiceNew, error)
 	GetAddonsByCategory(ctx context.Context, categorySlug string) ([]*models.Addon, error)
 	GetAllCategories(ctx context.Context) ([]string, error)
 
-	// Order queries
 	GetOrders(ctx context.Context, query dto.ListOrdersQuery) ([]*models.ServiceOrderNew, int64, error)
 	GetOrderByID(ctx context.Context, id string) (*models.ServiceOrderNew, error)
 	GetOrderByNumber(ctx context.Context, orderNumber string) (*models.ServiceOrderNew, error)
 	UpdateOrder(ctx context.Context, order *models.ServiceOrderNew) error
 
-	// Status history
 	GetOrderStatusHistory(ctx context.Context, orderID string) ([]models.OrderStatusHistory, error)
 	CreateStatusHistory(ctx context.Context, history *models.OrderStatusHistory) error
 
-	// Analytics
 	GetOrderStats(ctx context.Context, fromDate, toDate time.Time) (*OrderStats, error)
 	GetOrdersByStatus(ctx context.Context, fromDate, toDate time.Time) ([]StatusStats, error)
 	GetOrdersByCategory(ctx context.Context, fromDate, toDate time.Time) ([]CategoryStats, error)
@@ -56,26 +48,26 @@ type Repository interface {
 	GetProviderAnalytics(ctx context.Context, fromDate, toDate time.Time, query dto.ProviderAnalyticsQuery) ([]ProviderStats, error)
 	GetPaymentMethodStats(ctx context.Context, fromDate, toDate time.Time) ([]PaymentStats, error)
 
-	// Dashboard
 	GetTodayStats(ctx context.Context) (*TodayStatsData, error)
 	GetWeeklyStats(ctx context.Context) (*WeeklyStatsData, error)
 	GetPendingActions(ctx context.Context) (*PendingActionsData, error)
 	GetRecentOrders(ctx context.Context, limit int) ([]*models.ServiceOrderNew, error)
 
-	// Bulk operations
 	BulkUpdateStatus(ctx context.Context, orderIDs []string, status string, changedBy string, reason string) (int64, error)
+
+	GetUserByID(ctx context.Context, userID string) (*models.User, error)
+
+	GetTotalRefunds(ctx context.Context, fromDate, toDate time.Time) (float64, error)
 }
 
 type repository struct {
 	db *gorm.DB
 }
 
-// NewRepository creates a new admin repository instance
 func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-// Stats structures
 type OrderStats struct {
 	TotalOrders          int64
 	CompletedOrders      int64
@@ -152,8 +144,6 @@ type PendingActionsData struct {
 	DisputedOrders        int64
 }
 
-// ==================== Service Operations ====================
-
 func (r *repository) CreateService(ctx context.Context, service *models.ServiceNew) error {
 	return r.db.WithContext(ctx).Create(service).Error
 }
@@ -180,10 +170,6 @@ func (r *repository) UpdateService(ctx context.Context, service *models.ServiceN
 	return r.db.WithContext(ctx).Save(service).Error
 }
 
-// func (r *repository) UpdateHomeCleaningService(ctx context.Context, service *models.HomeCleaningService) error {
-// 	return r.db.WithContext(ctx).Save(service).Error
-// }
-
 func (r *repository) DeleteService(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&models.ServiceNew{}, "id = ?", id).Error
 }
@@ -194,7 +180,6 @@ func (r *repository) ListServices(ctx context.Context, query dto.ListServicesQue
 
 	db := r.db.WithContext(ctx).Model(&models.ServiceNew{})
 
-	// Apply filters
 	if query.CategorySlug != "" {
 		db = db.Where("category_slug = ?", query.CategorySlug)
 	}
@@ -212,12 +197,10 @@ func (r *repository) ListServices(ctx context.Context, query dto.ListServicesQue
 		db = db.Where("is_available = ?", *query.IsAvailable)
 	}
 
-	// Count total before pagination
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply sorting
 	orderClause := query.SortBy
 	if query.SortDesc {
 		orderClause += " DESC"
@@ -226,7 +209,6 @@ func (r *repository) ListServices(ctx context.Context, query dto.ListServicesQue
 	}
 	db = db.Order(orderClause)
 
-	// Apply pagination
 	offset := query.PaginationParams.GetOffset()
 	if err := db.Offset(offset).Limit(query.Limit).Find(&services).Error; err != nil {
 		return nil, 0, err
@@ -248,8 +230,6 @@ func (r *repository) ServiceSlugExists(ctx context.Context, slug string, exclude
 	}
 	return count > 0, nil
 }
-
-// ==================== Addon Operations ====================
 
 func (r *repository) CreateAddon(ctx context.Context, addon *models.Addon) error {
 	return r.db.WithContext(ctx).Create(addon).Error
@@ -287,7 +267,6 @@ func (r *repository) ListAddons(ctx context.Context, query dto.ListAddonsQuery) 
 
 	db := r.db.WithContext(ctx).Model(&models.Addon{})
 
-	// Apply filters
 	if query.CategorySlug != "" {
 		db = db.Where("category_slug = ?", query.CategorySlug)
 	}
@@ -313,12 +292,10 @@ func (r *repository) ListAddons(ctx context.Context, query dto.ListAddonsQuery) 
 		db = db.Where("price <= ?", *query.MaxPrice)
 	}
 
-	// Count total before pagination
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply sorting
 	orderClause := query.SortBy
 	if query.SortDesc {
 		orderClause += " DESC"
@@ -327,7 +304,6 @@ func (r *repository) ListAddons(ctx context.Context, query dto.ListAddonsQuery) 
 	}
 	db = db.Order(orderClause)
 
-	// Apply pagination
 	offset := query.PaginationParams.GetOffset()
 	if err := db.Offset(offset).Limit(query.Limit).Find(&addons).Error; err != nil {
 		return nil, 0, err
@@ -350,8 +326,6 @@ func (r *repository) AddonSlugExists(ctx context.Context, slug string, excludeID
 	return count > 0, nil
 }
 
-// ==================== Category Operations ====================
-
 func (r *repository) GetServicesByCategory(ctx context.Context, categorySlug string) ([]*models.ServiceNew, error) {
 	var services []*models.ServiceNew
 	err := r.db.WithContext(ctx).
@@ -373,7 +347,6 @@ func (r *repository) GetAddonsByCategory(ctx context.Context, categorySlug strin
 func (r *repository) GetAllCategories(ctx context.Context) ([]string, error) {
 	var categories []string
 
-	// Get unique categories from services
 	var serviceCategories []string
 	if err := r.db.WithContext(ctx).
 		Model(&models.ServiceNew{}).
@@ -382,7 +355,6 @@ func (r *repository) GetAllCategories(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	// Get unique categories from addons
 	var addonCategories []string
 	if err := r.db.WithContext(ctx).
 		Model(&models.Addon{}).
@@ -391,7 +363,6 @@ func (r *repository) GetAllCategories(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	// Merge and deduplicate
 	categoryMap := make(map[string]bool)
 	for _, c := range serviceCategories {
 		categoryMap[c] = true
@@ -407,43 +378,43 @@ func (r *repository) GetAllCategories(ctx context.Context) ([]string, error) {
 	return categories, nil
 }
 
-// ==================== Order Queries ====================
-
 func (r *repository) GetOrders(ctx context.Context, query dto.ListOrdersQuery) ([]*models.ServiceOrderNew, int64, error) {
 	var orders []*models.ServiceOrderNew
 	var total int64
 
 	db := r.db.WithContext(ctx).Model(&models.ServiceOrderNew{})
 
-	// Apply filters
 	if query.Status != "" {
 		db = db.Where("status = ?", query.Status)
 	}
+
 	if query.CategorySlug != "" {
 		db = db.Where("category_slug = ?", query.CategorySlug)
 	}
+
 	if query.CustomerID != "" {
 		db = db.Where("customer_id = ?", query.CustomerID)
 	}
+
 	if query.ProviderID != "" {
 		db = db.Where("assigned_provider_id = ?", query.ProviderID)
 	}
+
 	if query.OrderNumber != "" {
 		db = db.Where("order_number ILIKE ?", "%"+query.OrderNumber+"%")
 	}
 
-	// Date filters (created_at)
 	if query.FromDate != "" {
 		fromDate, _ := time.Parse("2006-01-02", query.FromDate)
 		db = db.Where("created_at >= ?", fromDate)
 	}
+
 	if query.ToDate != "" {
 		toDate, _ := time.Parse("2006-01-02", query.ToDate)
 		toDate = toDate.AddDate(0, 0, 1)
 		db = db.Where("created_at < ?", toDate)
 	}
 
-	// Booking date filters
 	if query.BookingFromDate != "" {
 		db = db.Where("booking_info->>'date' >= ?", query.BookingFromDate)
 	}
@@ -451,24 +422,23 @@ func (r *repository) GetOrders(ctx context.Context, query dto.ListOrdersQuery) (
 		db = db.Where("booking_info->>'date' <= ?", query.BookingToDate)
 	}
 
-	// Price filters
 	if query.MinPrice != nil {
 		db = db.Where("total_price >= ?", *query.MinPrice)
 	}
+
 	if query.MaxPrice != nil {
 		db = db.Where("total_price <= ?", *query.MaxPrice)
 	}
 
-	// Count total
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply sorting
 	orderClause := query.SortBy
 	if query.SortBy == "booking_date" {
 		orderClause = "booking_info->>'date'"
 	}
+
 	if query.SortDesc {
 		orderClause += " DESC"
 	} else {
@@ -476,7 +446,6 @@ func (r *repository) GetOrders(ctx context.Context, query dto.ListOrdersQuery) (
 	}
 	db = db.Order(orderClause)
 
-	// Apply pagination
 	offset := query.PaginationParams.GetOffset()
 	if err := db.Offset(offset).Limit(query.Limit).Find(&orders).Error; err != nil {
 		return nil, 0, err
@@ -507,8 +476,6 @@ func (r *repository) UpdateOrder(ctx context.Context, order *models.ServiceOrder
 	return r.db.WithContext(ctx).Save(order).Error
 }
 
-// ==================== Status History ====================
-
 func (r *repository) GetOrderStatusHistory(ctx context.Context, orderID string) ([]models.OrderStatusHistory, error) {
 	var history []models.OrderStatusHistory
 	err := r.db.WithContext(ctx).
@@ -522,13 +489,10 @@ func (r *repository) CreateStatusHistory(ctx context.Context, history *models.Or
 	return r.db.WithContext(ctx).Create(history).Error
 }
 
-// ==================== Analytics ====================
-
 func (r *repository) GetOrderStats(ctx context.Context, fromDate, toDate time.Time) (*OrderStats, error) {
 	stats := &OrderStats{}
 	toDateEnd := toDate.AddDate(0, 0, 1)
 
-	// Total orders
 	if err := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", fromDate, toDateEnd).
@@ -536,7 +500,6 @@ func (r *repository) GetOrderStats(ctx context.Context, fromDate, toDate time.Ti
 		return nil, err
 	}
 
-	// Completed orders and revenue
 	row := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", fromDate, toDateEnd).
@@ -549,7 +512,6 @@ func (r *repository) GetOrderStats(ctx context.Context, fromDate, toDate time.Ti
 
 	stats.TotalProviderPayouts = stats.TotalRevenue - stats.TotalCommission
 
-	// Cancelled orders
 	if err := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", fromDate, toDateEnd).
@@ -558,7 +520,6 @@ func (r *repository) GetOrderStats(ctx context.Context, fromDate, toDate time.Ti
 		return nil, err
 	}
 
-	// Pending orders
 	if err := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", fromDate, toDateEnd).
@@ -567,7 +528,6 @@ func (r *repository) GetOrderStats(ctx context.Context, fromDate, toDate time.Ti
 		return nil, err
 	}
 
-	// Ratings
 	row = r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", fromDate, toDateEnd).
@@ -617,7 +577,7 @@ func (r *repository) GetRevenueBreakdown(ctx context.Context, fromDate, toDate t
 	var dateFormat string
 	switch groupBy {
 	case "week":
-		dateFormat = "YYYY-IW" // ISO week
+		dateFormat = "YYYY-IW"
 	case "month":
 		dateFormat = "YYYY-MM"
 	default:
@@ -659,12 +619,10 @@ func (r *repository) GetProviderAnalytics(ctx context.Context, fromDate, toDate 
 	`, shared.OrderStatusCompleted, shared.OrderStatusCancelled, shared.OrderStatusCompleted).
 		Group("assigned_provider_id")
 
-	// Apply filters
 	if query.MinOrders != nil {
 		db = db.Having("SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) >= ?", shared.OrderStatusCompleted, *query.MinOrders)
 	}
 
-	// Sorting
 	switch query.SortBy {
 	case "earnings":
 		if query.SortDesc {
@@ -678,7 +636,7 @@ func (r *repository) GetProviderAnalytics(ctx context.Context, fromDate, toDate 
 		} else {
 			db = db.Order("total_rating_sum / NULLIF(total_ratings, 0) ASC NULLS LAST")
 		}
-	default: // completed_orders
+	default:
 		if query.SortDesc {
 			db = db.Order("completed_orders DESC")
 		} else {
@@ -708,20 +666,16 @@ func (r *repository) GetPaymentMethodStats(ctx context.Context, fromDate, toDate
 	return stats, err
 }
 
-// ==================== Dashboard ====================
-
 func (r *repository) GetTodayStats(ctx context.Context) (*TodayStatsData, error) {
 	stats := &TodayStatsData{}
 	today := time.Now().Truncate(24 * time.Hour)
 	tomorrow := today.AddDate(0, 0, 1)
 
-	// Total orders today
 	r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", today, tomorrow).
 		Count(&stats.TotalOrders)
 
-	// Completed today
 	row := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("completed_at >= ? AND completed_at < ?", today, tomorrow).
@@ -730,13 +684,11 @@ func (r *repository) GetTodayStats(ctx context.Context) (*TodayStatsData, error)
 		Row()
 	row.Scan(&stats.CompletedOrders, &stats.Revenue, &stats.Commission)
 
-	// Pending
 	r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("status IN ?", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider, shared.OrderStatusAssigned, shared.OrderStatusAccepted}).
 		Count(&stats.PendingOrders)
 
-	// In progress
 	r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("status = ?", shared.OrderStatusInProgress).
@@ -751,7 +703,6 @@ func (r *repository) GetWeeklyStats(ctx context.Context) (*WeeklyStatsData, erro
 	weekAgo := today.AddDate(0, 0, -7)
 	tomorrow := today.AddDate(0, 0, 1)
 
-	// Weekly totals
 	row := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", weekAgo, tomorrow).
@@ -765,7 +716,6 @@ func (r *repository) GetWeeklyStats(ctx context.Context) (*WeeklyStatsData, erro
 		Where("created_at >= ? AND created_at < ?", weekAgo, tomorrow).
 		Count(&stats.TotalOrders)
 
-	// Ratings
 	row = r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", weekAgo, tomorrow).
@@ -774,7 +724,6 @@ func (r *repository) GetWeeklyStats(ctx context.Context) (*WeeklyStatsData, erro
 		Row()
 	row.Scan(&stats.TotalRatings, &stats.TotalRatingSum)
 
-	// Daily breakdown
 	rows, err := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("created_at >= ? AND created_at < ?", weekAgo, tomorrow).
@@ -800,14 +749,12 @@ func (r *repository) GetWeeklyStats(ctx context.Context) (*WeeklyStatsData, erro
 func (r *repository) GetPendingActions(ctx context.Context) (*PendingActionsData, error) {
 	data := &PendingActionsData{}
 
-	// Orders needing provider
 	r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("status IN ?", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider}).
 		Where("assigned_provider_id IS NULL").
 		Count(&data.OrdersNeedingProvider)
 
-	// Expired orders
 	r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("status IN ?", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider}).
@@ -826,8 +773,6 @@ func (r *repository) GetRecentOrders(ctx context.Context, limit int) ([]*models.
 	return orders, err
 }
 
-// ==================== Bulk Operations ====================
-
 func (r *repository) BulkUpdateStatus(ctx context.Context, orderIDs []string, status string, changedBy string, reason string) (int64, error) {
 	result := r.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
@@ -841,11 +786,10 @@ func (r *repository) BulkUpdateStatus(ctx context.Context, orderIDs []string, st
 		return 0, result.Error
 	}
 
-	// Create status history for each order
 	for _, orderID := range orderIDs {
 		history := models.NewOrderStatusHistory(
 			orderID,
-			"", // Unknown previous status in bulk
+			"",
 			status,
 			&changedBy,
 			shared.RoleAdmin,
@@ -856,4 +800,35 @@ func (r *repository) BulkUpdateStatus(ctx context.Context, orderIDs []string, st
 	}
 
 	return result.RowsAffected, nil
+}
+
+func (r *repository) GetUserByID(ctx context.Context, userID string) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).
+		Where("id = ?", userID).
+		First(&user).Error
+	return &user, err
+}
+
+// GetTotalRefunds calculates the total refunded amount for cancelled orders within a date range
+func (r *repository) GetTotalRefunds(ctx context.Context, fromDate, toDate time.Time) (float64, error) {
+	var orders []*models.ServiceOrderNew
+	err := r.db.WithContext(ctx).
+		Where("status = ? AND cancelled_at BETWEEN ? AND ?",
+			"cancelled", fromDate, toDate).
+		Select("cancellation_info").
+		Find(&orders).Error
+
+	if err != nil {
+		return 0, err
+	}
+
+	var totalRefunds float64
+	for _, order := range orders {
+		if order.CancellationInfo != nil {
+			totalRefunds += order.CancellationInfo.RefundAmount
+		}
+	}
+
+	return totalRefunds, nil
 }

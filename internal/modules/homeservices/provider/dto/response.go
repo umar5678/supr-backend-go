@@ -45,7 +45,7 @@ type ProviderStatistics struct {
 	TotalRatings         int     `json:"totalRatings"`
 	AcceptanceRate       float64 `json:"acceptanceRate"`
 	CompletionRate       float64 `json:"completionRate"`
-	AverageResponseTime  int     `json:"averageResponseTime"` // in minutes
+	AverageResponseTime  int     `json:"averageResponseTime"`
 	TotalActiveOrders    int     `json:"totalActiveOrders"`
 	TodayCompletedOrders int     `json:"todayCompletedOrders"`
 	TodayEarnings        float64 `json:"todayEarnings"`
@@ -62,16 +62,16 @@ type AvailableOrderResponse struct {
 	Addons          []OrderAddonItem   `json:"addons,omitempty"`
 	SpecialNotes    string             `json:"specialNotes,omitempty"`
 	TotalPrice      float64            `json:"totalPrice"`
-	ProviderPayout  float64            `json:"providerPayout"` // 90% of total
+	ProviderPayout  float64            `json:"providerPayout"`
 	FormattedPayout string             `json:"formattedPayout"`
-	Distance        *float64           `json:"distance,omitempty"` // km from provider
+	Distance        *float64           `json:"distance,omitempty"` 
 	CreatedAt       time.Time          `json:"createdAt"`
 	ExpiresAt       *time.Time         `json:"expiresAt,omitempty"`
 }
 
 type OrderCustomerInfo struct {
 	Name    string  `json:"name"`
-	Phone   string  `json:"phone,omitempty"` // Only shown after acceptance
+	Phone   string  `json:"phone,omitempty"`
 	Address string  `json:"address"`
 	Lat     float64 `json:"lat"`
 	Lng     float64 `json:"lng"`
@@ -173,7 +173,7 @@ type EarningsPeriod struct {
 }
 
 type EarningsBreakdown struct {
-	Period            string  `json:"period"` // date, week number, or month
+	Period            string  `json:"period"` 
 	Earnings          float64 `json:"earnings"`
 	OrderCount        int     `json:"orderCount"`
 	FormattedEarnings string  `json:"formattedEarnings"`
@@ -351,7 +351,7 @@ func ToProviderOrderResponse(order *models.ServiceOrderNew) *ProviderOrderRespon
 		CategoryTitle: GetCategoryTitle(order.CategorySlug),
 		CustomerInfo: OrderCustomerInfo{
 			Name:    order.CustomerInfo.Name,
-			Phone:   order.CustomerInfo.Phone, // Shown for accepted orders
+			Phone:   order.CustomerInfo.Phone, 
 			Address: order.CustomerInfo.Address,
 			Lat:     order.CustomerInfo.Lat,
 			Lng:     order.CustomerInfo.Lng,

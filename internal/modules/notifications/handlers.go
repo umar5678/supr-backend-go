@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// RideEventHandler handles ride-related events
 type RideEventHandler struct {
 	pushService notificationservice.PushService
 	db          *gorm.DB
@@ -26,11 +25,10 @@ func NewRideEventHandler(pushService notificationservice.PushService, db *gorm.D
 }
 
 func (h *RideEventHandler) EventType() EventType {
-	return EventRideRequested // Base event type for ride events consumer
+	return EventRideRequested 
 }
 
 func (h *RideEventHandler) CanHandle(eventType EventType) bool {
-	// Handle all ride-related events
 	switch eventType {
 	case EventRideRequestSent,
 		EventRideAccepted,
@@ -59,14 +57,12 @@ func (h *RideEventHandler) CanHandle(eventType EventType) bool {
 func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) error {
 	eventTypeStr := event.Headers["event_type"]
 
-	// Parse the payload to get ride details
 	var payload map[string]interface{}
 	if err := json.Unmarshal(event.Payload, &payload); err != nil {
 		logger.Error("failed to unmarshal ride event payload", "error", err)
 		return fmt.Errorf("failed to unmarshal ride event payload: %w", err)
 	}
 
-	// Check for rider_id or riderId (both formats supported)
 	riderID, ok := payload["rider_id"].(string)
 	if !ok {
 		riderID, ok = payload["riderId"].(string)
@@ -87,7 +83,6 @@ func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 		driverID, _ = payload["driverId"].(string)
 	}
 
-	// Create notification message based on event type
 	var notificationMsg string
 	var metadataMap map[string]interface{}
 
@@ -145,14 +140,12 @@ func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 		return nil
 	}
 
-	// Marshal metadata to JSON
 	metadataJSON, err := json.Marshal(metadataMap)
 	if err != nil {
 		logger.Error("failed to marshal notification metadata", "error", err)
 		return fmt.Errorf("failed to marshal notification metadata: %w", err)
 	}
 
-	// Send via push service
 	notification := &models.Notification{
 		UserID:   riderUUID,
 		Title:    "Ride Update",
@@ -164,12 +157,9 @@ func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 
 	if err := h.pushService.SendPush(ctx, riderUUID, notification.Title, notification.Message, metadataMap); err != nil {
 		logger.Error("failed to send push notification to rider", "error", err, "rider_id", riderID)
-		// Don't return error - log and continue
 	}
 
-	// If driver exists, also notify them for certain events
 	if driverID != "" {
-		// driverID is the driver profile ID, we need to get the user ID
 		driverUserID, err := h.getDriverUserID(ctx, driverID)
 		if err == nil && driverUserID != "" {
 			driverUserUUID, err := uuid.Parse(driverUserID)
@@ -187,7 +177,6 @@ func (h *RideEventHandler) Handle(ctx context.Context, event *ConsumedEvent) err
 	return nil
 }
 
-// getDriverUserID retrieves the user ID for a given driver profile ID
 func (h *RideEventHandler) getDriverUserID(ctx context.Context, driverProfileID string) (string, error) {
 	var driverProfile models.DriverProfile
 	if err := h.db.WithContext(ctx).Where("id = ?", driverProfileID).First(&driverProfile).Error; err != nil {
@@ -197,7 +186,6 @@ func (h *RideEventHandler) getDriverUserID(ctx context.Context, driverProfileID 
 	return driverProfile.UserID, nil
 }
 
-// PaymentEventHandler handles payment-related events
 type PaymentEventHandler struct {
 	pushService notificationservice.PushService
 }
@@ -209,11 +197,10 @@ func NewPaymentEventHandler(pushService notificationservice.PushService) *Paymen
 }
 
 func (h *PaymentEventHandler) EventType() EventType {
-	return EventPaymentProcessed // Base event type for payment events consumer
+	return EventPaymentProcessed 
 }
 
 func (h *PaymentEventHandler) CanHandle(eventType EventType) bool {
-	// Handle all payment-related events
 	switch eventType {
 	case EventPaymentProcessed,
 		EventPaymentFailed,
@@ -287,7 +274,6 @@ func (h *PaymentEventHandler) Handle(ctx context.Context, event *ConsumedEvent) 
 	return nil
 }
 
-// SOSEventHandler handles SOS-related events
 type SOSEventHandler struct {
 	pushService notificationservice.PushService
 }
@@ -299,11 +285,10 @@ func NewSOSEventHandler(pushService notificationservice.PushService) *SOSEventHa
 }
 
 func (h *SOSEventHandler) EventType() EventType {
-	return EventSOSAlert // Base event type for SOS events consumer
+	return EventSOSAlert
 }
 
 func (h *SOSEventHandler) CanHandle(eventType EventType) bool {
-	// Handle all SOS-related events
 	switch eventType {
 	case EventSOSAlert,
 		EventSOSTriggered,
@@ -368,7 +353,6 @@ func (h *SOSEventHandler) Handle(ctx context.Context, event *ConsumedEvent) erro
 	return nil
 }
 
-// FraudEventHandler handles fraud detection events
 type FraudEventHandler struct {
 	pushService notificationservice.PushService
 }
@@ -380,11 +364,10 @@ func NewFraudEventHandler(pushService notificationservice.PushService) *FraudEve
 }
 
 func (h *FraudEventHandler) EventType() EventType {
-	return EventFraudPatternDetected // Base event type for fraud events consumer
+	return EventFraudPatternDetected 
 }
 
 func (h *FraudEventHandler) CanHandle(eventType EventType) bool {
-	// Handle all fraud-related events
 	switch eventType {
 	case EventFraudPatternDetected,
 		EventFraudAlertCreated,
@@ -447,7 +430,6 @@ func (h *FraudEventHandler) Handle(ctx context.Context, event *ConsumedEvent) er
 	return nil
 }
 
-// UserEventHandler handles user-related events
 type UserEventHandler struct {
 	pushService notificationservice.PushService
 }
@@ -459,11 +441,10 @@ func NewUserEventHandler(pushService notificationservice.PushService) *UserEvent
 }
 
 func (h *UserEventHandler) EventType() EventType {
-	return EventUserRegistered // Base event type for user events consumer
+	return EventUserRegistered 
 }
 
 func (h *UserEventHandler) CanHandle(eventType EventType) bool {
-	// Handle all user-related events
 	switch eventType {
 	case EventUserRegistered,
 		EventUserVerified,

@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// AdminSupportChat represents a message in admin support chat conversation
 type AdminSupportChat struct {
 	ID              string  `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 	ConversationID  string  `gorm:"type:uuid;not null;index" json:"conversationId"`
@@ -35,7 +34,6 @@ func (AdminSupportChat) TableName() string {
 	return "admin_support_chats"
 }
 
-// AdminSupportChatMetadata holds additional metadata for a message
 type AdminSupportChatMetadata struct {
 	MessageID string                 `json:"messageId,omitempty"`
 	Extra     map[string]interface{} `json:"extra,omitempty"`

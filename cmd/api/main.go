@@ -58,7 +58,7 @@ import (
 
 // @title supr booking server in go
 // @version 1.0
-// @description Production-grade Go backend API
+// @description Go backend API
 
 func main() {
 	_ = godotenv.Load()
@@ -122,7 +122,6 @@ func main() {
 
 	logger.Info("websocket system initialized successfully")
 
-	// Initialize Notification System
 	notificationSystem, err := notifications.NewNotificationSystem(
 		context.Background(),
 		db,
@@ -143,7 +142,6 @@ func main() {
 
 	logger.Info("notification system initialized and started successfully")
 
-	// Start order expiration background job
 	orderExpirationService := homeservices.NewOrderExpirationService(db)
 	go func() {
 		ticker := time.NewTicker(1 * time.Minute)
@@ -160,7 +158,6 @@ func main() {
 
 	logger.Info("order expiration job started")
 
-	// Setup Gin
 	if cfg.App.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -180,7 +177,6 @@ func main() {
 	router.GET("/health", healthCheck)
 	router.GET("/ready", readyCheck(db))
 
-	// API routes
 	v1 := router.Group("/api/v1")
 	{
 		v1.Use(middleware.RateLimit(cfg.Server.RateLimit))

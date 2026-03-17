@@ -11,7 +11,6 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// EventHandlerFactory creates and routes event handlers
 type EventHandlerFactory struct {
 	pushService service.PushService
 }
@@ -22,14 +21,11 @@ func NewEventHandlerFactory(pushService service.PushService) *EventHandlerFactor
 	}
 }
 
-// HandleEvent routes events to appropriate handlers
 func (f *EventHandlerFactory) HandleEvent(ctx context.Context, eventType notifications.EventType, payload []byte) error {
 	switch eventType {
-	// Fraud events
 	case notifications.EventFraudPatternDetected:
 		return f.handleFraudPatternDetected(ctx, payload)
 
-	// Ride events
 	case notifications.EventRideRequested:
 		return f.handleRideRequested(ctx, payload)
 	case notifications.EventRideAccepted:
@@ -41,17 +37,14 @@ func (f *EventHandlerFactory) HandleEvent(ctx context.Context, eventType notific
 	case notifications.EventRideCancelled:
 		return f.handleRideCancelled(ctx, payload)
 
-	// Payment events
 	case notifications.EventPaymentProcessed:
 		return f.handlePaymentProcessed(ctx, payload)
 	case notifications.EventPaymentFailed:
 		return f.handlePaymentFailed(ctx, payload)
 
-	// Vehicle events
 	case notifications.EventVehicleRegistered:
 		return f.handleVehicleRegistered(ctx, payload)
 
-	// User events
 	case notifications.EventUserRegistered:
 		return f.handleUserRegistered(ctx, payload)
 	case notifications.EventUserVerified:
@@ -62,8 +55,6 @@ func (f *EventHandlerFactory) HandleEvent(ctx context.Context, eventType notific
 		return fmt.Errorf("unknown event type: %s", eventType)
 	}
 }
-
-// ============ FRAUD HANDLERS ============
 
 type FraudPatternDetectedPayload struct {
 	PatternID   uuid.UUID `json:"pattern_id"`
@@ -78,19 +69,15 @@ func (f *EventHandlerFactory) handleFraudPatternDetected(ctx context.Context, pa
 		return fmt.Errorf("failed to unmarshal fraud event: %w", err)
 	}
 
-	// Send push notification if risk score is high
 	if event.RiskScore > 50 {
 		if err := service.SendSecurityAlert(ctx, f.pushService, event.UserID, event.PatternID.String(), event.RiskScore); err != nil {
 			logger.Error("failed to send security alert", "error", err)
-			// Don't fail the entire event if notification fails
 		}
 	}
 
 	logger.Info("fraud pattern notification sent", "userID", event.UserID, "riskScore", event.RiskScore)
 	return nil
 }
-
-// ============ RIDE HANDLERS ============
 
 type RideRequestedPayload struct {
 	RideID        uuid.UUID `json:"ride_id"`
@@ -126,7 +113,7 @@ type RideAcceptedPayload struct {
 	RiderID    uuid.UUID `json:"rider_id"`
 	DriverID   uuid.UUID `json:"driver_id"`
 	DriverName string    `json:"driver_name"`
-	ETA        int       `json:"eta"` // in seconds
+	ETA        int       `json:"eta"`
 }
 
 func (f *EventHandlerFactory) handleRideAccepted(ctx context.Context, payload []byte) error {
@@ -181,12 +168,10 @@ func (f *EventHandlerFactory) handleRideCompleted(ctx context.Context, payload [
 		return fmt.Errorf("failed to unmarshal ride completed event: %w", err)
 	}
 
-	// Send to rider
 	if err := service.SendRideCompleteNotification(ctx, f.pushService, event.RiderID, event.RideID.String(), event.FinalFare); err != nil {
 		logger.Error("failed to send ride completed notification to rider", "error", err)
 	}
 
-	// Send to driver
 	data := map[string]interface{}{
 		"type":    "ride_completed",
 		"ride_id": event.RideID.String(),
@@ -219,12 +204,10 @@ func (f *EventHandlerFactory) handleRideCancelled(ctx context.Context, payload [
 		"reason":  event.Reason,
 	}
 
-	// Notify rider
 	if err := f.pushService.SendPush(ctx, event.RiderID, "Ride Cancelled", fmt.Sprintf("Your ride has been cancelled. Reason: %s", event.Reason), data); err != nil {
 		logger.Error("failed to send ride cancelled notification to rider", "error", err)
 	}
 
-	// Notify driver if assigned
 	if event.DriverID != nil {
 		if err := f.pushService.SendPush(ctx, *event.DriverID, "Ride Cancelled", fmt.Sprintf("A ride has been cancelled. Reason: %s", event.Reason), data); err != nil {
 			logger.Error("failed to send ride cancelled notification to driver", "error", err)
@@ -233,8 +216,6 @@ func (f *EventHandlerFactory) handleRideCancelled(ctx context.Context, payload [
 
 	return nil
 }
-
-// ============ PAYMENT HANDLERS ============
 
 type PaymentProcessedPayload struct {
 	UserID uuid.UUID `json:"user_id"`
@@ -274,8 +255,6 @@ func (f *EventHandlerFactory) handlePaymentFailed(ctx context.Context, payload [
 	return nil
 }
 
-// ============ VEHICLE HANDLERS ============
-
 type VehicleRegisteredPayload struct {
 	VehicleID   uuid.UUID `json:"vehicle_id"`
 	UserID      uuid.UUID `json:"user_id"`
@@ -299,8 +278,6 @@ func (f *EventHandlerFactory) handleVehicleRegistered(ctx context.Context, paylo
 
 	return nil
 }
-
-// ============ USER HANDLERS ============
 
 type UserRegisteredPayload struct {
 	UserID uuid.UUID `json:"user_id"`
@@ -349,14 +326,11 @@ func (f *EventHandlerFactory) handleUserVerified(ctx context.Context, payload []
 	return nil
 }
 
-// EventHandlerAdapter wraps EventHandlerFactory to implement the consumer's EventHandler interface
-// This allows the factory to be registered as a handler with the Kafka consumer
 type EventHandlerAdapter struct {
 	factory   *EventHandlerFactory
 	eventType notifications.EventType
 }
 
-// NewEventHandlerAdapter creates a new adapter for a specific event type
 func NewEventHandlerAdapter(factory *EventHandlerFactory, eventType notifications.EventType) *EventHandlerAdapter {
 	return &EventHandlerAdapter{
 		factory:   factory,
@@ -364,13 +338,10 @@ func NewEventHandlerAdapter(factory *EventHandlerFactory, eventType notification
 	}
 }
 
-// Handle implements the EventHandler interface
 func (a *EventHandlerAdapter) Handle(ctx context.Context, event *notifications.ConsumedEvent) error {
-	// Route to the factory's HandleEvent method
 	return a.factory.HandleEvent(ctx, event.EventType, event.Payload)
 }
 
-// EventType implements the EventHandler interface
 func (a *EventHandlerAdapter) EventType() notifications.EventType {
 	return a.eventType
 }

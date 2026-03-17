@@ -96,7 +96,6 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if err := req.Validate(); err != nil {
 		c.Error(response.BadRequest("Validation failed: " + err.Error()))
 		return
@@ -387,7 +386,6 @@ func (h *Handler) CompleteDelivery(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if err := req.Validate(); err != nil {
 		c.Error(response.BadRequest("Validation failed: " + err.Error()))
 		return

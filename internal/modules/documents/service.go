@@ -45,18 +45,15 @@ func NewService(repo Repository, cfg *config.Config, eventProducer notifications
 }
 
 func (s *service) UploadDocument(ctx context.Context, userID string, documentType string, file *multipart.FileHeader) (*documentdto.DocumentResponse, error) {
-	// Validate document type
 	if !imagekit.ValidateDocumentType(documentType) {
 		return nil, response.BadRequest(fmt.Sprintf("Invalid document type: %s", documentType))
 	}
 
-	// Validate file size (10MB max for documents)
 	maxSize := s.cfg.Upload.ImageKit.DocumentsMaxSize
 	if file.Size > maxSize {
 		return nil, response.BadRequest(fmt.Sprintf("File size exceeds maximum allowed (%d bytes)", maxSize))
 	}
 
-	// Validate mime type
 	mimeType := file.Header.Get("Content-Type")
 	allowedMimes := imagekit.AllowedDocumentMimeTypes()
 	if !isValidMimeType(mimeType, allowedMimes) {
@@ -70,24 +67,20 @@ func (s *service) UploadDocument(ctx context.Context, userID string, documentTyp
 		"fileSize", file.Size,
 		"mimeType", mimeType)
 
-	// Fetch user to get username
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		logger.Error("failed to fetch user for document upload", "error", err, "userID", userID)
 		return nil, response.NotFoundError("User not found")
 	}
 
-	// Upload to ImageKit
 	uploadResp, err := imagekit.UploadDocumentToImageKit(s.cfg, file, documentType, user.Name)
 	if err != nil {
 		logger.Error("failed to upload document to ImageKit", "error", err, "userID", userID, "fileName", file.Filename)
 		return nil, response.InternalServerError("Failed to upload document to storage", err)
 	}
 
-	// Get file extension from uploaded file
 	fileExt := getFileExt(file.Filename)
 
-	// Create document record in database
 	doc := &models.Document{
 		UserID:           userID,
 		DocumentType:     documentType,
@@ -107,13 +100,11 @@ func (s *service) UploadDocument(ctx context.Context, userID string, documentTyp
 		UpdatedAt: time.Now(),
 	}
 
-	// Try to link to driver profile if user is a driver
 	if driverProfile, err := s.repo.GetDriverByUserID(ctx, userID); err == nil {
 		doc.DriverID = &driverProfile.ID
 		logger.Info("document linked to driver profile", "docID", doc.ID, "driverID", driverProfile.ID, "userID", userID)
 	}
 
-	// Try to link to service provider profile if user is a service provider
 	if providerProfile, err := s.repo.GetServiceProviderByUserID(ctx, userID); err == nil {
 		doc.ServiceProviderID = &providerProfile.ID
 		logger.Info("document linked to service provider profile", "docID", doc.ID, "providerID", providerProfile.ID, "userID", userID)
@@ -121,7 +112,6 @@ func (s *service) UploadDocument(ctx context.Context, userID string, documentTyp
 
 	if err := s.repo.CreateDocument(ctx, doc); err != nil {
 		logger.Error("failed to create document record", "error", err, "userID", userID)
-		// Try to delete from ImageKit if record creation failed
 		if delErr := imagekit.DeleteFileFromImageKit(s.cfg, uploadResp.FileID); delErr != nil {
 			logger.Error("failed to cleanup ImageKit file after DB error", "error", delErr, "fileID", uploadResp.FileID)
 		}
@@ -224,7 +214,6 @@ func (s *service) VerifyDocument(ctx context.Context, adminID, docID, status, re
 		return nil, response.InternalServerError("Failed to verify document", err)
 	}
 
-	// Create verification log
 	log := &models.DocumentVerificationLog{
 		DocumentID: docID,
 		AdminID:    adminID,

@@ -37,7 +37,6 @@ func (r *CreateOrderRequest) Validate() error {
 		return errors.New("at least one service item is required")
 	}
 
-	// Validate quantity of professionals
 	if r.QuantityOfPros < 1 {
 		return errors.New("at least 1 professional is required")
 	}
@@ -45,7 +44,6 @@ func (r *CreateOrderRequest) Validate() error {
 		return errors.New("maximum 10 professionals allowed per order")
 	}
 
-	//  Validate hours of service
 	if r.HoursOfService < 0.5 {
 		return errors.New("minimum service duration is 0.5 hours")
 	}
@@ -53,7 +51,6 @@ func (r *CreateOrderRequest) Validate() error {
 		return errors.New("maximum service duration is 24 hours")
 	}
 
-	//  Validate hours increment (must be in 0.5 hour increments)
 	if r.HoursOfService != float64(int(r.HoursOfService*2))/2 {
 		return errors.New("hours must be in 0.5 hour increments (e.g., 1.5, 2, 2.5)")
 	}
@@ -69,19 +66,16 @@ func (r *CreateOrderRequest) SetDefaults() {
 		r.Frequency = "once"
 	}
 	if r.QuantityOfPros == 0 {
-		r.QuantityOfPros = 1 // Default to 1 professional
+		r.QuantityOfPros = 1 
 	}
 	if r.HoursOfService == 0 {
-		r.HoursOfService = 1.0 // Default to 1 hour
+		r.HoursOfService = 1.0 
 	}
 }
-
-// UpdateOrderStatusRequest for provider actions
 type UpdateOrderStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=accepted rejected in_progress completed"`
 }
 
-// ListServicesQuery - Updated with tab filtering
 type ListServicesQuery struct {
 	Page       int      `form:"page" binding:"omitempty,min=1"`
 	Limit      int      `form:"limit" binding:"omitempty,min=1,max=100"`
@@ -107,7 +101,6 @@ func (q *ListServicesQuery) GetOffset() int {
 	return (q.Page - 1) * q.Limit
 }
 
-// ListOrdersQuery for order history
 type ListOrdersQuery struct {
 	Page   int     `form:"page" binding:"omitempty,min=1"`
 	Limit  int     `form:"limit" binding:"omitempty,min=1,max=100"`
@@ -127,7 +120,6 @@ func (q *ListOrdersQuery) GetOffset() int {
 	return (q.Page - 1) * q.Limit
 }
 
-// Admin Requests
 type CreateCategoryRequest struct {
 	Name        string   `json:"name" binding:"required,min=2,max=150"`
 	Description string   `json:"description" binding:"required,max=1000"`

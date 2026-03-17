@@ -47,9 +47,18 @@ func (s *service) DetectFraudPatterns(ctx context.Context, rideID string) error 
 }
 
 func (s *service) detectFrequentCancellations(ctx context.Context, rideID string) {
-	// Get ride details (in real implementation)
-	// For now, we'll use a placeholder userID
-	userID := "placeholder-user-id"
+	ride, err := s.repo.FindRideByID(ctx, rideID)
+	if err != nil {
+		logger.Error("failed to fetch ride details", "error", err, "rideID", rideID)
+		return
+	}
+
+	if ride == nil {
+		logger.Warn("ride not found for fraud detection", "rideID", rideID)
+		return
+	}
+
+	userID := ride.RiderID
 
 	count, err := s.repo.CheckFrequentCancellations(ctx, userID, 7)
 	if err != nil {
@@ -80,6 +89,13 @@ func (s *service) detectFrequentCancellations(ctx context.Context, rideID string
 
 		s.repo.Create(ctx, pattern)
 
+		s.publishFraudEvent(ctx, notificationsmodule.EventHighRiskRider, userID, map[string]interface{}{
+			"fraud_type":         "frequent_cancellation",
+			"cancellation_count": count,
+			"risk_score":         riskScore,
+			"ride_id":            rideID,
+		})
+
 		logger.Warn("fraud pattern detected: frequent cancellations",
 			"userID", userID,
 			"count", count,
@@ -89,9 +105,23 @@ func (s *service) detectFrequentCancellations(ctx context.Context, rideID string
 }
 
 func (s *service) detectCollusionPattern(ctx context.Context, rideID string) {
-	// Get ride details
-	riderID := "placeholder-rider-id"
-	driverID := "placeholder-driver-id"
+	ride, err := s.repo.FindRideByID(ctx, rideID)
+	if err != nil {
+		logger.Error("failed to fetch ride details for collusion check", "error", err, "rideID", rideID)
+		return
+	}
+
+	if ride == nil {
+		logger.Warn("ride not found for collusion detection", "rideID", rideID)
+		return
+	}
+
+	riderID := ride.RiderID
+	if ride.DriverID == nil {
+		logger.Debug("ride has no driver assigned yet", "rideID", rideID)
+		return
+	}
+	driverID := *ride.DriverID
 
 	count, err := s.repo.CheckSameRiderDriverPair(ctx, riderID, driverID, 30)
 	if err != nil {
@@ -123,6 +153,14 @@ func (s *service) detectCollusionPattern(ctx context.Context, rideID string) {
 
 		s.repo.Create(ctx, pattern)
 
+		s.publishFraudEvent(ctx, notificationsmodule.EventHighRiskRider, riderID, map[string]interface{}{
+			"fraud_type":  "possible_collusion",
+			"with_driver": driverID,
+			"ride_count":  count,
+			"risk_score":  riskScore,
+			"ride_id":     rideID,
+		})
+
 		logger.Warn("fraud pattern detected: collusion",
 			"riderID", riderID,
 			"driverID", driverID,
@@ -135,6 +173,17 @@ func (s *service) detectCollusionPattern(ctx context.Context, rideID string) {
 func (s *service) detectShortDistanceHighFare(ctx context.Context, rideID string) {
 	suspicious, err := s.repo.CheckShortDistanceHighFare(ctx, rideID)
 	if err != nil || !suspicious {
+		return
+	}
+
+	ride, err := s.repo.FindRideByID(ctx, rideID)
+	if err != nil {
+		logger.Error("failed to fetch ride details for short distance high fare check", "error", err, "rideID", rideID)
+		return
+	}
+
+	if ride == nil {
+		logger.Warn("ride not found for short distance high fare detection", "rideID", rideID)
 		return
 	}
 
@@ -152,6 +201,14 @@ func (s *service) detectShortDistanceHighFare(ctx context.Context, rideID string
 	}
 
 	s.repo.Create(ctx, pattern)
+	s.publishFraudEvent(ctx, notificationsmodule.EventHighRiskRider, ride.RiderID, map[string]interface{}{
+		"fraud_type": "fake_trips",
+		"reason":     "Short distance with unusually high fare",
+		"distance":   ride.ActualDistance,
+		"fare":       ride.ActualFare,
+		"risk_score": 85,
+		"ride_id":    rideID,
+	})
 
 	logger.Warn("fraud pattern detected: short distance high fare",
 		"rideID", rideID,
@@ -159,7 +216,18 @@ func (s *service) detectShortDistanceHighFare(ctx context.Context, rideID string
 }
 
 func (s *service) detectLocationGaming(ctx context.Context, rideID string) {
-	userID := "placeholder-user-id"
+	ride, err := s.repo.FindRideByID(ctx, rideID)
+	if err != nil {
+		logger.Error("failed to fetch ride details for location gaming check", "error", err, "rideID", rideID)
+		return
+	}
+
+	if ride == nil {
+		logger.Warn("ride not found for location gaming detection", "rideID", rideID)
+		return
+	}
+
+	userID := ride.RiderID
 
 	gaming, err := s.repo.CheckLocationGaming(ctx, userID, 7)
 	if err != nil || !gaming {
@@ -181,6 +249,12 @@ func (s *service) detectLocationGaming(ctx context.Context, rideID string) {
 	}
 
 	s.repo.Create(ctx, pattern)
+
+	s.publishFraudEvent(ctx, notificationsmodule.EventHighRiskRider, userID, map[string]interface{}{
+		"fraud_type": "location_gaming",
+		"risk_score": 75,
+		"ride_id":    rideID,
+	})
 
 	logger.Warn("fraud pattern detected: location gaming",
 		"userID", userID,
@@ -313,7 +387,6 @@ func (s *service) publishFraudEvent(ctx context.Context, eventType notifications
 	}
 
 	go func() {
-		// Use background context to prevent cancellation when HTTP request completes
 		bgCtx := context.Background()
 		if err := s.eventProducer.PublishEventWithKey(bgCtx, eventType, userID, payload); err != nil {
 			logger.Error("failed to publish fraud event",

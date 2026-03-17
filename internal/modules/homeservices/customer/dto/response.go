@@ -7,8 +7,6 @@ import (
 	"github.com/umar5678/go-backend/internal/models"
 )
 
-// ==================== Category Responses ====================
-
 type CategoryResponse struct {
 	Slug         string `json:"slug"`
 	Title        string `json:"title"`
@@ -34,8 +32,6 @@ type CategoryDetailResponse struct {
 	Addons      []AddonResponse   `json:"addons"`
 }
 
-// ==================== Service Responses ====================
-
 type ServiceResponse struct {
 	ID                 string   `json:"id"`
 	Title              string   `json:"title"`
@@ -49,7 +45,7 @@ type ServiceResponse struct {
 	TermsAndConditions []string `json:"termsAndConditions,omitempty"`
 	BannerImage        string   `json:"bannerImage,omitempty"`
 	Thumbnail          string   `json:"thumbnail"`
-	Duration           *int     `json:"duration,omitempty"` // in minutes
+	Duration           *int     `json:"duration,omitempty"`
 	DurationText       string   `json:"durationText,omitempty"`
 	IsFrequent         bool     `json:"isFrequent"`
 	Frequency          string   `json:"frequency,omitempty"`
@@ -75,8 +71,6 @@ type ServiceDetailResponse struct {
 	Service ServiceResponse `json:"service"`
 	Addons  []AddonResponse `json:"addons"`
 }
-
-// ==================== Addon Responses ====================
 
 type AddonResponse struct {
 	ID                 string   `json:"id"`
@@ -107,10 +101,8 @@ type AddonListResponse struct {
 	HasDiscount        bool     `json:"hasDiscount"`
 }
 
-// ==================== Search Response ====================
-
 type SearchResultItem struct {
-	Type           string   `json:"type"` // "service" or "addon"
+	Type           string   `json:"type"` 
 	ID             string   `json:"id"`
 	Title          string   `json:"title"`
 	Slug           string   `json:"slug"`
@@ -126,8 +118,6 @@ type SearchResponse struct {
 	Results []SearchResultItem `json:"results"`
 	Total   int                `json:"total"`
 }
-
-// ==================== Conversion Functions ====================
 
 func FormatDuration(minutes *int) string {
 	if minutes == nil {
@@ -320,8 +310,6 @@ func ToSearchResultFromAddon(addon *models.Addon) SearchResultItem {
 	}
 }
 
-// ==================== Order Responses ====================
-
 type OrderServiceItem struct {
 	ServiceSlug string  `json:"serviceSlug"`
 	Title       string  `json:"title"`
@@ -352,8 +340,8 @@ type OrderBookingInfo struct {
 	Date           string `json:"date"`
 	Time           string `json:"time"`
 	PreferredTime  string `json:"preferredTime,omitempty"`
-	FormattedDate  string `json:"formattedDate"` // e.g., "Monday, January 15, 2024"
-	FormattedTime  string `json:"formattedTime"` // e.g., "2:30 PM"
+	FormattedDate  string `json:"formattedDate"`
+	FormattedTime  string `json:"formattedTime"`
 	QuantityOfPros int    `json:"quantityOfPros"`
 	ToolsRequired  bool   `json:"toolsRequired"`
 	PersonCount    int    `json:"personCount"`
@@ -378,7 +366,7 @@ type OrderPaymentInfo struct {
 type OrderProviderInfo struct {
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
-	Phone        string  `json:"phone,omitempty"` // Only shown after acceptance
+	Phone        string  `json:"phone,omitempty"` 
 	Rating       float64 `json:"rating"`
 	TotalReviews int     `json:"totalReviews"`
 	Photo        string  `json:"photo,omitempty"`
@@ -469,8 +457,6 @@ type CancellationPreviewResponse struct {
 	FeePercentage   float64 `json:"feePercentage"`
 	Message         string  `json:"message"`
 }
-
-// ==================== Conversion Functions ====================
 
 func GetDisplayStatus(status string) string {
 	statusMap := map[string]string{
@@ -661,7 +647,6 @@ func ToOrderResponse(order *models.ServiceOrderNew) *OrderResponse {
 		UpdatedAt:     order.UpdatedAt,
 	}
 
-	// Add provider info if assigned (placeholder - would load from user table)
 	if order.AssignedProviderID != nil {
 		response.Provider = &OrderProviderInfo{
 			ID: *order.AssignedProviderID,

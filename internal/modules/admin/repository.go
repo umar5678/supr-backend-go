@@ -1,7 +1,5 @@
 package admin
 
-// now
-
 import (
 	"context"
 
@@ -44,7 +42,6 @@ func (r *repository) ListUsers(ctx context.Context, filters map[string]interface
 		}
 	}
 
-
 	query.Count(&total)
 
 
@@ -80,7 +77,6 @@ func (r *repository) GetDashboardStats(ctx context.Context) (map[string]interfac
 
 	stats["usersByRole"] = roleCounts
 
-	// Count users by status
 	var statusCounts []struct {
 		Status string
 		Count  int64

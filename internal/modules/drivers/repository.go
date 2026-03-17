@@ -219,7 +219,6 @@ func (r *repository) ListDriverProfiles(ctx context.Context, filters map[string]
 		Preload("Vehicle").
 		Preload("Vehicle.VehicleType")
 
-	// Apply filters
 	if status, ok := filters["status"]; ok {
 		query = query.Where("status = ?", status)
 	}
@@ -227,10 +226,8 @@ func (r *repository) ListDriverProfiles(ctx context.Context, filters map[string]
 		query = query.Where("is_verified = ?", isVerified)
 	}
 
-	// Count total
 	query.Model(&models.DriverProfile{}).Count(&total)
 
-	// Apply pagination
 	offset := (page - 1) * limit
 	err := query.
 		Order("created_at DESC").

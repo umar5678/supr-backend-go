@@ -293,7 +293,6 @@ func (h *Handler) GetProviderOrders(c *gin.Context) {
 	}
 
 	query.SetDefaults()
-	// Get provider ID from context (set by auth middleware)
 	providerID, exists := c.Get("providerID")
 	if !exists {
 		c.Error(response.ForbiddenError("Provider account required"))

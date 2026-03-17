@@ -21,7 +21,7 @@ type ServiceNew struct {
 	TermsAndConditions pq.StringArray `gorm:"type:text[]" json:"termsAndConditions"`
 	BannerImage        string         `gorm:"type:varchar(500)" json:"bannerImage"`
 	Thumbnail          string         `gorm:"type:varchar(500)" json:"thumbnail"`
-	Duration           *int           `gorm:"type:int" json:"duration"` // in minutes
+	Duration           *int           `gorm:"type:int" json:"duration"`
 	IsFrequent         bool           `gorm:"default:false" json:"isFrequent"`
 	Frequency          string         `gorm:"type:varchar(100)" json:"frequency"`
 	SortOrder          int            `gorm:"default:0" json:"sortOrder"`

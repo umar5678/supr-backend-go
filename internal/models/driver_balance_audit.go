@@ -9,9 +9,9 @@ type DriverBalanceAudit struct {
 	PreviousBalance      float64   `gorm:"type:decimal(10,2);not null" json:"previousBalance"`
 	NewBalance           float64   `gorm:"type:decimal(10,2);not null" json:"newBalance"`
 	ChangeAmount         float64   `gorm:"type:decimal(10,2);not null" json:"changeAmount"`
-	Action               string    `gorm:"type:varchar(100);not null;index" json:"action"` // commission_deducted, penalty_applied, topup_added, etc.
+	Action               string    `gorm:"type:varchar(100);not null;index" json:"action"` 
 	Reason               *string   `gorm:"type:varchar(255)" json:"reason,omitempty"`
-	TriggeredRestriction bool      `gorm:"default:false;index" json:"triggeredRestriction"` // Whether this action triggered account restriction
+	TriggeredRestriction bool      `gorm:"default:false;index" json:"triggeredRestriction"`
 	CreatedAt            time.Time `gorm:"autoCreateTime;index" json:"createdAt"`
 
 	DriverProfile DriverProfile `gorm:"foreignKey:DriverID" json:"driverProfile,omitempty"`

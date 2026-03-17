@@ -806,8 +806,7 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 		return fmt.Errorf("failed to update order status: %w", err)
 	}
 
-	// Credit provider wallet with earnings
-	providerEarnings := order.Total * 0.90 // Provider gets 90% of the order amount
+	providerEarnings := order.Total * 0.90
 	metadata := map[string]interface{}{
 		"order_id":   orderID,
 		"service":    "laundry",
@@ -825,7 +824,6 @@ func (s *service) CompleteDelivery(ctx context.Context, orderID string, req *dto
 		metadata,
 	); err != nil {
 		logger.Error("failed to credit provider wallet for laundry delivery", "error", err, "orderID", orderID, "providerID", providerID)
-		// Don't fail the entire operation if wallet credit fails
 	}
 
 	logger.Info("laundry delivery completed and provider wallet credited",

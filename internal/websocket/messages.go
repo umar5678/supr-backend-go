@@ -42,7 +42,6 @@ const (
 	TypePong          MessageType = "pong"
 	TypeAck           MessageType = "ack"
 	TypeConnectionAck MessageType = "connection_ack"
-	// Reconnection message types
 	TypeReconnect      MessageType = "reconnect"
 	TypeReconnectAck   MessageType = "reconnect_ack"
 	TypeMessageSync    MessageType = "message_sync"

@@ -405,7 +405,7 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req dto.Cr
 			Amount:        totalPrice,
 			ReferenceType: "service_order",
 			ReferenceID:   order.ID,
-			HoldDuration:  1800, // 30 minutes
+			HoldDuration:  1800,
 		}
 		holdResp, err := s.walletService.HoldFunds(ctx, customerID, holdReq)
 		if err != nil {
@@ -416,7 +416,6 @@ func (s *service) CreateOrder(ctx context.Context, customerID string, req dto.Cr
 
 		order.WalletHoldID = &holdResp.ID
 		if err := s.repo.Update(ctx, order); err != nil {
-			// Release hold if update fails
 			releaseReq := walletdto.ReleaseHoldRequest{HoldID: holdResp.ID}
 			s.walletService.ReleaseHold(ctx, customerID, releaseReq)
 			s.repo.Delete(ctx, order.ID)

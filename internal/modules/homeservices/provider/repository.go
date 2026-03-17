@@ -42,7 +42,6 @@ type Repository interface {
 
 	CreateStatusHistory(ctx context.Context, history *models.OrderStatusHistory) error
 
-	// Rejection tracking
 	RecordRejection(ctx context.Context, orderID, providerID, reason string) error
 	HasProviderRejected(ctx context.Context, orderID, providerID string) (bool, error)
 }
@@ -326,7 +325,6 @@ func (r *repository) GetAvailableOrders(ctx context.Context, providerID string, 
 		logger.Error("failed to fetch service orders", "error", err)
 	}
 
-	// Query LaundryOrder
 	var laundryOrders []*models.LaundryOrder
 	laundryDb := r.db.WithContext(ctx).Model(&models.LaundryOrder{}).
 		Where("status IN ?", []string{"pending", "searching_provider"}).
@@ -641,7 +639,6 @@ func (r *repository) GetProviderOrders(ctx context.Context, providerID string, q
 }
 
 func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, orderID string) (*models.ServiceOrderNew, error) {
-	// First try to find assigned ServiceOrderNew (assigned_provider_id = providerID)
 	var order models.ServiceOrderNew
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND assigned_provider_id = ?", orderID, providerID).
@@ -652,7 +649,6 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 	}
 
 	if err == gorm.ErrRecordNotFound {
-		// Try to find unassigned ServiceOrderNew (available order, assigned_provider_id = NULL)
 		err = r.db.WithContext(ctx).
 			Where("id = ? AND assigned_provider_id IS NULL", orderID).
 			First(&order).Error
@@ -663,25 +659,20 @@ func (r *repository) GetProviderOrderByID(ctx context.Context, providerID, order
 	}
 
 	if err == gorm.ErrRecordNotFound {
-		// Try to find in LaundryOrder table (assigned orders)
 		var laundryOrder models.LaundryOrder
 		err = r.db.WithContext(ctx).
 			Where("id = ?", orderID).
 			First(&laundryOrder).Error
 
 		if err == nil {
-			// If LaundryOrder is found, check if provider_id matches (assigned to this provider)
 			if laundryOrder.ProviderID != nil && *laundryOrder.ProviderID == providerID {
 				return r.convertLaundryOrderToServiceOrder(ctx, orderID)
 			}
 
-			// If not assigned to this provider but order exists, check if it's available (unassigned)
-			// This allows providers to reject available orders shown to them
 			if laundryOrder.ProviderID == nil {
 				return r.convertLaundryOrderToServiceOrder(ctx, orderID)
 			}
 
-			// If provider_id doesn't match and order is assigned, return not found error
 			return nil, gorm.ErrRecordNotFound
 		}
 	}
@@ -907,7 +898,6 @@ func (r *repository) RecordRejection(ctx context.Context, orderID, providerID, r
 	return r.db.WithContext(ctx).Create(rejection).Error
 }
 
-// HasProviderRejected checks if a provider has already rejected an order
 func (r *repository) HasProviderRejected(ctx context.Context, orderID, providerID string) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).

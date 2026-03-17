@@ -15,7 +15,6 @@ import (
 type EventHandler interface {
 	Handle(ctx context.Context, event *ConsumedEvent) error
 	EventType() EventType
-	// CanHandle returns true if this handler can process the given event type
 	CanHandle(eventType EventType) bool
 }
 
@@ -101,7 +100,6 @@ func NewKafkaConsumer(
 }
 
 func (c *KafkaConsumer) Subscribe(handler EventHandler) error {
-	// Add handler to the list - no duplicate checking needed with slice
 	c.handlers = append(c.handlers, handler)
 	return nil
 }
@@ -116,7 +114,6 @@ func (c *KafkaConsumer) Start(ctx context.Context) error {
 		case <-c.stopChan:
 			return nil
 		default:
-			// Acquire semaphore slot
 			semaphore <- struct{}{}
 
 			msg, err := c.reader.FetchMessage(ctx)
@@ -129,7 +126,6 @@ func (c *KafkaConsumer) Start(ctx context.Context) error {
 				continue
 			}
 
-			// Process message in goroutine
 			go func(message kafka.Message) {
 				defer func() { <-semaphore }()
 
@@ -138,7 +134,6 @@ func (c *KafkaConsumer) Start(ctx context.Context) error {
 					return
 				}
 
-				// Commit offset
 				if err := c.reader.CommitMessages(ctx, message); err != nil {
 					fmt.Printf("Error committing message: %v\n", err)
 				}
@@ -148,7 +143,6 @@ func (c *KafkaConsumer) Start(ctx context.Context) error {
 }
 
 func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) error {
-	// Extract headers
 	headers := make(map[string]string)
 	for _, h := range msg.Headers {
 		headers[h.Key] = string(h.Value)
@@ -171,13 +165,11 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 
 	eventType := EventType(eventTypeStr)
 
-	// Check for idempotency
 	if c.isProcessed(ctx, eventID) {
 		fmt.Printf("Event %s already processed, skipping\n", eventID)
 		return nil
 	}
 
-	// Create consumed event
 	consumedEvent := &ConsumedEvent{
 		ID:           eventID,
 		EventType:    eventType,
@@ -187,7 +179,6 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 		Headers:      headers,
 	}
 
-	// Find a handler that can handle this event type
 	var handler EventHandler
 	for _, h := range c.handlers {
 		if h.CanHandle(eventType) {
@@ -201,7 +192,6 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 		return nil
 	}
 
-	// Process with retry logic
 	var lastErr error
 	for attempt := 0; attempt <= c.config.MaxRetries; attempt++ {
 		if attempt > 0 {
@@ -215,7 +205,6 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 			continue
 		}
 
-		// Success - mark as processed
 		if err := c.markProcessed(ctx, eventID); err != nil {
 			fmt.Printf("Failed to mark event as processed: %v\n", err)
 		}
@@ -223,7 +212,6 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 		return nil
 	}
 
-	// Max retries exceeded - send to DLQ
 	fmt.Printf("Max retries exceeded for event %s, sending to DLQ\n", eventID)
 	if err := c.sendToDLQ(ctx, consumedEvent, lastErr); err != nil {
 		fmt.Printf("Failed to send to DLQ: %v\n", err)

@@ -760,8 +760,6 @@ func (h *Hub) CheckInactiveConnections(timeout time.Duration) {
 	h.mu.Lock()
 }
 
-// markDriverOfflineByHeartbeatTimeout marks a driver as offline when heartbeat times out
-// This is called when a driver hasn't sent any heartbeat for the configured timeout period
 func (h *Hub) markDriverOfflineByHeartbeatTimeout(client *Client) error {
 	if h.clientLifecycle == nil {
 		return nil

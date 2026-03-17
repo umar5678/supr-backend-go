@@ -3,6 +3,7 @@ package homeservices
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -58,6 +59,9 @@ type Repository interface {
 	RemoveServiceFromProvider(ctx context.Context, providerID string, serviceID string) error
 	AddProviderCategory(ctx context.Context, category *models.ProviderServiceCategory) error
 	GetProviderCategory(ctx context.Context, providerID string, categorySlug string) (*models.ProviderServiceCategory, error)
+
+	CountServicesByTabID(ctx context.Context, tabID uint) (int64, error)
+	GetSurgeMultiplierByLocation(ctx context.Context, lat, lon float64) (float64, error)
 }
 
 type repository struct {
@@ -497,4 +501,32 @@ func (r *repository) GetProviderCategory(ctx context.Context, providerID string,
 		return nil, err
 	}
 	return &category, nil
+}
+
+func (r *repository) CountServicesByTabID(ctx context.Context, tabID uint) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.Service{}).
+		Where("tab_id = ? AND is_active = ?", tabID, true).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *repository) GetSurgeMultiplierByLocation(ctx context.Context, lat, lon float64) (float64, error) {
+	var surgeZone models.SurgeZone
+	// Using a simple distance-based check - find zones within ~15km radius and check if location is active
+	err := r.db.WithContext(ctx).
+		Where("is_active = ? AND (valid_from IS NULL OR valid_from <= ?) AND (valid_to IS NULL OR valid_to >= ?)",
+			true, time.Now(), time.Now()).
+		Order("surge_multiplier DESC").
+		First(&surgeZone).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 1.0, nil // No surge zone found, return base multiplier
+		}
+		return 1.0, err
+	}
+
+	return surgeZone.SurgeMultiplier, nil
 }

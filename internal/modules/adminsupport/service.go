@@ -71,20 +71,17 @@ func (s *service) GetConversation(ctx context.Context, conversationID string, li
 }
 
 func (s *service) ReplyToMessage(ctx context.Context, conversationID string, parentMessageID string, senderID string, senderRole string, content string) (*models.AdminSupportChat, error) {
-	// Verify parent message exists
 	if parentMessageID != "" {
 		parent, err := s.repo.GetMessageByID(ctx, parentMessageID)
 		if err != nil {
 			logger.Error("parent message not found", "error", err, "parentMessageId", parentMessageID)
 			return nil, fmt.Errorf("parent message not found")
 		}
-		// Ensure parent message is in the same conversation
 		if parent.ConversationID != conversationID {
 			return nil, fmt.Errorf("parent message does not belong to this conversation")
 		}
 	}
 
-	// Create reply with same conversation ID and parent message reference
 	msg := &models.AdminSupportChat{
 		ID:              uuid.New().String(),
 		ConversationID:  conversationID,

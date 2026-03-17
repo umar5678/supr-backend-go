@@ -1,7 +1,5 @@
 package admin
 
-// now
-
 import (
 	"context"
 	"strconv"
@@ -106,7 +104,6 @@ func (s *service) SuspendUser(ctx context.Context, userID, reason string) error 
 		return response.InternalServerError("Failed to suspend user", err)
 	}
 
-	// Publish user suspended event
 	s.publishAdminEvent(ctx, notifications.EventUserSuspended, map[string]interface{}{
 		"user_id":   userID,
 		"reason":    reason,

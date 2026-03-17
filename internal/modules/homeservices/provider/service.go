@@ -428,7 +428,6 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 		return response.InternalServerError("Failed to reject order", err)
 	}
 
-	// Allow rejection for assigned orders AND available orders (unassigned)
 	allowedStatuses := []string{shared.OrderStatusAssigned, shared.OrderStatusPending, shared.OrderStatusSearchingProvider}
 	statusAllowed := false
 	for _, status := range allowedStatuses {
@@ -444,13 +443,10 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 
 	previousStatus := order.Status
 
-	// For assigned orders: unassign and return to searching status
-	// For available/unassigned orders: keep searching status (provider is just declining the offer)
 	if order.Status == shared.OrderStatusAssigned {
 		order.AssignedProviderID = nil
 		order.Status = shared.OrderStatusSearchingProvider
 	}
-	// For pending/searching orders: status remains unchanged (provider is declining available offer)
 
 	if err := s.repo.UpdateOrder(ctx, order); err != nil {
 		return response.InternalServerError("Failed to reject order", err)
@@ -467,10 +463,8 @@ func (s *service) RejectOrder(ctx context.Context, providerID, orderID string, r
 	)
 	s.repo.CreateStatusHistory(ctx, history)
 
-	// Record the rejection so the provider doesn't see this order again
 	if err := s.repo.RecordRejection(ctx, orderID, providerID, req.Reason); err != nil {
 		logger.Error("failed to record rejection", "error", err, "orderID", orderID, "providerID", providerID)
-		// Don't fail the operation if recording rejection fails
 	}
 
 	logger.Info("order rejected", "orderID", orderID, "providerID", providerID, "reason", req.Reason, "status", order.Status)
@@ -491,7 +485,6 @@ func (s *service) StartOrder(ctx context.Context, providerID, orderID string, re
 		return nil, response.BadRequest(fmt.Sprintf("Cannot start order in '%s' status", order.Status))
 	}
 
-	// Verify customer PIN
 	logger.Info("verifying customer PIN for order start", "orderID", orderID, "customerID", order.CustomerID)
 	if err := s.ridePINService.VerifyRidePIN(ctx, order.CustomerID, req.CustomerPIN); err != nil {
 		logger.Warn("invalid customer PIN attempt at order start",
@@ -540,7 +533,6 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 		return nil, response.BadRequest(fmt.Sprintf("Cannot complete order in '%s' status", order.Status))
 	}
 
-	// Verify customer PIN
 	logger.Info("verifying customer PIN for order completion", "orderID", orderID, "customerID", order.CustomerID)
 	if err := s.ridePINService.VerifyRidePIN(ctx, order.CustomerID, req.CustomerPIN); err != nil {
 		logger.Warn("invalid customer PIN attempt at order completion",
@@ -553,7 +545,6 @@ func (s *service) CompleteOrder(ctx context.Context, providerID, orderID string,
 
 	providerPayout := dto.CalculateProviderPayout(order.TotalPrice)
 
-	// Get provider profile to get the user ID for wallet credit
 	provider, err := s.repo.GetProvider(ctx, providerID)
 	if err != nil {
 		logger.Error("failed to get provider profile for wallet credit", "error", err, "providerID", providerID)

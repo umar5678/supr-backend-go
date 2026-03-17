@@ -46,7 +46,6 @@ func ToAddonResponse(addon *models.Addon) *AddonResponse {
 		return nil
 	}
 
-	// Convert pq.StringArray to []string
 	whatsIncluded := make([]string, len(addon.WhatsIncluded))
 	copy(whatsIncluded, addon.WhatsIncluded)
 
@@ -105,8 +104,6 @@ func ToAddonListResponses(addons []*models.Addon) []*AddonListResponse {
 	return responses
 }
 
-// ==================== Order Responses ====================
-
 type AdminOrderListResponse struct {
 	ID             string     `json:"id"`
 	OrderNumber    string     `json:"orderNumber"`
@@ -132,47 +129,34 @@ type AdminOrderDetailResponse struct {
 	ID          string `json:"id"`
 	OrderNumber string `json:"orderNumber"`
 
-	// Category
 	CategorySlug  string `json:"categorySlug"`
 	CategoryTitle string `json:"categoryTitle"`
 
-	// Customer
 	Customer OrderPartyInfo `json:"customer"`
 
-	// Provider
 	Provider *OrderPartyInfo `json:"provider,omitempty"`
 
-	// Booking
 	BookingInfo AdminBookingInfo `json:"bookingInfo"`
 
-	// Services
 	Services     []AdminOrderServiceItem `json:"services"`
 	Addons       []AdminOrderAddonItem   `json:"addons,omitempty"`
 	SpecialNotes string                  `json:"specialNotes,omitempty"`
 
-	// Pricing
 	Pricing AdminOrderPricing `json:"pricing"`
 
-	// Payment
 	Payment AdminPaymentInfo `json:"payment"`
 
-	// Status
 	Status AdminOrderStatus `json:"status"`
 
-	// Cancellation (if cancelled)
 	Cancellation *AdminCancellationInfo `json:"cancellation,omitempty"`
 
-	// Ratings
 	Ratings *AdminRatingsInfo `json:"ratings,omitempty"`
 
-	// History
 	StatusHistory []StatusHistoryItem `json:"statusHistory"`
 
-	// Timestamps
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 
-	// Admin actions
 	AvailableActions []string `json:"availableActions"`
 }
 
@@ -222,7 +206,7 @@ type AdminOrderPricing struct {
 	AddonsTotal        float64 `json:"addonsTotal"`
 	Subtotal           float64 `json:"subtotal"`
 	PlatformCommission float64 `json:"platformCommission"`
-	CommissionRate     float64 `json:"commissionRate"` // e.g., 0.10 for 10%
+	CommissionRate     float64 `json:"commissionRate"`
 	TotalPrice         float64 `json:"totalPrice"`
 	ProviderPayout     float64 `json:"providerPayout"`
 	FormattedTotal     string  `json:"formattedTotal"`
@@ -276,8 +260,6 @@ type StatusHistoryItem struct {
 	CreatedAt     time.Time              `json:"createdAt"`
 }
 
-// ==================== Analytics Responses ====================
-
 type OverviewAnalyticsResponse struct {
 	Period           AnalyticsPeriod    `json:"period"`
 	Summary          AnalyticsSummary   `json:"summary"`
@@ -323,7 +305,7 @@ type CategoryCount struct {
 }
 
 type RevenueBreakdown struct {
-	Period            string  `json:"period"` // Date, week, or month
+	Period            string  `json:"period"`
 	OrderCount        int     `json:"orderCount"`
 	Revenue           float64 `json:"revenue"`
 	Commission        float64 `json:"commission"`
@@ -340,9 +322,9 @@ type AnalyticsTrends struct {
 type TrendChange struct {
 	CurrentValue  float64 `json:"currentValue"`
 	PreviousValue float64 `json:"previousValue"`
-	Change        float64 `json:"change"`        // Absolute change
-	ChangePercent float64 `json:"changePercent"` // Percentage change
-	Trend         string  `json:"trend"`         // "up", "down", "stable"
+	Change        float64 `json:"change"`
+	ChangePercent float64 `json:"changePercent"`
+	Trend         string  `json:"trend"`
 }
 
 type ProviderAnalyticsResponse struct {
@@ -393,20 +375,11 @@ type PaymentMethodStats struct {
 	Percentage  float64 `json:"percentage"`
 }
 
-// ==================== Dashboard Responses ====================
-
 type DashboardResponse struct {
-	// Today's stats
-	Today TodayStats `json:"today"`
-
-	// Recent orders
-	RecentOrders []AdminOrderListResponse `json:"recentOrders"`
-
-	// Pending actions
-	PendingActions PendingActions `json:"pendingActions"`
-
-	// Quick stats (last 7 days)
-	WeeklyStats WeeklyStats `json:"weeklyStats"`
+	Today          TodayStats               `json:"today"`
+	RecentOrders   []AdminOrderListResponse `json:"recentOrders"`
+	PendingActions PendingActions           `json:"pendingActions"`
+	WeeklyStats    WeeklyStats              `json:"weeklyStats"`
 }
 
 type TodayStats struct {
@@ -441,8 +414,6 @@ type DailyStats struct {
 	OrderCount int     `json:"orderCount"`
 	Revenue    float64 `json:"revenue"`
 }
-
-// ==================== Conversion Functions ====================
 
 func GetCategoryTitle(slug string) string {
 	titles := map[string]string{
@@ -548,7 +519,7 @@ func ToAdminOrderListResponse(order *models.ServiceOrderNew) AdminOrderListRespo
 	}
 
 	if order.AssignedProviderID != nil {
-		response.ProviderName = "Provider" // Placeholder
+		response.ProviderName = "Provider"
 	}
 
 	return response
@@ -565,7 +536,6 @@ func ToAdminOrderListResponses(orders []*models.ServiceOrderNew) []AdminOrderLis
 func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.OrderStatusHistory) *AdminOrderDetailResponse {
 	providerPayout := CalculateProviderPayout(order.TotalPrice)
 
-	// Build services
 	services := make([]AdminOrderServiceItem, len(order.SelectedServices))
 	for i, s := range order.SelectedServices {
 		services[i] = AdminOrderServiceItem{
@@ -577,7 +547,6 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 		}
 	}
 
-	// Build addons
 	var addons []AdminOrderAddonItem
 	if order.SelectedAddons != nil {
 		addons = make([]AdminOrderAddonItem, len(order.SelectedAddons))
@@ -592,7 +561,6 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 		}
 	}
 
-	// Build booking info
 	bookingDate, _ := time.Parse("2006-01-02", order.BookingInfo.Date)
 	today := time.Now().Truncate(24 * time.Hour)
 	bookingInfo := AdminBookingInfo{
@@ -603,7 +571,6 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 			if order.BookingInfo.PreferredTime.IsZero() {
 				return ""
 			}
-			// format PreferredTime to a human-readable string (e.g., "3:04 PM")
 			return FormatTime(order.BookingInfo.PreferredTime.Format("15:04"))
 		}(),
 		FormattedDate: FormatDate(order.BookingInfo.Date),
@@ -614,7 +581,6 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 		PersonCount:   order.BookingInfo.PersonCount,
 	}
 
-	// Build status history
 	statusHistory := make([]StatusHistoryItem, len(history))
 	for i, h := range history {
 		statusHistory[i] = StatusHistoryItem{
@@ -674,7 +640,6 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 		AvailableActions: GetAvailableActions(order.Status),
 	}
 
-	// Add payment info
 	if order.PaymentInfo != nil {
 		response.Payment = AdminPaymentInfo{
 			Method:        order.PaymentInfo.Method,
@@ -689,16 +654,14 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 		}
 	}
 
-	// Add provider if assigned
 	if order.AssignedProviderID != nil {
 		response.Provider = &OrderPartyInfo{
 			ID: *order.AssignedProviderID,
-			// TODO: Load from user table
-			Name: "Provider Name",
+			// Provider details are loaded from the database in the service layer
+			Name: "Loading...",
 		}
 	}
 
-	// Add cancellation info
 	if order.CancellationInfo != nil {
 		response.Cancellation = &AdminCancellationInfo{
 			CancelledBy:     order.CancellationInfo.CancelledBy,
@@ -709,7 +672,6 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 		}
 	}
 
-	// Add ratings
 	if order.CustomerRating != nil || order.ProviderRating != nil {
 		response.Ratings = &AdminRatingsInfo{
 			CustomerRating:  order.CustomerRating,
@@ -724,7 +686,6 @@ func ToAdminOrderDetailResponse(order *models.ServiceOrderNew, history []models.
 	return response
 }
 
-// ServiceResponse represents a full service response
 type ServiceResponse struct {
 	ID                 string    `json:"id"`
 	Title              string    `json:"title"`
@@ -749,37 +710,6 @@ type ServiceResponse struct {
 	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
-// // HomeCleaningServiceResponse represents a home cleaning service response
-// type HomeCleaningServiceResponse struct {
-// 	ID          string    `json:"id"`
-// 	Title       string    `json:"title"`
-// 	ServiceSlug string    `json:"serviceSlug"`
-// 	BasePrice   float64   `json:"basePrice"`
-// 	CreatedAt   time.Time `json:"createdAt"`
-// }
-
-// // ToHomeCleaningServiceResponse converts model to response
-// func ToHomeCleaningServiceResponse(service *models.HomeCleaningService) *HomeCleaningServiceResponse {
-// 	if service == nil {
-// 		return nil
-// 	}
-// 	return &HomeCleaningServiceResponse{
-// 		ID:          service.ID,
-// 		Title:       service.Title,
-// 		ServiceSlug: service.ServiceSlug,
-// 		BasePrice:   service.BasePrice,
-// 		CreatedAt:   service.CreatedAt,
-// 	}
-// }
-
-// // HomeCleaningServiceAddonResponse represents an addon in service response
-// type HomeCleaningServiceAddonResponse struct {
-// 	CategorySlug string               `json:"categorySlug"`
-// 	Addons       []*AddonListResponse `json:"addons"`
-// 	TotalCount   int                  `json:"totalCount"`
-// }
-
-// ServiceListResponse represents a service in list view (lighter)
 type ServiceListResponse struct {
 	ID           string    `json:"id"`
 	Title        string    `json:"title"`
@@ -799,10 +729,6 @@ func ToServiceResponse(service *models.ServiceNew) *ServiceResponse {
 	if service == nil {
 		return nil
 	}
-
-	// // Convert pq.StringArray to []string
-	// highlights := make([]string, len(service.Highlights))
-	// copy(highlights, service.Highlights)
 
 	whatsIncluded := make([]string, len(service.WhatsIncluded))
 	copy(whatsIncluded, service.WhatsIncluded)
@@ -835,7 +761,6 @@ func ToServiceResponse(service *models.ServiceNew) *ServiceResponse {
 	}
 }
 
-// ToServiceListResponse converts model to list response
 func ToServiceListResponse(service *models.ServiceNew) *ServiceListResponse {
 	if service == nil {
 		return nil
@@ -856,7 +781,6 @@ func ToServiceListResponse(service *models.ServiceNew) *ServiceListResponse {
 	}
 }
 
-// ToServiceListResponses converts multiple models to list responses
 func ToServiceListResponses(services []*models.ServiceNew) []*ServiceListResponse {
 	if services == nil {
 		return []*ServiceListResponse{}

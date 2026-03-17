@@ -26,7 +26,7 @@ func DefaultWebSocketConfig() WebSocketConfig {
 		Enabled:             true,
 		ReadBufferSize:      1024,
 		WriteBufferSize:     1024,
-		MaxMessageSize:      512 * 1024, // 512KB
+		MaxMessageSize:      512 * 1024,
 		HandshakeTimeout:    10 * time.Second,
 		WriteWait:           10 * time.Second,
 		PongWait:            60 * time.Second,
@@ -36,8 +36,8 @@ func DefaultWebSocketConfig() WebSocketConfig {
 		EnablePresence:      true,
 		EnableMessageStore:  true,
 		PersistenceEnabled:  true,
-		PersistenceMode:     "both",           // Default to both RDB snapshots and AOF
-		RDBSnapshotInterval: 5 * time.Minute, // Snapshot every 5 minutes
-		AOFSyncPolicy:       "everysec",      // AOF sync every second
+		PersistenceMode:     "both",         
+		RDBSnapshotInterval: 5 * time.Minute,
+		AOFSyncPolicy:       "everysec",     
 	}
 }

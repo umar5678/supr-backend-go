@@ -12,8 +12,7 @@ func RegisterRoutes(router *gin.RouterGroup, cfg *config.Config, service Service
 
 func RegisterRoutesWithBroadcast(router *gin.RouterGroup, cfg *config.Config, service Service, broadcastFunc func(map[string]interface{}) error) {
 	handler := NewHandler(service)
-	
-	// Set the broadcast function if provided
+
 	if broadcastFunc != nil {
 		handler.SetBroadcastFunc(broadcastFunc)
 	}

@@ -86,15 +86,15 @@ func (r *UpdateLocationRequest) Validate() error {
 
 type WalletTopUpRequest struct {
 	Amount        float64 `json:"amount" binding:"required,gt=0"`
-	PaymentMethod string  `json:"paymentMethod" binding:"required,oneof=card upi netbanking wallet"` // card, upi, netbanking, wallet
-	Reference     *string `json:"reference" binding:"omitempty,max=100"`                             // Transaction reference/order ID
+	PaymentMethod string  `json:"paymentMethod" binding:"required,oneof=card upi netbanking wallet"`
+	Reference     *string `json:"reference" binding:"omitempty,max=100"`                            
 }
 
 func (r *WalletTopUpRequest) Validate() error {
 	if r.Amount <= 0 {
 		return errors.New("amount must be greater than 0")
 	}
-	if r.Amount > 100000 { // Max top-up limit
+	if r.Amount > 100000 {
 		return errors.New("amount cannot exceed 100,000")
 	}
 	if r.PaymentMethod == "" {

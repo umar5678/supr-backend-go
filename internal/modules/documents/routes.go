@@ -9,11 +9,9 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 	documents := router.Group("/documents")
 	documents.Use(authMiddleware)
 	{
-		// User endpoints
 		documents.POST("/upload", handler.UploadDocument)
 		documents.GET("", handler.GetDocuments)
 
-		// Admin endpoints
 		admin := documents.Group("")
 		admin.Use(middleware.RequireAdmin())
 		{
@@ -24,7 +22,6 @@ func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gi
 			admin.GET("/pending", handler.GetPendingDocuments)
 		}
 
-		// Delete document
 		documents.DELETE("/:id", handler.DeleteDocument)
 	}
 }

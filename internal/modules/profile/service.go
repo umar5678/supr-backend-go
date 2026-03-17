@@ -365,7 +365,6 @@ func (s *service) publishProfileEvent(ctx context.Context, eventType notificatio
 	}
 
 	go func() {
-		// Use background context to prevent cancellation when HTTP request completes
 		bgCtx := context.Background()
 		if err := s.eventProducer.PublishEvent(bgCtx, eventType, data); err != nil {
 			logger.Error("failed to publish profile event", "error", err, "eventType", eventType)

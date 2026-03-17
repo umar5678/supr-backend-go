@@ -33,7 +33,6 @@ func (crs *ClientReconnectionStrategy) GenerateReconnectPayload(sessionID string
 }
 
 func (crs *ClientReconnectionStrategy) CalculateBackoffDuration(attemptNumber int) time.Duration {
-	// Exponential backoff with jitter
 	baseBackoff := crs.initialBackoffTime * (1 << uint(attemptNumber-1))
 	if baseBackoff > crs.maxBackoffTime {
 		baseBackoff = crs.maxBackoffTime

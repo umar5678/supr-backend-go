@@ -54,8 +54,6 @@ func (q *SearchQuery) SetDefaults() {
 	q.PaginationParams.SetDefaults()
 }
 
-// ==================== Create Order Request ====================
-
 type CustomerInfoRequest struct {
 	Name    string  `json:"name" binding:"required,min=2,max=100"`
 	Phone   string  `json:"phone" binding:"required"`
@@ -75,41 +73,36 @@ func (c *CustomerInfoRequest) Validate() error {
 }
 
 type BookingInfoRequest struct {
-	Date           string `json:"date" binding:"required"`           // YYYY-MM-DD
-	Time           string `json:"time" binding:"required"`           // HH:MM
-	PreferredTime  string `json:"preferredTime" binding:"omitempty"` // optional specific time HH:MM
+	Date           string `json:"date" binding:"required"`           
+	Time           string `json:"time" binding:"required"`           
+	PreferredTime  string `json:"preferredTime" binding:"omitempty"` 
 	QuantityOfPros int    `json:"quantityOfPros" binding:"required,min=1,max=5"`
 	ToolsRequired  bool   `json:"toolsRequired" binding:"omitempty"`
 	PersonCount    int    `json:"personCount" binding:"omitempty,min=1,max=20"`
 }
 
 func (b *BookingInfoRequest) Validate() error {
-	// Validate date format
 	_, err := time.Parse("2006-01-02", b.Date)
 	if err != nil {
 		return fmt.Errorf("invalid date format, expected YYYY-MM-DD")
 	}
 
-	// Validate time format
 	_, err = time.Parse("15:04", b.Time)
 	if err != nil {
 		return fmt.Errorf("invalid time format, expected HH:MM")
 	}
 
-	// Validate booking is in the future (at least 30 minutes from now)
 	bookingDateTime, _ := time.Parse("2006-01-02 15:04", b.Date+" "+b.Time)
 	minBookingTime := time.Now().Add(30 * time.Minute)
 	if bookingDateTime.Before(minBookingTime) {
 		return fmt.Errorf("booking must be at least 30 minutes in the future")
 	}
 
-	// Validate booking is not too far in the future (max 90 days)
 	maxBookingTime := time.Now().AddDate(0, 0, 90)
 	if bookingDateTime.After(maxBookingTime) {
 		return fmt.Errorf("booking cannot be more than 90 days in the future")
 	}
 
-	// Set day of week
 	return nil
 }
 
@@ -139,22 +132,18 @@ type CreateOrderRequest struct {
 }
 
 func (r *CreateOrderRequest) Validate() error {
-	// Validate customer info
 	if err := r.CustomerInfo.Validate(); err != nil {
 		return fmt.Errorf("customerInfo: %w", err)
 	}
 
-	// Validate booking info
 	if err := r.BookingInfo.Validate(); err != nil {
 		return fmt.Errorf("bookingInfo: %w", err)
 	}
 
-	// Validate at least one service is selected
 	if len(r.SelectedServices) == 0 {
 		return fmt.Errorf("at least one service must be selected")
 	}
 
-	// Check for duplicate services
 	serviceMap := make(map[string]bool)
 	for _, s := range r.SelectedServices {
 		if serviceMap[s.ServiceSlug] {
@@ -163,7 +152,6 @@ func (r *CreateOrderRequest) Validate() error {
 		serviceMap[s.ServiceSlug] = true
 	}
 
-	// Check for duplicate addons
 	if len(r.SelectedAddons) > 0 {
 		addonMap := make(map[string]bool)
 		for _, a := range r.SelectedAddons {
@@ -177,8 +165,6 @@ func (r *CreateOrderRequest) Validate() error {
 	return nil
 }
 
-// ==================== Cancel Order Request ====================
-
 type CancelOrderRequest struct {
 	Reason string `json:"reason" binding:"required,min=10,max=500"`
 }
@@ -189,8 +175,6 @@ func (r *CancelOrderRequest) Validate() error {
 	}
 	return nil
 }
-
-// ==================== Rate Order Request ====================
 
 type RateOrderRequest struct {
 	Rating int    `json:"rating" binding:"required,min=1,max=5"`
@@ -204,13 +188,11 @@ func (r *RateOrderRequest) Validate() error {
 	return nil
 }
 
-// ==================== List Orders Query ====================
-
 type ListOrdersQuery struct {
 	shared.PaginationParams
 	Status   string `form:"status" binding:"omitempty"`
-	FromDate string `form:"fromDate" binding:"omitempty"` // YYYY-MM-DD
-	ToDate   string `form:"toDate" binding:"omitempty"`   // YYYY-MM-DD
+	FromDate string `form:"fromDate" binding:"omitempty"` 
+	ToDate   string `form:"toDate" binding:"omitempty"`   
 	SortBy   string `form:"sortBy" binding:"omitempty,oneof=created_at booking_date status"`
 	SortDesc bool   `form:"sortDesc"`
 }
@@ -223,7 +205,6 @@ func (q *ListOrdersQuery) SetDefaults() {
 }
 
 func (q *ListOrdersQuery) Validate() error {
-	// Validate status if provided
 	if q.Status != "" && !shared.IsValidOrderStatus(q.Status) {
 		return fmt.Errorf("invalid status: %s", q.Status)
 	}

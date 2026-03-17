@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 	authdto "github.com/umar5678/go-backend/internal/modules/auth/dto"
 	"github.com/umar5678/go-backend/internal/utils/response"
@@ -98,7 +96,6 @@ func (h *Handler) EmailSignup(c *gin.Context) {
 // @Router /auth/email/login [post]
 func (h *Handler) EmailLogin(c *gin.Context) {
 
-	fmt.Println("=========================================================called")
 	var req authdto.EmailLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(response.BadRequest("Invalid request body"))

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/umar5678/go-backend/internal/modules/messages/dto"
 	"github.com/umar5678/go-backend/internal/utils/logger"
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
@@ -71,7 +72,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 func (h *Handler) SendMessage(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	var req SendMessageRequest
+	var req dto.SendMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(response.BadRequest("Invalid request body"))
 		return
@@ -184,11 +185,4 @@ func (h *Handler) GetUnreadCount(c *gin.Context) {
 		"rideId":      rideID,
 		"unreadCount": count,
 	}, "Unread count retrieved successfully")
-}
-
-// DTOs
-type SendMessageRequest struct {
-	RideID   string                 `json:"rideId" binding:"required"`
-	Content  string                 `json:"content" binding:"required"`
-	Metadata map[string]interface{} `json:"metadata"`
 }

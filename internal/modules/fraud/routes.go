@@ -7,7 +7,7 @@ import (
 
 func RegisterRoutes(router *gin.RouterGroup, handler *Handler, authMiddleware gin.HandlerFunc) {
 	fraud := router.Group("/fraud")
-	fraud.Use(authMiddleware, middleware.RequireAdmin()) // Admin only - add role check middleware
+	fraud.Use(authMiddleware, middleware.RequireAdmin())
 	{
 		fraud.GET("/patterns", handler.ListFraudPatterns)
 		fraud.GET("/patterns/:id", handler.GetFraudPattern)

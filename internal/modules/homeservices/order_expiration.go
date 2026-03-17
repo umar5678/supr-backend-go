@@ -10,22 +10,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// OrderExpirationService handles automatic expiration of orders
 type OrderExpirationService struct {
 	db *gorm.DB
 }
 
-// NewOrderExpirationService creates a new instance
 func NewOrderExpirationService(db *gorm.DB) *OrderExpirationService {
 	return &OrderExpirationService{db: db}
 }
 
-// ExpireUnacceptedOrders closes orders that have expired without provider acceptance
-// Should be called periodically (e.g., every minute)
 func (s *OrderExpirationService) ExpireUnacceptedOrders(ctx context.Context) error {
 	logger.Info("Starting order expiration job")
 
-	// Expire ServiceOrderNew orders
 	result := s.db.WithContext(ctx).
 		Model(&models.ServiceOrderNew{}).
 		Where("status IN ?", []string{shared.OrderStatusPending, shared.OrderStatusSearchingProvider}).
@@ -41,7 +36,6 @@ func (s *OrderExpirationService) ExpireUnacceptedOrders(ctx context.Context) err
 		logger.Info("expired service orders", "count", result.RowsAffected)
 	}
 
-	// Expire LaundryOrder orders
 	result = s.db.WithContext(ctx).
 		Model(&models.LaundryOrder{}).
 		Where("status IN ?", []string{"pending", "searching_provider"}).

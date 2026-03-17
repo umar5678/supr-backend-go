@@ -1,25 +1,19 @@
 package shared
 
-// Order Status Constants
 const (
-	// Initial statuses
 	OrderStatusPending           = "pending"
 	OrderStatusSearchingProvider = "searching_provider"
 
-	// Assignment statuses
 	OrderStatusAssigned = "assigned"
 	OrderStatusAccepted = "accepted"
 
-	// In-progress statuses
 	OrderStatusInProgress = "in_progress"
 
-	// Final statuses
 	OrderStatusCompleted = "completed"
 	OrderStatusCancelled = "cancelled"
 	OrderStatusExpired   = "expired"
 )
 
-// AllOrderStatuses returns all valid order statuses
 func AllOrderStatuses() []string {
 	return []string{
 		OrderStatusPending,
@@ -33,7 +27,6 @@ func AllOrderStatuses() []string {
 	}
 }
 
-// IsValidOrderStatus checks if status is valid
 func IsValidOrderStatus(status string) bool {
 	for _, s := range AllOrderStatuses() {
 		if s == status {
@@ -43,7 +36,6 @@ func IsValidOrderStatus(status string) bool {
 	return false
 }
 
-// ActiveOrderStatuses returns statuses that are considered "active"
 func ActiveOrderStatuses() []string {
 	return []string{
 		OrderStatusPending,
@@ -54,7 +46,6 @@ func ActiveOrderStatuses() []string {
 	}
 }
 
-// CancelableOrderStatuses returns statuses that allow cancellation
 func CancelableOrderStatuses() []string {
 	return []string{
 		OrderStatusPending,
@@ -64,7 +55,6 @@ func CancelableOrderStatuses() []string {
 	}
 }
 
-// Payment Status Constants
 const (
 	PaymentStatusPending   = "pending"
 	PaymentStatusCompleted = "completed"
@@ -72,14 +62,12 @@ const (
 	PaymentStatusRefunded  = "refunded"
 )
 
-// Payment Method Constants
 const (
 	PaymentMethodWallet = "wallet"
 	PaymentMethodCash   = "cash"
 	PaymentMethodCard   = "card"
 )
 
-// Cancellation Actor Constants
 const (
 	CancelledByCustomer = "customer"
 	CancelledByProvider = "provider"
@@ -87,7 +75,6 @@ const (
 	CancelledBySystem   = "system"
 )
 
-// Actor Role Constants
 const (
 	RoleCustomer = "customer"
 	RoleProvider = "provider"
@@ -95,38 +82,32 @@ const (
 	RoleSystem   = "system"
 )
 
-// Expertise Level Constants
 const (
 	ExpertiseBeginner     = "beginner"
 	ExpertiseIntermediate = "intermediate"
 	ExpertiseExpert       = "expert"
 )
 
-// Preferred Time Constants
 const (
-	PreferredTimeMorning   = "morning"   // 6:00 - 12:00
-	PreferredTimeAfternoon = "afternoon" // 12:00 - 17:00
-	PreferredTimeEvening   = "evening"   // 17:00 - 21:00
+	PreferredTimeMorning   = "morning"  
+	PreferredTimeAfternoon = "afternoon"
+	PreferredTimeEvening   = "evening"  
 )
 
-// Commission Constants
 const (
-	PlatformCommissionRate = 0.10 // 10%
+	PlatformCommissionRate = 0.10 
 )
 
-// Cancellation Fee Constants
 const (
-	CancellationFeeBeforeAcceptance = 0.10 // 10% before provider accepts
-	CancellationFeeAfterAcceptance  = 0.50 // 50% after provider accepts
-	CancellationFeeAfterStart       = 1.00 // 100% after service starts (no refund)
+	CancellationFeeBeforeAcceptance = 0.10 
+	CancellationFeeAfterAcceptance  = 0.50 
+	CancellationFeeAfterStart       = 1.00 
 )
 
-// Order Expiration Constants
 const (
-	OrderExpirationMinutes = 10 // Orders expire after 10 minutes if no provider found
+	OrderExpirationMinutes = 10 
 )
 
-// Pagination Defaults
 const (
 	DefaultPage  = 1
 	DefaultLimit = 20

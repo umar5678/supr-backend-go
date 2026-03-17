@@ -49,7 +49,6 @@ func ToNotificationDTO(n *models.Notification) *NotificationDTO {
 	}
 
 	if len(n.Metadata) > 0 {
-		// Parse metadata if needed
 		dto.Metadata = make(map[string]interface{})
 	}
 

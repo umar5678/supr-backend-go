@@ -37,7 +37,6 @@ type Config struct {
 	EnablePresence     bool
 	EnableMessageStore bool
 	PersistenceEnabled bool
-	// Redis persistence settings
 	PersistenceMode     string        // "rdb", "aof", or "both"
 	RDBSnapshotInterval time.Duration // Interval for RDB snapshots
 	AOFSyncPolicy       string        // "always", "everysec", or "no"

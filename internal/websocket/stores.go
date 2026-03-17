@@ -1,4 +1,3 @@
-// internal/websocket/stores.go
 package websocket
 
 import (

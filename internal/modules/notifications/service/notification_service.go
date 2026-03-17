@@ -63,7 +63,6 @@ func (s *notificationService) GetUnreadCount(ctx context.Context, userID uuid.UU
 }
 
 func (s *notificationService) MarkAsRead(ctx context.Context, notificationID uuid.UUID, userID uuid.UUID) error {
-	// Verify notification belongs to user
 	notification, err := s.repo.GetByID(ctx, notificationID)
 	if err != nil {
 		return fmt.Errorf("notification not found: %w", err)
@@ -81,7 +80,6 @@ func (s *notificationService) MarkAllAsRead(ctx context.Context, userID uuid.UUI
 }
 
 func (s *notificationService) DeleteNotification(ctx context.Context, notificationID uuid.UUID, userID uuid.UUID) error {
-	// Verify notification belongs to user
 	notification, err := s.repo.GetByID(ctx, notificationID)
 	if err != nil {
 		return fmt.Errorf("notification not found: %w", err)

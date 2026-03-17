@@ -11,7 +11,6 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// NotificationSystem manages all notification components
 type NotificationSystem struct {
 	producer            EventProducer
 	consumers           []*KafkaConsumer
@@ -20,22 +19,15 @@ type NotificationSystem struct {
 	db                  *gorm.DB
 }
 
-// NewNotificationSystem initializes all notification components
 func NewNotificationSystem(
 	ctx context.Context,
 	db *gorm.DB,
 	kafkaConfig config.KafkaConfig,
 ) (*NotificationSystem, error) {
-	// Initialize repositories
 	notifRepo := repository.NewNotificationRepository(db)
-
-	// Initialize push service (local, no external dependencies)
 	pushSvc := service.NewLocalPushService(db, notifRepo)
-
-	// Initialize notification service
 	notifSvc := service.NewNotificationService(notifRepo)
 
-	// Initialize Kafka producer with default config
 	producerConfig := DefaultProducerConfig(kafkaConfig.Brokers)
 	registry := NewEventRegistry()
 	producer := NewKafkaProducer(producerConfig, registry, db)
@@ -91,7 +83,6 @@ func (ns *NotificationSystem) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop gracefully shuts down the notification system
 func (ns *NotificationSystem) Stop() error {
 	logger.Info("stopping notification system...", "consumer_count", len(ns.consumers))
 	var lastErr error
@@ -105,48 +96,39 @@ func (ns *NotificationSystem) Stop() error {
 	return lastErr
 }
 
-// GetProducer returns the event producer
 func (ns *NotificationSystem) GetProducer() EventProducer {
 	return ns.producer
 }
 
-// GetPushService returns the push service
 func (ns *NotificationSystem) GetPushService() service.PushService {
 	return ns.pushService
 }
 
-// GetNotificationService returns the notification service
 func (ns *NotificationSystem) GetNotificationService() service.NotificationService {
 	return ns.notificationService
 }
 
-// registerEventHandlers registers all event handlers with a consumer
 func (ns *NotificationSystem) registerEventHandlers(consumer *KafkaConsumer) {
-	// Handler for ride events
 	rideHandler := NewRideEventHandler(ns.pushService, ns.db)
 	if err := consumer.Subscribe(rideHandler); err != nil {
 		logger.Error("failed to subscribe to ride handler", "error", err)
 	}
 
-	// Handler for payment events
 	paymentHandler := NewPaymentEventHandler(ns.pushService)
 	if err := consumer.Subscribe(paymentHandler); err != nil {
 		logger.Error("failed to subscribe to payment handler", "error", err)
 	}
 
-	// Handler for SOS events
 	sosHandler := NewSOSEventHandler(ns.pushService)
 	if err := consumer.Subscribe(sosHandler); err != nil {
 		logger.Error("failed to subscribe to SOS handler", "error", err)
 	}
 
-	// Handler for fraud events
 	fraudHandler := NewFraudEventHandler(ns.pushService)
 	if err := consumer.Subscribe(fraudHandler); err != nil {
 		logger.Error("failed to subscribe to fraud handler", "error", err)
 	}
 
-	// Handler for user events
 	userHandler := NewUserEventHandler(ns.pushService)
 	if err := consumer.Subscribe(userHandler); err != nil {
 		logger.Error("failed to subscribe to user handler", "error", err)

@@ -42,7 +42,7 @@ type BookingInfo struct {
 	QuantityOfPros int       `json:"quantityOfPros" default:"1"`
 	ToolsRequired  bool      `json:"toolsRequired"`
 	PersonCount    int       `json:"personCount" default:"1"`
-	Frequency      *string   `json:"frequency,omitempty"` // For recurring orders: daily, weekly, biweekly, monthly, quarterly, yearly, once
+	Frequency      *string   `json:"frequency,omitempty"`
 }
 
 func (b BookingInfo) Value() (driver.Value, error) {

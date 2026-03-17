@@ -87,12 +87,9 @@ func ToDriverProfileResponse(driver *models.DriverProfile) *DriverProfileRespons
 		UpdatedAt:        driver.UpdatedAt,
 	}
 
-	// Parse location if exists
 	if driver.CurrentLocation != nil && *driver.CurrentLocation != "" {
-		// Location is stored as "POINT(longitude latitude)"
-		// You'll need to parse this - for now using placeholder
 		resp.CurrentLocation = &LocationResponse{
-			Latitude:  0, // Parse from driver.CurrentLocation
+			Latitude:  0, 
 			Longitude: 0,
 		}
 	}
@@ -126,22 +123,21 @@ type WalletStatusResponse struct {
 	AvailableBalance    float64    `json:"availableBalance"`
 	Currency            string     `json:"currency"`
 	IsRestricted        bool       `json:"isRestricted"`
-	AccountStatus       string     `json:"accountStatus"` // active, suspended, disabled
+	AccountStatus       string     `json:"accountStatus"`
 	RestrictionReason   *string    `json:"restrictionReason,omitempty"`
 	MinBalanceThreshold float64    `json:"minBalanceThreshold"`
-	AmountNeededToLift  float64    `json:"amountNeededToLift"` // Amount to deposit to lift restriction
+	AmountNeededToLift  float64    `json:"amountNeededToLift"`
 	RestrictedAt        *time.Time `json:"restrictedAt,omitempty"`
 	LastUpdated         time.Time  `json:"lastUpdated"`
 }
 
-// ✅ WalletTransactionResponse - Individual transaction details
 type WalletTransactionResponse struct {
 	TransactionID string    `json:"transactionId"`
-	Type          string    `json:"type"` // credit, debit
+	Type          string    `json:"type"`
 	Amount        float64   `json:"amount"`
 	BalanceBefore float64   `json:"balanceBefore"`
 	BalanceAfter  float64   `json:"balanceAfter"`
-	ReferenceType *string   `json:"referenceType,omitempty"` // ride_earnings, commission, penalty, topup, etc.
+	ReferenceType *string   `json:"referenceType,omitempty"`
 	ReferenceID   *string   `json:"referenceId,omitempty"`
 	Description   *string   `json:"description,omitempty"`
 	Status        string    `json:"status"`

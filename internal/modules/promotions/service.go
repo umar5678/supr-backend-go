@@ -1,4 +1,3 @@
-// internal/modules/promotions/service.go
 package promotions
 
 import (

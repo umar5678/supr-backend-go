@@ -24,14 +24,11 @@ type Repository interface {
 	GetDocumentsByStatus(ctx context.Context, status string) ([]*models.Document, error)
 	CreateVerificationLog(ctx context.Context, log *models.DocumentVerificationLog) error
 	GetVerificationLogs(ctx context.Context, docID string) ([]*models.DocumentVerificationLog, error)
-	// Profile verification methods
 	UpdateDriverProfileVerification(ctx context.Context, driverID string, isVerified bool) error
 	UpdateServiceProviderProfileVerification(ctx context.Context, providerID string, isVerified bool) error
 	CountVerifiedDocumentsByDriverID(ctx context.Context, driverID string) (int, error)
 	CountVerifiedDocumentsByServiceProviderID(ctx context.Context, providerID string) (int, error)
-	// User lookup
 	GetUserByID(ctx context.Context, userID string) (*models.User, error)
-	// Driver and Service Provider lookup
 	GetDriverByUserID(ctx context.Context, userID string) (*models.DriverProfile, error)
 	GetServiceProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error)
 }
@@ -135,7 +132,6 @@ func (r *repository) GetDocumentsPaginated(ctx context.Context, filters map[stri
 
 	query := r.db.WithContext(ctx)
 
-	// Apply filters
 	if userID, ok := filters["user_id"]; ok && userID != "" {
 		query = query.Where("user_id = ?", userID)
 	}
@@ -154,13 +150,11 @@ func (r *repository) GetDocumentsPaginated(ctx context.Context, filters map[stri
 
 	query = query.Where("deleted_at IS NULL")
 
-	// Get total count
 	if err := query.Model(&models.Document{}).Count(&total).Error; err != nil {
 		logger.Error("failed to count documents", "error", err)
 		return nil, 0, err
 	}
 
-	// Get paginated results
 	offset := (page - 1) * limit
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&docs).Error; err != nil {
 		logger.Error("failed to fetch paginated documents", "error", err)
@@ -249,7 +243,6 @@ func (r *repository) GetVerificationLogs(ctx context.Context, docID string) ([]*
 	return logs, nil
 }
 
-// UpdateDriverProfileVerification updates the verification status of a driver profile
 func (r *repository) UpdateDriverProfileVerification(ctx context.Context, driverID string, isVerified bool) error {
 	if err := r.db.WithContext(ctx).
 		Model(&models.DriverProfile{}).
@@ -262,7 +255,6 @@ func (r *repository) UpdateDriverProfileVerification(ctx context.Context, driver
 	return nil
 }
 
-// UpdateServiceProviderProfileVerification updates the verification status of a service provider profile
 func (r *repository) UpdateServiceProviderProfileVerification(ctx context.Context, providerID string, isVerified bool) error {
 	if err := r.db.WithContext(ctx).
 		Model(&models.ServiceProviderProfile{}).
@@ -275,7 +267,6 @@ func (r *repository) UpdateServiceProviderProfileVerification(ctx context.Contex
 	return nil
 }
 
-// CountVerifiedDocumentsByDriverID counts verified documents for a driver
 func (r *repository) CountVerifiedDocumentsByDriverID(ctx context.Context, driverID string) (int, error) {
 	var count int64
 	if err := r.db.WithContext(ctx).
@@ -288,7 +279,6 @@ func (r *repository) CountVerifiedDocumentsByDriverID(ctx context.Context, drive
 	return int(count), nil
 }
 
-// CountVerifiedDocumentsByServiceProviderID counts verified documents for a service provider
 func (r *repository) CountVerifiedDocumentsByServiceProviderID(ctx context.Context, providerID string) (int, error) {
 	var count int64
 	if err := r.db.WithContext(ctx).
@@ -301,7 +291,6 @@ func (r *repository) CountVerifiedDocumentsByServiceProviderID(ctx context.Conte
 	return int(count), nil
 }
 
-// GetDriverByUserID retrieves driver profile by user ID
 func (r *repository) GetDriverByUserID(ctx context.Context, userID string) (*models.DriverProfile, error) {
 	var driver models.DriverProfile
 	if err := r.db.WithContext(ctx).
@@ -316,7 +305,6 @@ func (r *repository) GetDriverByUserID(ctx context.Context, userID string) (*mod
 	return &driver, nil
 }
 
-// GetServiceProviderByUserID retrieves service provider profile by user ID
 func (r *repository) GetServiceProviderByUserID(ctx context.Context, userID string) (*models.ServiceProviderProfile, error) {
 	var provider models.ServiceProviderProfile
 	if err := r.db.WithContext(ctx).

@@ -1,17 +1,16 @@
 package documentdto
 
 type UploadDocumentRequest struct {
-	DocumentType string `form:"documentType" binding:"required"` // license, aadhaar, registration, insurance, trade-license, profile-photo
+	DocumentType string `form:"documentType" binding:"required"`
 	FileName     string `form:"fileName" binding:"required"`
 	FileSize     int64  `form:"fileSize" binding:"required"`
-	IsFront      bool   `form:"isFront"` // For dual documents (license front/back)
-	// File is uploaded as multipart form
+	IsFront      bool   `form:"isFront"`
 }
 
 type VerifyDocumentRequest struct {
 	DocumentID      string `json:"documentId" binding:"required"`
-	Status          string `json:"status" binding:"required"` // verified, rejected
-	RejectionReason string `json:"rejectionReason"`           // Required if status is rejected
+	Status          string `json:"status" binding:"required"`
+	RejectionReason string `json:"rejectionReason"`          
 }
 
 type ListDocumentsRequest struct {
@@ -19,7 +18,7 @@ type ListDocumentsRequest struct {
 	DriverID          string `query:"driverId"`
 	ServiceProviderID string `query:"serviceProviderId"`
 	DocumentType      string `query:"documentType"`
-	Status            string `query:"status"` // pending, verified, rejected, expired
+	Status            string `query:"status"`
 	Page              int    `query:"page" binding:"min=1"`
 	Limit             int    `query:"limit" binding:"min=1,max=100"`
 }

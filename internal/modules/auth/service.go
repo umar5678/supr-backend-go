@@ -306,7 +306,6 @@ func (s *service) EmailLogin(ctx context.Context, req authdto.EmailLoginRequest)
 		return nil, response.ForbiddenError("Account is not active")
 	}
 
-	// If a specific role is requested, use it; otherwise use the user's current role
 	if req.Role != "" {
 		user.Role = req.Role
 	}

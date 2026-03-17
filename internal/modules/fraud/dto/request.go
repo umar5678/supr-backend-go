@@ -16,7 +16,7 @@ func (r *ListFraudPatternsRequest) SetDefaults() {
 		r.Limit = 20
 	}
 	if r.MinRiskScore == 0 {
-		r.MinRiskScore = 50 // Default: show medium+ risk
+		r.MinRiskScore = 50 
 	}
 }
 

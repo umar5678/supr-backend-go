@@ -8,33 +8,26 @@ import (
 	"github.com/umar5678/go-backend/internal/modules/homeservices/shared"
 )
 
-// ==================== List Orders Query ====================
-
 type ListOrdersQuery struct {
 	shared.PaginationParams
 
-	// Filters
 	Status       string `form:"status"`
 	CategorySlug string `form:"category"`
 	CustomerID   string `form:"customerId"`
 	ProviderID   string `form:"providerId"`
 	OrderNumber  string `form:"orderNumber"`
 
-	// Date filters
-	FromDate        string `form:"fromDate"`        // YYYY-MM-DD (created_at)
-	ToDate          string `form:"toDate"`          // YYYY-MM-DD (created_at)
-	BookingFromDate string `form:"bookingFromDate"` // YYYY-MM-DD (booking date)
-	BookingToDate   string `form:"bookingToDate"`   // YYYY-MM-DD (booking date)
+	FromDate        string `form:"fromDate"`       
+	ToDate          string `form:"toDate"`         
+	BookingFromDate string `form:"bookingFromDate"`
+	BookingToDate   string `form:"bookingToDate"`  
 
-	// Price filters
 	MinPrice *float64 `form:"minPrice" binding:"omitempty,gte=0"`
 	MaxPrice *float64 `form:"maxPrice" binding:"omitempty,gte=0"`
 
-	// Sorting
 	SortBy   string `form:"sortBy" binding:"omitempty,oneof=created_at booking_date total_price status completed_at"`
 	SortDesc bool   `form:"sortDesc"`
 
-	// Include related data
 	IncludeCustomer bool `form:"includeCustomer"`
 	IncludeProvider bool `form:"includeProvider"`
 }
@@ -47,12 +40,10 @@ func (q *ListOrdersQuery) SetDefaults() {
 }
 
 func (q *ListOrdersQuery) Validate() error {
-	// Validate status
 	if q.Status != "" && !shared.IsValidOrderStatus(q.Status) {
 		return fmt.Errorf("invalid status: %s", q.Status)
 	}
 
-	// Validate date formats
 	if q.FromDate != "" {
 		if _, err := time.Parse("2006-01-02", q.FromDate); err != nil {
 			return fmt.Errorf("invalid fromDate format, expected YYYY-MM-DD")
@@ -74,15 +65,12 @@ func (q *ListOrdersQuery) Validate() error {
 		}
 	}
 
-	// Validate price range
 	if q.MinPrice != nil && q.MaxPrice != nil && *q.MinPrice > *q.MaxPrice {
 		return fmt.Errorf("minPrice cannot be greater than maxPrice")
 	}
 
 	return nil
 }
-
-// ==================== Update Order Status ====================
 
 type UpdateOrderStatusRequest struct {
 	Status string `json:"status" binding:"required"`
@@ -97,8 +85,6 @@ func (r *UpdateOrderStatusRequest) Validate() error {
 	return nil
 }
 
-// ==================== Reassign Order ====================
-
 type ReassignOrderRequest struct {
 	ProviderID string `json:"providerId" binding:"required,uuid"`
 	Reason     string `json:"reason" binding:"required,min=10,max=500"`
@@ -111,11 +97,9 @@ func (r *ReassignOrderRequest) Validate() error {
 	return nil
 }
 
-// ==================== Cancel Order ====================
-
 type AdminCancelOrderRequest struct {
 	Reason        string   `json:"reason" binding:"required,min=10,max=500"`
-	RefundAmount  *float64 `json:"refundAmount" binding:"omitempty,gte=0"` // Optional custom refund
+	RefundAmount  *float64 `json:"refundAmount" binding:"omitempty,gte=0"` 
 	NotifyParties bool     `json:"notifyParties"`
 }
 
@@ -126,11 +110,9 @@ func (r *AdminCancelOrderRequest) Validate() error {
 	return nil
 }
 
-// ==================== Analytics Query ====================
-
 type AnalyticsQuery struct {
-	FromDate string `form:"fromDate" binding:"required"` // YYYY-MM-DD
-	ToDate   string `form:"toDate" binding:"required"`   // YYYY-MM-DD
+	FromDate string `form:"fromDate" binding:"required"` 
+	ToDate   string `form:"toDate" binding:"required"`   
 	GroupBy  string `form:"groupBy" binding:"omitempty,oneof=day week month"`
 }
 
@@ -155,7 +137,6 @@ func (q *AnalyticsQuery) Validate() error {
 		return fmt.Errorf("fromDate cannot be after toDate")
 	}
 
-	// Limit to 1 year max
 	if toDate.Sub(fromDate) > 365*24*time.Hour {
 		return fmt.Errorf("date range cannot exceed 1 year")
 	}
@@ -183,8 +164,6 @@ func (q *ProviderAnalyticsQuery) SetDefaults() {
 	}
 }
 
-// ==================== Bulk Actions ====================
-
 type BulkUpdateStatusRequest struct {
 	OrderIDs []string `json:"orderIds" binding:"required,min=1,max=100"`
 	Status   string   `json:"status" binding:"required"`
@@ -203,8 +182,6 @@ func (r *BulkUpdateStatusRequest) Validate() error {
 	}
 	return nil
 }
-
-// ==================== Export Query ====================
 
 type ExportOrdersQuery struct {
 	FromDate     string `form:"fromDate" binding:"required"`
@@ -248,13 +225,10 @@ type CreateAddonRequest struct {
 	SortOrder          int      `json:"sortOrder" binding:"omitempty,min=0"`
 }
 
-// Validate performs custom validation
 func (r *CreateAddonRequest) Validate() error {
-	// Normalize slugs
 	r.AddonSlug = strings.ToLower(strings.TrimSpace(r.AddonSlug))
 	r.CategorySlug = strings.ToLower(strings.TrimSpace(r.CategorySlug))
 
-	// Validate slug format
 	if !isValidSlug(r.AddonSlug) {
 		return fmt.Errorf("addonSlug must contain only lowercase letters, numbers, and hyphens")
 	}
@@ -263,12 +237,10 @@ func (r *CreateAddonRequest) Validate() error {
 		return fmt.Errorf("categorySlug must contain only lowercase letters, numbers, and hyphens")
 	}
 
-	// Validate strikethrough price is greater than price
 	if r.StrikethroughPrice != nil && *r.StrikethroughPrice <= r.Price {
 		return fmt.Errorf("strikethroughPrice must be greater than price")
 	}
 
-	// Set defaults
 	if r.IsActive == nil {
 		defaultActive := true
 		r.IsActive = &defaultActive
@@ -296,7 +268,6 @@ type UpdateAddonRequest struct {
 }
 
 func (r *UpdateAddonRequest) Validate() error {
-	// Check if at least one field is provided
 	if r.Title == nil && r.CategorySlug == nil && r.Description == nil &&
 		r.WhatsIncluded == nil && r.Notes == nil && r.Image == nil &&
 		r.Price == nil && r.StrikethroughPrice == nil &&
@@ -304,7 +275,6 @@ func (r *UpdateAddonRequest) Validate() error {
 		return fmt.Errorf("at least one field must be provided for update")
 	}
 
-	// Normalize category slug if provided
 	if r.CategorySlug != nil {
 		normalized := strings.ToLower(strings.TrimSpace(*r.CategorySlug))
 		r.CategorySlug = &normalized
@@ -354,7 +324,6 @@ func (q *ListAddonsQuery) SetDefaults() {
 	}
 }
 
-// CreateServiceRequest represents the request to create a new service
 type CreateServiceRequest struct {
 	Title              string   `json:"title" binding:"required,min=3,max=255"`
 	LongTitle          string   `json:"longTitle" binding:"omitempty,max=500"`
@@ -367,7 +336,7 @@ type CreateServiceRequest struct {
 	TermsAndConditions []string `json:"termsAndConditions" binding:"omitempty,dive,min=1,max=1000"`
 	BannerImage        string   `json:"bannerImage" binding:"omitempty,url,max=500"`
 	Thumbnail          string   `json:"thumbnail" binding:"omitempty,url,max=500"`
-	Duration           *int     `json:"duration" binding:"omitempty,min=1,max=1440"` // max 24 hours in minutes
+	Duration           *int     `json:"duration" binding:"omitempty,min=1,max=10"`
 	IsFrequent         bool     `json:"isFrequent"`
 	Frequency          string   `json:"frequency" binding:"omitempty,max=100"`
 	SortOrder          int      `json:"sortOrder" binding:"omitempty,min=0"`
@@ -382,11 +351,8 @@ type CreateHomeCleaningServiceRequest struct {
 	BasePrice    float64 `json:"basePrice" binding:"required,gte=0"`
 }
 
-// Validate performs custom validation
 func (r *CreateHomeCleaningServiceRequest) Validate() error {
-	// Normalize category slug
 	r.CategorySlug = strings.ToLower(strings.TrimSpace(r.CategorySlug))
-	// Validate slug format (alphanumeric and hyphens only)
 	if !isValidSlug(r.CategorySlug) {
 		return fmt.Errorf("categorySlug must contain only lowercase letters, numbers, and hyphens")
 	}
@@ -394,25 +360,20 @@ func (r *CreateHomeCleaningServiceRequest) Validate() error {
 	return nil
 }
 
-// UpdateHomeCleaningServiceRequest represents the request to update a home cleaning service
 type UpdateHomeCleaningServiceRequest struct {
 	Title       *string  `json:"title" binding:"omitempty,min=3,max=255"`
 	ServiceSlug *string  `json:"serviceSlug" binding:"omitempty,min=2,max=255"`
 	BasePrice   *float64 `json:"basePrice" binding:"omitempty,gte=0"`
 }
 
-// HasUpdates checks if there are any updates
 func (r *UpdateHomeCleaningServiceRequest) HasUpdates() bool {
 	return r.Title != nil || r.ServiceSlug != nil || r.BasePrice != nil
 }
 
-// Validate performs custom validation
 func (r *UpdateHomeCleaningServiceRequest) Validate() error {
-	// Check if at least one field is provided
 	if r.Title == nil && r.ServiceSlug == nil && r.BasePrice == nil {
 		return fmt.Errorf("at least one field must be provided for update")
 	}
-	// Normalize Service slug if provided
 	if r.ServiceSlug != nil {
 		normalized := strings.ToLower(strings.TrimSpace(*r.ServiceSlug))
 		r.ServiceSlug = &normalized
@@ -424,13 +385,10 @@ func (r *UpdateHomeCleaningServiceRequest) Validate() error {
 	return nil
 }
 
-// Validate performs custom validation
 func (r *CreateServiceRequest) Validate() error {
-	// Normalize slug
 	r.ServiceSlug = strings.ToLower(strings.TrimSpace(r.ServiceSlug))
 	r.CategorySlug = strings.ToLower(strings.TrimSpace(r.CategorySlug))
 
-	// Validate slug format (alphanumeric and hyphens only)
 	if !isValidSlug(r.ServiceSlug) {
 		return fmt.Errorf("serviceSlug must contain only lowercase letters, numbers, and hyphens")
 	}
@@ -439,12 +397,10 @@ func (r *CreateServiceRequest) Validate() error {
 		return fmt.Errorf("categorySlug must contain only lowercase letters, numbers, and hyphens")
 	}
 
-	// Validate WhatsIncluded has at least one item
 	if len(r.WhatsIncluded) == 0 {
 		return fmt.Errorf("whatsIncluded must have at least one item")
 	}
 
-	// Set defaults
 	if r.IsActive == nil {
 		defaultActive := true
 		r.IsActive = &defaultActive
@@ -457,7 +413,6 @@ func (r *CreateServiceRequest) Validate() error {
 	return nil
 }
 
-// UpdateServiceRequest represents the request to update a service
 type UpdateServiceRequest struct {
 	Title              *string  `json:"title" binding:"omitempty,min=3,max=255"`
 	LongTitle          *string  `json:"longTitle" binding:"omitempty,max=500"`
@@ -478,9 +433,7 @@ type UpdateServiceRequest struct {
 	BasePrice          *float64 `json:"basePrice" binding:"omitempty,gte=0"`
 }
 
-// Validate performs custom validation
 func (r *UpdateServiceRequest) Validate() error {
-	// Check if at least one field is provided
 	if r.Title == nil && r.LongTitle == nil && r.CategorySlug == nil &&
 		r.Description == nil && r.LongDescription == nil &&
 		r.Highlights == nil && r.WhatsIncluded == nil &&
@@ -491,7 +444,6 @@ func (r *UpdateServiceRequest) Validate() error {
 		return fmt.Errorf("at least one field must be provided for update")
 	}
 
-	// Normalize category slug if provided
 	if r.CategorySlug != nil {
 		normalized := strings.ToLower(strings.TrimSpace(*r.CategorySlug))
 		r.CategorySlug = &normalized
@@ -503,7 +455,6 @@ func (r *UpdateServiceRequest) Validate() error {
 	return nil
 }
 
-// HasUpdates checks if there are any updates
 func (r *UpdateServiceRequest) HasUpdates() bool {
 	return r.Title != nil || r.LongTitle != nil || r.CategorySlug != nil ||
 		r.Description != nil || r.LongDescription != nil ||
@@ -514,13 +465,11 @@ func (r *UpdateServiceRequest) HasUpdates() bool {
 		r.IsAvailable != nil || r.BasePrice != nil
 }
 
-// UpdateServiceStatusRequest represents status update request
 type UpdateServiceStatusRequest struct {
 	IsActive    *bool `json:"isActive"`
 	IsAvailable *bool `json:"isAvailable"`
 }
 
-// Validate performs validation
 func (r *UpdateServiceStatusRequest) Validate() error {
 	if r.IsActive == nil && r.IsAvailable == nil {
 		return fmt.Errorf("at least one of isActive or isAvailable must be provided")
@@ -528,7 +477,6 @@ func (r *UpdateServiceStatusRequest) Validate() error {
 	return nil
 }
 
-// ListServicesQuery represents query parameters for listing services
 type ListServicesQuery struct {
 	shared.PaginationParams
 	CategorySlug string `form:"categorySlug"`
@@ -539,7 +487,6 @@ type ListServicesQuery struct {
 	SortDesc     bool   `form:"sortDesc"`
 }
 
-// SetDefaults sets default values
 func (q *ListServicesQuery) SetDefaults() {
 	q.PaginationParams.SetDefaults()
 	if q.SortBy == "" {
@@ -547,7 +494,6 @@ func (q *ListServicesQuery) SetDefaults() {
 	}
 }
 
-// Helper function to validate slug format
 func isValidSlug(slug string) bool {
 	if len(slug) == 0 {
 		return false
@@ -557,7 +503,6 @@ func isValidSlug(slug string) bool {
 			return false
 		}
 	}
-	// Should not start or end with hyphen
 	if slug[0] == '-' || slug[len(slug)-1] == '-' {
 		return false
 	}

@@ -11,11 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DevelopmentLogger logs detailed request and response information
-// Only use in development environment!
 func DevelopmentLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Skip logging for health checks or static files if needed
 		if shouldSkipLogging(c.Request.URL.Path) {
 			c.Next()
 			return

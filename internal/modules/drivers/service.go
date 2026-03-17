@@ -119,7 +119,6 @@ func (s *service) RegisterDriver(ctx context.Context, userID string, req driverd
 		"vehicleType", req.Vehicle.VehicleTypeID,
 	)
 
-	// Publish driver registered event
 	s.publishDriverEvent(ctx, notificationsmodule.EventUserRegistered, userID, map[string]interface{}{
 		"driverID":    driver.ID,
 		"vehicleType": req.Vehicle.VehicleTypeID,
@@ -330,7 +329,6 @@ func (s *service) GetDashboard(ctx context.Context, userID string) (*driverdto.D
 		return nil, response.NotFoundError("Driver profile")
 	}
 
-	// Query today's trips and earnings
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	todayEnd := todayStart.Add(24 * time.Hour)
@@ -356,7 +354,6 @@ func (s *service) GetDashboard(ctx context.Context, userID string) (*driverdto.D
 		todayEarnings = 0
 	}
 
-	// Query this week's earnings
 	weekStart := todayStart.AddDate(0, 0, -int(now.Weekday()))
 	var weekEarnings float64
 
@@ -759,7 +756,7 @@ func (s *service) ProcessPayment(ctx context.Context, payReq *driverdto.PaymentR
 		Success:       true,
 		OrderID:       mockOrderID,
 		TransactionID: mockTxnID,
-		Provider:      "mock", // Change to "razorpay", "stripe", or "paypal"
+		Provider:      "mock",
 	}, nil
 }
 
@@ -813,10 +810,6 @@ func (s *service) GetWalletTransactionHistory(ctx context.Context, userID string
 	logger.Info("fetching wallet transactions",
 		"driverID", driver.ID,
 		"userID", userID)
-
-	// TODO: Implement proper transaction history from wallet service
-	// This requires adding a method to wallet service Repository to fetch transactions by wallet ID
-
 	return []*driverdto.WalletTransactionResponse{}, nil
 }
 

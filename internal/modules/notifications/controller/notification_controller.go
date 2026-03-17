@@ -15,14 +15,12 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
-// RegisterPushTokenRequest represents push token registration
 type RegisterPushTokenRequest struct {
 	Token    string `json:"token" binding:"required"`
 	DeviceID string `json:"device_id" binding:"required"`
-	DeviceOS string `json:"device_os" binding:"required"` // "ios", "android", "web"
+	DeviceOS string `json:"device_os" binding:"required"` 
 }
 
-// UnregisterPushTokenRequest represents push token unregistration
 type UnregisterPushTokenRequest struct {
 	Token string `json:"token" binding:"required"`
 }
@@ -43,7 +41,6 @@ func NewNotificationController(notifService service.NotificationService, pushSer
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 			CheckOrigin: func(r *http.Request) bool {
-				// In production, validate origin properly
 				return true
 			},
 		},
@@ -60,15 +57,12 @@ func (c *NotificationController) RegisterRoutes(rg *gin.RouterGroup, authMiddlew
 		notifications.POST("/read-all", c.MarkAllAsRead)
 		notifications.DELETE("/:id", c.DeleteNotification)
 
-		// Push token management
 		notifications.POST("/push-token", c.RegisterPushToken)
 		notifications.DELETE("/push-token", c.UnregisterPushToken)
 
-		// Stats (for admin)
 		notifications.GET("/stats", c.GetPushStats)
 	}
 
-	// WebSocket endpoint - registered without auth middleware since it handles auth via token query param
 	rg.GET("/notifications/ws/push", c.SubscribePush)
 }
 
@@ -336,21 +330,18 @@ func (c *NotificationController) UnregisterPushToken(ctx *gin.Context) {
 // @Router /notifications/ws/push [get]
 // @Security BearerAuth
 func (c *NotificationController) SubscribePush(ctx *gin.Context) {
-	// Extract token from query parameter for WebSocket
 	token := ctx.Query("token")
 	if token == "" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "token required"})
 		return
 	}
 
-	// Validate the token
 	claims, err := jwt.ValidateToken(token, c.cfg.JWT.Secret, c.cfg.JWT.Issuer)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
 		return
 	}
 
-	// Parse user ID from token
 	userID, err := uuid.Parse(claims.UserID)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id in token"})
@@ -364,11 +355,9 @@ func (c *NotificationController) SubscribePush(ctx *gin.Context) {
 	}
 	defer ws.Close()
 
-	// Create a message channel for this client
 	msgChan := make(chan service.PushMessage, 10)
 	subscriberID := uuid.New().String()
 
-	// Subscribe to user's notifications - cast to LocalPushService
 	if localPush, ok := c.pushService.(*service.LocalPushService); ok {
 		if err := localPush.SubscribeToUser(userID, subscriberID, msgChan); err != nil {
 			logger.Error("failed to subscribe to push", "error", err)
@@ -377,7 +366,6 @@ func (c *NotificationController) SubscribePush(ctx *gin.Context) {
 		}
 		defer localPush.UnsubscribeFromUser(userID, subscriberID)
 
-		// Listen for messages and send to WebSocket
 		for msg := range msgChan {
 			if err := ws.WriteJSON(msg); err != nil {
 				logger.Error("failed to write to websocket", "error", err)

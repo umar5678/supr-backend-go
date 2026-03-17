@@ -344,7 +344,6 @@ func (s *service) GetFareBreakdown(ctx context.Context, req dto.GetFareBreakdown
 
 	duration := int((distance / 30.0) * 60)
 
-	// Get combined surge with detailed breakdown
 	geohash := fmt.Sprintf("%.1f_%.1f", req.PickupLat, req.PickupLon)
 	combinedMultiplier, timeMultiplier, demandMultiplier, surgeReason, err := s.surgeManager.CalculateCombinedSurge(ctx, req.VehicleTypeID, geohash, req.PickupLat, req.PickupLon)
 	if err != nil {
@@ -802,7 +801,6 @@ func (s *service) publishPricingEvent(ctx context.Context, eventType notificatio
 	}
 
 	go func() {
-		// Use background context to prevent cancellation when HTTP request completes
 		bgCtx := context.Background()
 		if err := s.eventProducer.PublishEvent(bgCtx, eventType, data); err != nil {
 			logger.Error("failed to publish pricing event", "error", err, "eventType", eventType)

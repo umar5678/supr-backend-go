@@ -10,7 +10,7 @@ type DocumentResponse struct {
 	FileURL           string  `json:"fileUrl"`
 	FileSize          int64   `json:"fileSize"`
 	MimeType          string  `json:"mimeType"`
-	Status            string  `json:"status"` // pending, verified, rejected, expired
+	Status            string  `json:"status"` 
 	VerifiedBy        *string `json:"verifiedBy,omitempty"`
 	VerifiedAt        *string `json:"verifiedAt,omitempty"`
 	RejectionReason   string  `json:"rejectionReason,omitempty"`

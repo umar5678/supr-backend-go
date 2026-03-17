@@ -17,18 +17,14 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/response"
 )
 
-// Service defines the interface for admin home services business logic
 type Service interface {
-	// Service operations
 	CreateService(ctx context.Context, req dto.CreateServiceRequest) (*dto.ServiceResponse, error)
 	GetServiceBySlug(ctx context.Context, slug string) (*dto.ServiceResponse, error)
 	UpdateService(ctx context.Context, slug string, req dto.UpdateServiceRequest) (*dto.ServiceResponse, error)
-	// UpdateHomeCleaningService(ctx context.Context, slug string, req dto.UpdateHomeCleaningServiceRequest) (*dto.HomeCleaningServiceResponse, error)
 	UpdateServiceStatus(ctx context.Context, slug string, req dto.UpdateServiceStatusRequest) (*dto.ServiceResponse, error)
 	DeleteService(ctx context.Context, slug string) error
 	ListServices(ctx context.Context, query dto.ListServicesQuery) ([]*dto.ServiceListResponse, *response.PaginationMeta, error)
 
-	// Addon operations
 	CreateAddon(ctx context.Context, req dto.CreateAddonRequest) (*dto.AddonResponse, error)
 	GetAddonBySlug(ctx context.Context, slug string) (*dto.AddonResponse, error)
 	UpdateAddon(ctx context.Context, slug string, req dto.UpdateAddonRequest) (*dto.AddonResponse, error)
@@ -36,11 +32,9 @@ type Service interface {
 	DeleteAddon(ctx context.Context, slug string) error
 	ListAddons(ctx context.Context, query dto.ListAddonsQuery) ([]*dto.AddonListResponse, *response.PaginationMeta, error)
 
-	// Category operations
 	GetCategoryDetails(ctx context.Context, categorySlug string) (*dto.CategoryServicesResponse, error)
 	GetAllCategories(ctx context.Context) ([]string, error)
 
-	// Order management
 	GetOrders(ctx context.Context, query dto.ListOrdersQuery) ([]dto.AdminOrderListResponse, *response.PaginationMeta, error)
 	GetOrderByID(ctx context.Context, orderID string) (*dto.AdminOrderDetailResponse, error)
 	GetOrderByNumber(ctx context.Context, orderNumber string) (*dto.AdminOrderDetailResponse, error)
@@ -48,15 +42,12 @@ type Service interface {
 	ReassignOrder(ctx context.Context, orderID string, req dto.ReassignOrderRequest, adminID string) (*dto.AdminOrderDetailResponse, error)
 	CancelOrder(ctx context.Context, orderID string, req dto.AdminCancelOrderRequest, adminID string) (*dto.AdminOrderDetailResponse, error)
 
-	// Bulk operations
 	BulkUpdateStatus(ctx context.Context, req dto.BulkUpdateStatusRequest, adminID string) (int64, error)
 
-	// Analytics
 	GetOverviewAnalytics(ctx context.Context, query dto.AnalyticsQuery) (*dto.OverviewAnalyticsResponse, error)
 	GetProviderAnalytics(ctx context.Context, query dto.ProviderAnalyticsQuery) (*dto.ProviderAnalyticsResponse, error)
 	GetRevenueReport(ctx context.Context, query dto.AnalyticsQuery) (*dto.RevenueReportResponse, error)
 
-	// Dashboard
 	GetDashboard(ctx context.Context) (*dto.DashboardResponse, error)
 }
 
@@ -65,7 +56,6 @@ type service struct {
 	walletService wallet.Service
 }
 
-// NewService creates a new admin service instance
 func NewService(repo Repository, walletService wallet.Service) Service {
 	return &service{
 		repo:          repo,
@@ -73,15 +63,11 @@ func NewService(repo Repository, walletService wallet.Service) Service {
 	}
 }
 
-// ==================== Service Operations ====================
-
 func (s *service) CreateService(ctx context.Context, req dto.CreateServiceRequest) (*dto.ServiceResponse, error) {
-	// Validate request
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Check if slug already exists
 	exists, err := s.repo.ServiceSlugExists(ctx, req.ServiceSlug, "")
 	if err != nil {
 		logger.Error("failed to check service slug existence", "error", err, "slug", req.ServiceSlug)
@@ -91,7 +77,6 @@ func (s *service) CreateService(ctx context.Context, req dto.CreateServiceReques
 		return nil, response.ConflictError(fmt.Sprintf("Service with slug '%s' already exists", req.ServiceSlug))
 	}
 
-	// Create service model
 	svc := &models.ServiceNew{
 		Title:              req.Title,
 		LongTitle:          req.LongTitle,
@@ -113,7 +98,6 @@ func (s *service) CreateService(ctx context.Context, req dto.CreateServiceReques
 		BasePrice:          req.BasePrice,
 	}
 
-	// Save to database
 	if err := s.repo.CreateService(ctx, svc); err != nil {
 		logger.Error("failed to create service", "error", err, "slug", req.ServiceSlug)
 		return nil, response.InternalServerError("Failed to create service", err)
@@ -138,12 +122,10 @@ func (s *service) GetServiceBySlug(ctx context.Context, slug string) (*dto.Servi
 }
 
 func (s *service) UpdateService(ctx context.Context, slug string, req dto.UpdateServiceRequest) (*dto.ServiceResponse, error) {
-	// Validate request
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Get existing service
 	svc, err := s.repo.GetServiceBySlug(ctx, slug)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -152,7 +134,6 @@ func (s *service) UpdateService(ctx context.Context, slug string, req dto.Update
 		return nil, response.InternalServerError("Failed to get service", err)
 	}
 
-	// Update fields (only if provided)
 	if req.Title != nil {
 		svc.Title = *req.Title
 	}
@@ -205,7 +186,6 @@ func (s *service) UpdateService(ctx context.Context, slug string, req dto.Update
 		svc.BasePrice = req.BasePrice
 	}
 
-	// Save to database
 	if err := s.repo.UpdateService(ctx, svc); err != nil {
 		logger.Error("failed to update service", "error", err, "slug", slug)
 		return nil, response.InternalServerError("Failed to update service", err)
@@ -216,60 +196,11 @@ func (s *service) UpdateService(ctx context.Context, slug string, req dto.Update
 	return dto.ToServiceResponse(svc), nil
 }
 
-// func (s *service) UpdateHomeCleaningService(ctx context.Context, slug string, req dto.UpdateHomeCleaningServiceRequest) (*dto.HomeCleaningServiceResponse, error) {
-// 	// Validate request
-// 	if err := req.Validate(); err != nil {
-// 		return nil, response.BadRequest(err.Error())
-// 	}
-
-// 	// Get existing service
-// 	svc, err := s.repo.GetServiceBySlug(ctx, slug)
-// 	if err != nil {
-// 		if err == gorm.ErrRecordNotFound {
-// 			return nil, response.NotFoundError("Service")
-// 		}
-// 		return nil, response.InternalServerError("Failed to get service", err)
-// 	}
-
-// 	// Map existing ServiceNew to HomeCleaningService model before updating
-// 	hc := &models.HomeCleaningService{
-// 		ID:          svc.ID,
-// 		Title:       svc.Title,
-// 		ServiceSlug: svc.ServiceSlug,
-// 	}
-// 	if svc.BasePrice != nil {
-// 		hc.BasePrice = *svc.BasePrice
-// 	}
-
-// 	// Update fields (only if provided)
-// 	if req.Title != nil {
-// 		hc.Title = *req.Title
-// 	}
-// 	if req.ServiceSlug != nil {
-// 		hc.ServiceSlug = *req.ServiceSlug
-// 	}
-// 	if req.BasePrice != nil {
-// 		hc.BasePrice = *req.BasePrice
-// 	}
-
-// 	// Save to database
-// 	if err := s.repo.UpdateHomeCleaningService(ctx, hc); err != nil {
-// 		logger.Error("failed to update service", "error", err, "slug", slug)
-// 		return nil, response.InternalServerError("Failed to update service", err)
-// 	}
-
-// 	logger.Info("service updated", "serviceID", hc.ID, "slug", hc.ServiceSlug)
-
-// 	return dto.ToHomeCleaningServiceResponse(hc), nil
-// }
-
 func (s *service) UpdateServiceStatus(ctx context.Context, slug string, req dto.UpdateServiceStatusRequest) (*dto.ServiceResponse, error) {
-	// Validate request
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Get existing service
 	svc, err := s.repo.GetServiceBySlug(ctx, slug)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -278,7 +209,6 @@ func (s *service) UpdateServiceStatus(ctx context.Context, slug string, req dto.
 		return nil, response.InternalServerError("Failed to get service", err)
 	}
 
-	// Update status fields
 	if req.IsActive != nil {
 		svc.IsActive = *req.IsActive
 	}
@@ -286,7 +216,6 @@ func (s *service) UpdateServiceStatus(ctx context.Context, slug string, req dto.
 		svc.IsAvailable = *req.IsAvailable
 	}
 
-	// Save to database
 	if err := s.repo.UpdateService(ctx, svc); err != nil {
 		logger.Error("failed to update service status", "error", err, "slug", slug)
 		return nil, response.InternalServerError("Failed to update service status", err)
@@ -299,7 +228,6 @@ func (s *service) UpdateServiceStatus(ctx context.Context, slug string, req dto.
 }
 
 func (s *service) DeleteService(ctx context.Context, slug string) error {
-	// Check if service exists
 	svc, err := s.repo.GetServiceBySlug(ctx, slug)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -308,7 +236,6 @@ func (s *service) DeleteService(ctx context.Context, slug string) error {
 		return response.InternalServerError("Failed to get service", err)
 	}
 
-	// Soft delete
 	if err := s.repo.DeleteService(ctx, svc.ID); err != nil {
 		logger.Error("failed to delete service", "error", err, "slug", slug)
 		return response.InternalServerError("Failed to delete service", err)
@@ -320,34 +247,26 @@ func (s *service) DeleteService(ctx context.Context, slug string) error {
 }
 
 func (s *service) ListServices(ctx context.Context, query dto.ListServicesQuery) ([]*dto.ServiceListResponse, *response.PaginationMeta, error) {
-	// Set defaults
 	query.SetDefaults()
 
-	// Get services from repository
 	services, total, err := s.repo.ListServices(ctx, query)
 	if err != nil {
 		logger.Error("failed to list services", "error", err)
 		return nil, nil, response.InternalServerError("Failed to list services", err)
 	}
 
-	// Convert to response DTOs
 	responses := dto.ToServiceListResponses(services)
 
-	// Create pagination metadata
 	pagination := response.NewPaginationMeta(total, query.Page, query.Limit)
 
 	return responses, &pagination, nil
 }
 
-// ==================== Addon Operations ====================
-
 func (s *service) CreateAddon(ctx context.Context, req dto.CreateAddonRequest) (*dto.AddonResponse, error) {
-	// Validate request
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Check if slug already exists
 	exists, err := s.repo.AddonSlugExists(ctx, req.AddonSlug, "")
 	if err != nil {
 		logger.Error("failed to check addon slug existence", "error", err, "slug", req.AddonSlug)
@@ -357,7 +276,6 @@ func (s *service) CreateAddon(ctx context.Context, req dto.CreateAddonRequest) (
 		return nil, response.ConflictError(fmt.Sprintf("Addon with slug '%s' already exists", req.AddonSlug))
 	}
 
-	// Create addon model
 	addon := &models.Addon{
 		Title:              req.Title,
 		AddonSlug:          req.AddonSlug,
@@ -373,7 +291,6 @@ func (s *service) CreateAddon(ctx context.Context, req dto.CreateAddonRequest) (
 		SortOrder:          req.SortOrder,
 	}
 
-	// Save to database
 	if err := s.repo.CreateAddon(ctx, addon); err != nil {
 		logger.Error("failed to create addon", "error", err, "slug", req.AddonSlug)
 		return nil, response.InternalServerError("Failed to create addon", err)
@@ -398,12 +315,10 @@ func (s *service) GetAddonBySlug(ctx context.Context, slug string) (*dto.AddonRe
 }
 
 func (s *service) UpdateAddon(ctx context.Context, slug string, req dto.UpdateAddonRequest) (*dto.AddonResponse, error) {
-	// Validate request
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Get existing addon
 	addon, err := s.repo.GetAddonBySlug(ctx, slug)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -412,7 +327,6 @@ func (s *service) UpdateAddon(ctx context.Context, slug string, req dto.UpdateAd
 		return nil, response.InternalServerError("Failed to get addon", err)
 	}
 
-	// Update fields (only if provided)
 	if req.Title != nil {
 		addon.Title = *req.Title
 	}
@@ -435,7 +349,6 @@ func (s *service) UpdateAddon(ctx context.Context, slug string, req dto.UpdateAd
 		addon.Price = *req.Price
 	}
 	if req.StrikethroughPrice != nil {
-		// Allow setting to 0 to remove strikethrough price
 		if *req.StrikethroughPrice == 0 {
 			addon.StrikethroughPrice = nil
 		} else {
@@ -452,12 +365,10 @@ func (s *service) UpdateAddon(ctx context.Context, slug string, req dto.UpdateAd
 		addon.SortOrder = *req.SortOrder
 	}
 
-	// Validate strikethrough price is greater than price
 	if addon.StrikethroughPrice != nil && *addon.StrikethroughPrice <= addon.Price {
 		return nil, response.BadRequest("strikethroughPrice must be greater than price")
 	}
 
-	// Save to database
 	if err := s.repo.UpdateAddon(ctx, addon); err != nil {
 		logger.Error("failed to update addon", "error", err, "slug", slug)
 		return nil, response.InternalServerError("Failed to update addon", err)
@@ -469,12 +380,10 @@ func (s *service) UpdateAddon(ctx context.Context, slug string, req dto.UpdateAd
 }
 
 func (s *service) UpdateAddonStatus(ctx context.Context, slug string, req dto.UpdateAddonStatusRequest) (*dto.AddonResponse, error) {
-	// Validate request
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Get existing addon
 	addon, err := s.repo.GetAddonBySlug(ctx, slug)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -483,7 +392,6 @@ func (s *service) UpdateAddonStatus(ctx context.Context, slug string, req dto.Up
 		return nil, response.InternalServerError("Failed to get addon", err)
 	}
 
-	// Update status fields
 	if req.IsActive != nil {
 		addon.IsActive = *req.IsActive
 	}
@@ -491,7 +399,6 @@ func (s *service) UpdateAddonStatus(ctx context.Context, slug string, req dto.Up
 		addon.IsAvailable = *req.IsAvailable
 	}
 
-	// Save to database
 	if err := s.repo.UpdateAddon(ctx, addon); err != nil {
 		logger.Error("failed to update addon status", "error", err, "slug", slug)
 		return nil, response.InternalServerError("Failed to update addon status", err)
@@ -504,7 +411,6 @@ func (s *service) UpdateAddonStatus(ctx context.Context, slug string, req dto.Up
 }
 
 func (s *service) DeleteAddon(ctx context.Context, slug string) error {
-	// Check if addon exists
 	addon, err := s.repo.GetAddonBySlug(ctx, slug)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -513,7 +419,6 @@ func (s *service) DeleteAddon(ctx context.Context, slug string) error {
 		return response.InternalServerError("Failed to get addon", err)
 	}
 
-	// Soft delete
 	if err := s.repo.DeleteAddon(ctx, addon.ID); err != nil {
 		logger.Error("failed to delete addon", "error", err, "slug", slug)
 		return response.InternalServerError("Failed to delete addon", err)
@@ -525,36 +430,28 @@ func (s *service) DeleteAddon(ctx context.Context, slug string) error {
 }
 
 func (s *service) ListAddons(ctx context.Context, query dto.ListAddonsQuery) ([]*dto.AddonListResponse, *response.PaginationMeta, error) {
-	// Set defaults
 	query.SetDefaults()
 
-	// Get addons from repository
 	addons, total, err := s.repo.ListAddons(ctx, query)
 	if err != nil {
 		logger.Error("failed to list addons", "error", err)
 		return nil, nil, response.InternalServerError("Failed to list addons", err)
 	}
 
-	// Convert to response DTOs
 	responses := dto.ToAddonListResponses(addons)
 
-	// Create pagination metadata
 	pagination := response.NewPaginationMeta(total, query.Page, query.Limit)
 
 	return responses, &pagination, nil
 }
 
-// ==================== Category Operations ====================
-
 func (s *service) GetCategoryDetails(ctx context.Context, categorySlug string) (*dto.CategoryServicesResponse, error) {
-	// Get services for category
 	services, err := s.repo.GetServicesByCategory(ctx, categorySlug)
 	if err != nil {
 		logger.Error("failed to get services by category", "error", err, "category", categorySlug)
 		return nil, response.InternalServerError("Failed to get category details", err)
 	}
 
-	// Get addons for category
 	addons, err := s.repo.GetAddonsByCategory(ctx, categorySlug)
 	if err != nil {
 		logger.Error("failed to get addons by category", "error", err, "category", categorySlug)
@@ -578,28 +475,21 @@ func (s *service) GetAllCategories(ctx context.Context) ([]string, error) {
 	return categories, nil
 }
 
-// ==================== Order Management ====================
-
 func (s *service) GetOrders(ctx context.Context, query dto.ListOrdersQuery) ([]dto.AdminOrderListResponse, *response.PaginationMeta, error) {
-	// Validate
 	if err := query.Validate(); err != nil {
 		return nil, nil, response.BadRequest(err.Error())
 	}
 
-	// Set defaults
 	query.SetDefaults()
 
-	// Get orders
 	orders, total, err := s.repo.GetOrders(ctx, query)
 	if err != nil {
 		logger.Error("failed to get orders", "error", err)
 		return nil, nil, response.InternalServerError("Failed to get orders", err)
 	}
 
-	// Convert to responses
 	responses := dto.ToAdminOrderListResponses(orders)
 
-	// Create pagination
 	pagination := response.NewPaginationMeta(total, query.Page, query.Limit)
 
 	return responses, &pagination, nil
@@ -615,14 +505,33 @@ func (s *service) GetOrderByID(ctx context.Context, orderID string) (*dto.AdminO
 		return nil, response.InternalServerError("Failed to get order", err)
 	}
 
-	// Get status history
 	history, err := s.repo.GetOrderStatusHistory(ctx, orderID)
 	if err != nil {
 		logger.Error("failed to get order history", "error", err, "orderID", orderID)
 		history = []models.OrderStatusHistory{}
 	}
 
-	return dto.ToAdminOrderDetailResponse(order, history), nil
+	response := dto.ToAdminOrderDetailResponse(order, history)
+
+	if response.Provider != nil && response.Provider.ID != "" {
+		provider, err := s.repo.GetUserByID(ctx, response.Provider.ID)
+		if err == nil && provider != nil {
+			response.Provider.Name = provider.Name
+			if provider.Email != nil {
+				response.Provider.Email = *provider.Email
+			}
+			if provider.Phone != nil {
+				response.Provider.Phone = *provider.Phone
+			}
+			if provider.ProfilePhotoURL != nil {
+				response.Provider.Photo = *provider.ProfilePhotoURL
+			}
+		} else {
+			logger.Warn("failed to fetch provider details", "error", err, "providerID", response.Provider.ID)
+		}
+	}
+
+	return response, nil
 }
 
 func (s *service) GetOrderByNumber(ctx context.Context, orderNumber string) (*dto.AdminOrderDetailResponse, error) {
@@ -635,7 +544,6 @@ func (s *service) GetOrderByNumber(ctx context.Context, orderNumber string) (*dt
 		return nil, response.InternalServerError("Failed to get order", err)
 	}
 
-	// Get status history
 	history, err := s.repo.GetOrderStatusHistory(ctx, order.ID)
 	if err != nil {
 		logger.Error("failed to get order history", "error", err, "orderID", order.ID)
@@ -646,12 +554,10 @@ func (s *service) GetOrderByNumber(ctx context.Context, orderNumber string) (*dt
 }
 
 func (s *service) UpdateOrderStatus(ctx context.Context, orderID string, req dto.UpdateOrderStatusRequest, adminID string) (*dto.AdminOrderDetailResponse, error) {
-	// Validate
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Get order
 	order, err := s.repo.GetOrderByID(ctx, orderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -660,19 +566,15 @@ func (s *service) UpdateOrderStatus(ctx context.Context, orderID string, req dto
 		return nil, response.InternalServerError("Failed to get order", err)
 	}
 
-	// Validate status transition
 	if !shared.CanTransition(order.Status, req.Status) {
 		return nil, response.BadRequest(fmt.Sprintf("Cannot transition from '%s' to '%s'", order.Status, req.Status))
 	}
 
-	// Store previous status
 	previousStatus := order.Status
 
-	// Update status
 	order.Status = req.Status
 	now := time.Now()
 
-	// Update related timestamps based on new status
 	switch req.Status {
 	case shared.OrderStatusAccepted:
 		if order.ProviderAcceptedAt == nil {
@@ -689,20 +591,17 @@ func (s *service) UpdateOrderStatus(ctx context.Context, orderID string, req dto
 		if order.ProviderCompletedAt == nil {
 			order.ProviderCompletedAt = &now
 		}
-		// Update payment status
 		if order.PaymentInfo != nil {
 			order.PaymentInfo.Status = shared.PaymentStatusCompleted
 			order.PaymentInfo.AmountPaid = order.TotalPrice
 		}
 	}
 
-	// Save order
 	if err := s.repo.UpdateOrder(ctx, order); err != nil {
 		logger.Error("failed to update order status", "error", err, "orderID", orderID)
 		return nil, response.InternalServerError("Failed to update order status", err)
 	}
 
-	// Create status history
 	notes := req.Reason
 	if notes == "" {
 		notes = fmt.Sprintf("Status changed by admin from %s to %s", previousStatus, req.Status)
@@ -729,17 +628,14 @@ func (s *service) UpdateOrderStatus(ctx context.Context, orderID string, req dto
 		"toStatus", req.Status,
 	)
 
-	// Get updated order with history
 	return s.GetOrderByID(ctx, orderID)
 }
 
 func (s *service) ReassignOrder(ctx context.Context, orderID string, req dto.ReassignOrderRequest, adminID string) (*dto.AdminOrderDetailResponse, error) {
-	// Validate
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Get order
 	order, err := s.repo.GetOrderByID(ctx, orderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -748,7 +644,6 @@ func (s *service) ReassignOrder(ctx context.Context, orderID string, req dto.Rea
 		return nil, response.InternalServerError("Failed to get order", err)
 	}
 
-	// Validate order can be reassigned
 	reassignableStatuses := []string{
 		shared.OrderStatusAssigned,
 		shared.OrderStatusAccepted,
@@ -764,20 +659,17 @@ func (s *service) ReassignOrder(ctx context.Context, orderID string, req dto.Rea
 		return nil, response.BadRequest(fmt.Sprintf("Cannot reassign order in '%s' status", order.Status))
 	}
 
-	// Store old provider ID for logging
 	oldProviderID := order.AssignedProviderID
 
-	// Update order
 	order.AssignedProviderID = &req.ProviderID
 	order.Status = shared.OrderStatusAssigned
-	order.ProviderAcceptedAt = nil // Reset acceptance
+	order.ProviderAcceptedAt = nil
 
 	if err := s.repo.UpdateOrder(ctx, order); err != nil {
 		logger.Error("failed to reassign order", "error", err, "orderID", orderID)
 		return nil, response.InternalServerError("Failed to reassign order", err)
 	}
 
-	// Create status history
 	metadata := models.StatusHistoryMetadata{
 		"newProviderId": req.ProviderID,
 	}
@@ -802,19 +694,14 @@ func (s *service) ReassignOrder(ctx context.Context, orderID string, req dto.Rea
 		"newProviderID", req.ProviderID,
 	)
 
-	// TODO: Notify old provider about removal
-	// TODO: Notify new provider about assignment
-
 	return s.GetOrderByID(ctx, orderID)
 }
 
 func (s *service) CancelOrder(ctx context.Context, orderID string, req dto.AdminCancelOrderRequest, adminID string) (*dto.AdminOrderDetailResponse, error) {
-	// Validate
 	if err := req.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
-	// Get order
 	order, err := s.repo.GetOrderByID(ctx, orderID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -823,45 +710,34 @@ func (s *service) CancelOrder(ctx context.Context, orderID string, req dto.Admin
 		return nil, response.InternalServerError("Failed to get order", err)
 	}
 
-	// Check if already cancelled
 	if order.Status == shared.OrderStatusCancelled {
 		return nil, response.BadRequest("Order is already cancelled")
 	}
 
-	// Check if already completed
 	if order.Status == shared.OrderStatusCompleted {
 		return nil, response.BadRequest("Cannot cancel a completed order. Use refund instead.")
 	}
 
-	// Calculate refund amount
 	var refundAmount float64
 	var cancellationFee float64
 
 	if req.RefundAmount != nil {
-		// Use custom refund amount
 		refundAmount = *req.RefundAmount
 		if refundAmount > order.TotalPrice {
 			return nil, response.BadRequest("Refund amount cannot exceed order total")
 		}
 		cancellationFee = order.TotalPrice - refundAmount
 	} else {
-		// Use standard cancellation fees
 		cancellationFee, refundAmount = shared.CalculateCancellationFee(order.Status, order.TotalPrice)
 	}
-
-	// Store previous status
 	previousStatus := order.Status
 
-	// Process refund if wallet payment
 	if order.WalletHoldID != nil && refundAmount > 0 {
-		// Release hold
 		releaseReq := walletdto.ReleaseHoldRequest{HoldID: *order.WalletHoldID}
 		if err := s.walletService.ReleaseHold(ctx, order.CustomerID, releaseReq); err != nil {
 			logger.Error("failed to release wallet hold", "error", err, "holdID", *order.WalletHoldID)
-			// Continue with cancellation
 		}
 
-		// Debit cancellation fee if applicable
 		if cancellationFee > 0 {
 			metadata := map[string]interface{}{
 				"order_id":     order.ID,
@@ -877,12 +753,10 @@ func (s *service) CancelOrder(ctx context.Context, orderID string, req dto.Admin
 				metadata,
 			); err != nil {
 				logger.Error("failed to debit cancellation fee", "error", err, "orderID", orderID)
-				// Continue with cancellation
 			}
 		}
 	}
 
-	// Update order
 	now := time.Now()
 	order.Status = shared.OrderStatusCancelled
 	order.CancellationInfo = &models.CancellationInfo{
@@ -906,7 +780,6 @@ func (s *service) CancelOrder(ctx context.Context, orderID string, req dto.Admin
 		return nil, response.InternalServerError("Failed to cancel order", err)
 	}
 
-	// Create status history
 	history := models.NewOrderStatusHistory(
 		order.ID,
 		previousStatus,
@@ -929,20 +802,14 @@ func (s *service) CancelOrder(ctx context.Context, orderID string, req dto.Admin
 		"refundAmount", refundAmount,
 	)
 
-	// TODO: Send notifications if req.NotifyParties is true
-
 	return s.GetOrderByID(ctx, orderID)
 }
 
-// ==================== Bulk Operations ====================
-
 func (s *service) BulkUpdateStatus(ctx context.Context, req dto.BulkUpdateStatusRequest, adminID string) (int64, error) {
-	// Validate
 	if err := req.Validate(); err != nil {
 		return 0, response.BadRequest(err.Error())
 	}
 
-	// Perform bulk update
 	affected, err := s.repo.BulkUpdateStatus(ctx, req.OrderIDs, req.Status, adminID, req.Reason)
 	if err != nil {
 		logger.Error("failed to bulk update orders", "error", err)
@@ -959,49 +826,40 @@ func (s *service) BulkUpdateStatus(ctx context.Context, req dto.BulkUpdateStatus
 	return affected, nil
 }
 
-// ==================== Analytics ====================
-
 func (s *service) GetOverviewAnalytics(ctx context.Context, query dto.AnalyticsQuery) (*dto.OverviewAnalyticsResponse, error) {
-	// Validate
 	if err := query.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
 	query.SetDefaults()
 
-	// Parse dates
 	fromDate, _ := time.Parse("2006-01-02", query.FromDate)
 	toDate, _ := time.Parse("2006-01-02", query.ToDate)
 
-	// Get order stats
 	stats, err := s.repo.GetOrderStats(ctx, fromDate, toDate)
 	if err != nil {
 		logger.Error("failed to get order stats", "error", err)
 		return nil, response.InternalServerError("Failed to get analytics", err)
 	}
 
-	// Get orders by status
 	statusStats, err := s.repo.GetOrdersByStatus(ctx, fromDate, toDate)
 	if err != nil {
 		logger.Error("failed to get status stats", "error", err)
 		return nil, response.InternalServerError("Failed to get analytics", err)
 	}
 
-	// Get orders by category
 	categoryStats, err := s.repo.GetOrdersByCategory(ctx, fromDate, toDate)
 	if err != nil {
 		logger.Error("failed to get category stats", "error", err)
 		return nil, response.InternalServerError("Failed to get analytics", err)
 	}
 
-	// Get revenue breakdown
 	revenueBreakdown, err := s.repo.GetRevenueBreakdown(ctx, fromDate, toDate, query.GroupBy)
 	if err != nil {
 		logger.Error("failed to get revenue breakdown", "error", err)
 		return nil, response.InternalServerError("Failed to get analytics", err)
 	}
 
-	// Calculate metrics
 	var completionRate, cancellationRate, averageRating, averageOrderValue float64
 
 	if stats.TotalOrders > 0 {
@@ -1017,7 +875,6 @@ func (s *service) GetOverviewAnalytics(ctx context.Context, query dto.AnalyticsQ
 		averageOrderValue = stats.TotalRevenue / float64(stats.CompletedOrders)
 	}
 
-	// Build response
 	response := &dto.OverviewAnalyticsResponse{
 		Period: dto.AnalyticsPeriod{
 			FromDate: query.FromDate,
@@ -1039,7 +896,6 @@ func (s *service) GetOverviewAnalytics(ctx context.Context, query dto.AnalyticsQ
 		},
 	}
 
-	// Build status counts
 	for _, ss := range statusStats {
 		percentage := 0.0
 		if stats.TotalOrders > 0 {
@@ -1053,7 +909,6 @@ func (s *service) GetOverviewAnalytics(ctx context.Context, query dto.AnalyticsQ
 		})
 	}
 
-	// Build category counts
 	for _, cs := range categoryStats {
 		percentage := 0.0
 		if stats.TotalRevenue > 0 {
@@ -1068,7 +923,6 @@ func (s *service) GetOverviewAnalytics(ctx context.Context, query dto.AnalyticsQ
 		})
 	}
 
-	// Build revenue breakdown
 	for _, rb := range revenueBreakdown {
 		avgValue := 0.0
 		if rb.OrderCount > 0 {
@@ -1084,7 +938,6 @@ func (s *service) GetOverviewAnalytics(ctx context.Context, query dto.AnalyticsQ
 		})
 	}
 
-	// Calculate trends (compare with previous period)
 	periodDuration := toDate.Sub(fromDate)
 	previousFromDate := fromDate.Add(-periodDuration)
 	previousToDate := fromDate.AddDate(0, 0, -1)
@@ -1100,19 +953,16 @@ func (s *service) GetOverviewAnalytics(ctx context.Context, query dto.AnalyticsQ
 func (s *service) calculateTrends(current, previous *OrderStats) dto.AnalyticsTrends {
 	trends := dto.AnalyticsTrends{}
 
-	// Orders trend
 	trends.OrdersChange = s.calculateTrendChange(
 		float64(current.CompletedOrders),
 		float64(previous.CompletedOrders),
 	)
 
-	// Revenue trend
 	trends.RevenueChange = s.calculateTrendChange(
 		current.TotalRevenue,
 		previous.TotalRevenue,
 	)
 
-	// Completion rate trend
 	var currentRate, previousRate float64
 	if current.TotalOrders > 0 {
 		currentRate = float64(current.CompletedOrders) / float64(current.TotalOrders) * 100
@@ -1149,7 +999,6 @@ func (s *service) calculateTrendChange(current, previous float64) dto.TrendChang
 }
 
 func (s *service) GetProviderAnalytics(ctx context.Context, query dto.ProviderAnalyticsQuery) (*dto.ProviderAnalyticsResponse, error) {
-	// Parse dates
 	fromDate, err := time.Parse("2006-01-02", query.FromDate)
 	if err != nil {
 		return nil, response.BadRequest("Invalid fromDate format")
@@ -1161,14 +1010,12 @@ func (s *service) GetProviderAnalytics(ctx context.Context, query dto.ProviderAn
 
 	query.SetDefaults()
 
-	// Get provider stats
 	stats, err := s.repo.GetProviderAnalytics(ctx, fromDate, toDate, query)
 	if err != nil {
 		logger.Error("failed to get provider analytics", "error", err)
 		return nil, response.InternalServerError("Failed to get analytics", err)
 	}
 
-	// Build response
 	providers := make([]dto.ProviderAnalyticsItem, len(stats))
 	for i, ps := range stats {
 		var avgRating float64
@@ -1181,10 +1028,21 @@ func (s *service) GetProviderAnalytics(ctx context.Context, query dto.ProviderAn
 		if totalOrders > 0 {
 			completionRate = float64(ps.CompletedOrders) / float64(totalOrders) * 100
 		}
+		providerName := "Provider"
+		providerPhoto := ""
+		if provider, err := s.repo.GetUserByID(ctx, ps.ProviderID); err == nil && provider != nil {
+			providerName = provider.Name
+			if provider.ProfilePhotoURL != nil {
+				providerPhoto = *provider.ProfilePhotoURL
+			}
+		} else {
+			logger.Warn("failed to fetch provider details for analytics", "error", err, "providerID", ps.ProviderID)
+		}
 
 		providers[i] = dto.ProviderAnalyticsItem{
 			ProviderID:      ps.ProviderID,
-			ProviderName:    "Provider", // TODO: Load from users table
+			ProviderName:    providerName,
+			Photo:           providerPhoto,
 			CompletedOrders: int(ps.CompletedOrders),
 			CancelledOrders: int(ps.CancelledOrders),
 			TotalEarnings:   ps.TotalEarnings,
@@ -1205,46 +1063,45 @@ func (s *service) GetProviderAnalytics(ctx context.Context, query dto.ProviderAn
 }
 
 func (s *service) GetRevenueReport(ctx context.Context, query dto.AnalyticsQuery) (*dto.RevenueReportResponse, error) {
-	// Validate
 	if err := query.Validate(); err != nil {
 		return nil, response.BadRequest(err.Error())
 	}
 
 	query.SetDefaults()
 
-	// Parse dates
 	fromDate, _ := time.Parse("2006-01-02", query.FromDate)
 	toDate, _ := time.Parse("2006-01-02", query.ToDate)
 
-	// Get order stats
 	stats, err := s.repo.GetOrderStats(ctx, fromDate, toDate)
 	if err != nil {
 		logger.Error("failed to get order stats", "error", err)
 		return nil, response.InternalServerError("Failed to get revenue report", err)
 	}
 
-	// Get revenue breakdown
 	revenueBreakdown, err := s.repo.GetRevenueBreakdown(ctx, fromDate, toDate, query.GroupBy)
 	if err != nil {
 		logger.Error("failed to get revenue breakdown", "error", err)
 		return nil, response.InternalServerError("Failed to get revenue report", err)
 	}
 
-	// Get category breakdown
 	categoryStats, err := s.repo.GetOrdersByCategory(ctx, fromDate, toDate)
 	if err != nil {
 		logger.Error("failed to get category stats", "error", err)
 		return nil, response.InternalServerError("Failed to get revenue report", err)
 	}
 
-	// Get payment method stats
 	paymentStats, err := s.repo.GetPaymentMethodStats(ctx, fromDate, toDate)
 	if err != nil {
 		logger.Error("failed to get payment stats", "error", err)
 		return nil, response.InternalServerError("Failed to get revenue report", err)
 	}
 
-	// Build response
+	totalRefunds, err := s.repo.GetTotalRefunds(ctx, fromDate, toDate)
+	if err != nil {
+		logger.Error("failed to get total refunds", "error", err)
+		totalRefunds = 0
+	}
+
 	response := &dto.RevenueReportResponse{
 		Period: dto.AnalyticsPeriod{
 			FromDate: query.FromDate,
@@ -1254,12 +1111,11 @@ func (s *service) GetRevenueReport(ctx context.Context, query dto.AnalyticsQuery
 		TotalRevenue:     stats.TotalRevenue,
 		TotalCommission:  stats.TotalCommission,
 		TotalPayouts:     stats.TotalProviderPayouts,
-		TotalRefunds:     0, // TODO: Track refunds separately
-		NetRevenue:       stats.TotalCommission,
+		TotalRefunds:     totalRefunds,
+		NetRevenue:       stats.TotalCommission - totalRefunds,
 		FormattedRevenue: dto.FormatPrice(stats.TotalRevenue),
 	}
 
-	// Build breakdown
 	for _, rb := range revenueBreakdown {
 		avgValue := 0.0
 		if rb.OrderCount > 0 {
@@ -1275,7 +1131,6 @@ func (s *service) GetRevenueReport(ctx context.Context, query dto.AnalyticsQuery
 		})
 	}
 
-	// Build category revenue
 	for _, cs := range categoryStats {
 		percentage := 0.0
 		if stats.TotalRevenue > 0 {
@@ -1292,7 +1147,6 @@ func (s *service) GetRevenueReport(ctx context.Context, query dto.AnalyticsQuery
 		})
 	}
 
-	// Build payment method stats
 	for _, ps := range paymentStats {
 		percentage := 0.0
 		if stats.TotalRevenue > 0 {
@@ -1309,38 +1163,31 @@ func (s *service) GetRevenueReport(ctx context.Context, query dto.AnalyticsQuery
 	return response, nil
 }
 
-// ==================== Dashboard ====================
-
 func (s *service) GetDashboard(ctx context.Context) (*dto.DashboardResponse, error) {
-	// Get today's stats
 	todayData, err := s.repo.GetTodayStats(ctx)
 	if err != nil {
 		logger.Error("failed to get today stats", "error", err)
 		return nil, response.InternalServerError("Failed to get dashboard", err)
 	}
 
-	// Get weekly stats
 	weeklyData, err := s.repo.GetWeeklyStats(ctx)
 	if err != nil {
 		logger.Error("failed to get weekly stats", "error", err)
 		return nil, response.InternalServerError("Failed to get dashboard", err)
 	}
 
-	// Get pending actions
 	pendingData, err := s.repo.GetPendingActions(ctx)
 	if err != nil {
 		logger.Error("failed to get pending actions", "error", err)
 		return nil, response.InternalServerError("Failed to get dashboard", err)
 	}
 
-	// Get recent orders
 	recentOrders, err := s.repo.GetRecentOrders(ctx, 10)
 	if err != nil {
 		logger.Error("failed to get recent orders", "error", err)
 		return nil, response.InternalServerError("Failed to get dashboard", err)
 	}
 
-	// Build response
 	dashboard := &dto.DashboardResponse{
 		Today: dto.TodayStats{
 			TotalOrders:      int(todayData.TotalOrders),
@@ -1357,7 +1204,6 @@ func (s *service) GetDashboard(ctx context.Context) (*dto.DashboardResponse, err
 		},
 	}
 
-	// Build weekly stats
 	var avgRating float64
 	if weeklyData.TotalRatings > 0 {
 		avgRating = float64(weeklyData.TotalRatingSum) / float64(weeklyData.TotalRatings)
@@ -1370,7 +1216,6 @@ func (s *service) GetDashboard(ctx context.Context) (*dto.DashboardResponse, err
 		AverageRating:   avgRating,
 	}
 
-	// Build daily breakdown
 	for _, ds := range weeklyData.DailyStats {
 		date, _ := time.Parse("2006-01-02", ds.Date)
 		dashboard.WeeklyStats.DailyBreakdown = append(dashboard.WeeklyStats.DailyBreakdown, dto.DailyStats{

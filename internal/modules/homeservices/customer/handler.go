@@ -13,12 +13,9 @@ type Handler struct {
 	service Service
 }
 
-// NewHandler creates a new customer handler instance
 func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
-
-// ==================== Category Handlers ====================
 
 // GetAllCategories godoc
 // @Summary Get all service categories
@@ -59,8 +56,6 @@ func (h *Handler) GetCategoryDetail(c *gin.Context) {
 
 	response.Success(c, details, "Category details retrieved successfully")
 }
-
-// ==================== Service Handlers ====================
 
 // ListServices godoc
 // @Summary List services
@@ -144,8 +139,6 @@ func (h *Handler) GetFrequentServices(c *gin.Context) {
 	response.Success(c, services, "Frequent services retrieved successfully")
 }
 
-// ==================== Addon Handlers ====================
-
 // ListAddons godoc
 // @Summary List addons
 // @Description Get paginated list of available addons with filters
@@ -228,8 +221,6 @@ func (h *Handler) GetDiscountedAddons(c *gin.Context) {
 	response.Success(c, addons, "Discounted addons retrieved successfully")
 }
 
-// ==================== Search Handler ====================
-
 // Search godoc
 // @Summary Search services and addons
 // @Description Search across services and addons by keyword
@@ -279,7 +270,6 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Get customer ID from context (set by auth middleware)
 	customerID, exists := c.Get("userID")
 	if !exists {
 		c.Error(response.UnauthorizedError("User not authenticated"))
@@ -350,7 +340,6 @@ func (h *Handler) ListOrders(c *gin.Context) {
 		return
 	}
 
-	// Default to descending for orders
 	if c.Query("sortDesc") == "" {
 		query.SortDesc = true
 	}

@@ -108,7 +108,6 @@ func LoadConfig() (*Config, error) {
 	cfg.JWT.RefreshExpiry = v.GetDuration("JWT_REFRESH_EXPIRY")
 	cfg.JWT.Issuer = v.GetString("JWT_ISSUER")
 
-	// Set default JWT expiry times if not provided
 	if cfg.JWT.AccessExpiry == 0 {
 		cfg.JWT.AccessExpiry = 24 * time.Hour
 	}
@@ -116,7 +115,6 @@ func LoadConfig() (*Config, error) {
 		cfg.JWT.RefreshExpiry = 7 * 24 * time.Hour
 	}
 
-	// Load Upload configuration
 	cfg.Upload.Provider = v.GetString("UPLOAD_PROVIDER")
 	cfg.Upload.MaxSize = int64(v.GetInt("UPLOAD_MAX_SIZE"))
 	cfg.Upload.S3.Bucket = v.GetString("S3_BUCKET")
@@ -124,7 +122,6 @@ func LoadConfig() (*Config, error) {
 	cfg.Upload.S3.AccessKey = v.GetString("S3_ACCESS_KEY")
 	cfg.Upload.S3.SecretKey = v.GetString("S3_SECRET_KEY")
 
-	// Load ImageKit configuration
 	cfg.Upload.ImageKit.PublicKey = v.GetString("IMAGEKIT_PUBLIC_KEY")
 	cfg.Upload.ImageKit.PrivateKey = v.GetString("IMAGEKIT_PRIVATE_KEY")
 	cfg.Upload.ImageKit.URLEndpoint = v.GetString("IMAGEKIT_URL_ENDPOINT")
@@ -138,7 +135,6 @@ func LoadConfig() (*Config, error) {
 	cfg.Logger.Output = v.GetString("LOG_OUTPUT")
 	cfg.Logger.FilePath = v.GetString("LOG_FILE_PATH")
 
-	// Load Kafka configuration
 	brokerStr := v.GetString("KAFKA_BROKERS")
 	if brokerStr != "" {
 		cfg.Kafka.Brokers = strings.Split(brokerStr, ",")
@@ -194,10 +190,8 @@ func LoadConfig() (*Config, error) {
 		cfg.Kafka.Consumer.CommitInterval = 1 * time.Second
 	}
 
-	// Load WebSocket config with defaults
 	cfg.WebSocket = DefaultWebSocketConfig()
 
-	// Override with environment variables if provided
 	if readBufSize := v.GetInt("WEBSOCKET_READ_BUFFER_SIZE"); readBufSize > 0 {
 		cfg.WebSocket.ReadBufferSize = readBufSize
 	}
@@ -248,7 +242,6 @@ func (c *Config) Validate() error {
 	if c.JWT.Secret == "" {
 		return fmt.Errorf("JWT_SECRET is required")
 	}
-	// HS256 requires at least 32 bytes (256 bits) for strong security
 	if len(c.JWT.Secret) < 32 {
 		return fmt.Errorf("JWT_SECRET must be at least 32 characters long for HS256 security")
 	}

@@ -1,4 +1,3 @@
-// internal/modules/pricing/dto/response.go
 package dto
 
 import "time"

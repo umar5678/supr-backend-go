@@ -8,7 +8,6 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// PushService interface for push notifications (device agnostic)
 type PushService interface {
 	SendPush(ctx context.Context, userID uuid.UUID, title, body string, data map[string]interface{}) error
 	RegisterToken(ctx context.Context, userID uuid.UUID, token, deviceID, deviceOS string) error
@@ -19,7 +18,6 @@ type PushService interface {
 	UnsubscribeFromUser(userID uuid.UUID, subscriberID string) error
 }
 
-// SendSecurityAlert sends a security alert push notification
 func SendSecurityAlert(ctx context.Context, svc PushService, userID uuid.UUID, patternID string, riskScore float64) error {
 	data := map[string]interface{}{
 		"type":       "security_alert",
@@ -40,7 +38,6 @@ func SendSecurityAlert(ctx context.Context, svc PushService, userID uuid.UUID, p
 	return nil
 }
 
-// SendRideCompleteNotification sends a ride completion push notification
 func SendRideCompleteNotification(ctx context.Context, svc PushService, userID uuid.UUID, rideID string, finalFare float64) error {
 	data := map[string]interface{}{
 		"type":    "ride_complete",
@@ -58,7 +55,6 @@ func SendRideCompleteNotification(ctx context.Context, svc PushService, userID u
 	return nil
 }
 
-// SendRideAcceptedNotification sends a ride accepted push notification
 func SendRideAcceptedNotification(ctx context.Context, svc PushService, userID uuid.UUID, rideID, driverName string, eta int) error {
 	data := map[string]interface{}{
 		"type":        "ride_accepted",
@@ -77,7 +73,6 @@ func SendRideAcceptedNotification(ctx context.Context, svc PushService, userID u
 	return nil
 }
 
-// SendPaymentNotification sends a payment notification
 func SendPaymentNotification(ctx context.Context, svc PushService, userID uuid.UUID, amount float64, status string) error {
 	title := "Payment Processed"
 	if status == "failed" {

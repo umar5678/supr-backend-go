@@ -15,13 +15,12 @@ import (
 	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
-// PushToken represents a device push token
 type PushToken struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	UserID    uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
 	Token     string    `gorm:"type:varchar(500);uniqueIndex" json:"token"`
 	DeviceID  string    `gorm:"type:varchar(255)" json:"device_id"`
-	DeviceOS  string    `gorm:"type:varchar(50)" json:"device_os"` // ios, android, web
+	DeviceOS  string    `gorm:"type:varchar(50)" json:"device_os"` 
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
@@ -30,18 +29,14 @@ func (PushToken) TableName() string {
 	return "push_tokens"
 }
 
-// LocalPushService implements push notifications locally without external services
 type LocalPushService struct {
 	db        *gorm.DB
 	notifRepo repository.NotificationRepository
 	mu        sync.RWMutex
-	// In-memory push queue for real-time delivery
 	pushQueue map[uuid.UUID][]PushMessage
-	// Connected WebSocket clients for real-time delivery
 	subscribers map[uuid.UUID][]PushSubscriber
 }
 
-// PushMessage represents a message to be pushed
 type PushMessage struct {
 	ID        uuid.UUID              `json:"id"`
 	UserID    uuid.UUID              `json:"user_id"`
@@ -52,7 +47,6 @@ type PushMessage struct {
 	Read      bool                   `json:"read"`
 }
 
-// PushSubscriber represents a WebSocket subscriber
 type PushSubscriber struct {
 	ID   string
 	Chan chan PushMessage
@@ -67,7 +61,6 @@ func NewLocalPushService(db *gorm.DB, notifRepo repository.NotificationRepositor
 	}
 }
 
-// RegisterToken registers or updates a push token for a user
 func (s *LocalPushService) RegisterToken(ctx context.Context, userID uuid.UUID, token, deviceID, deviceOS string) error {
 	token_record := &PushToken{
 		UserID:   userID,
@@ -76,7 +69,6 @@ func (s *LocalPushService) RegisterToken(ctx context.Context, userID uuid.UUID, 
 		DeviceOS: deviceOS,
 	}
 
-	// Upsert: update if exists, create if not
 	result := s.db.WithContext(ctx).
 		Where("token = ?", token).
 		Assign(token_record).
@@ -91,7 +83,6 @@ func (s *LocalPushService) RegisterToken(ctx context.Context, userID uuid.UUID, 
 	return nil
 }
 
-// UnregisterToken removes a push token
 func (s *LocalPushService) UnregisterToken(ctx context.Context, token string) error {
 	if err := s.db.WithContext(ctx).Where("token = ?", token).Delete(&PushToken{}).Error; err != nil {
 		logger.Error("failed to unregister push token", "error", err)
@@ -100,7 +91,6 @@ func (s *LocalPushService) UnregisterToken(ctx context.Context, token string) er
 	return nil
 }
 
-// SendPush sends a push notification to a user
 func (s *LocalPushService) SendPush(ctx context.Context, userID uuid.UUID, title, body string, data map[string]interface{}) error {
 	message := PushMessage{
 		ID:        uuid.New(),
@@ -112,12 +102,10 @@ func (s *LocalPushService) SendPush(ctx context.Context, userID uuid.UUID, title
 		Read:      false,
 	}
 
-	// Queue message in memory
 	s.mu.Lock()
 	s.pushQueue[userID] = append(s.pushQueue[userID], message)
 	s.mu.Unlock()
 
-	// Store in database for persistence
 	dataBytes, _ := json.Marshal(data)
 	notification := &models.Notification{
 		UserID:   userID,
@@ -135,14 +123,12 @@ func (s *LocalPushService) SendPush(ctx context.Context, userID uuid.UUID, title
 	}
 	logger.Info("notification successfully persisted to database", "userID", userID, "title", title, "notificationID", notification.ID)
 
-	// Broadcast to real-time subscribers
 	s.BroadcastToUser(userID, message)
 
 	logger.Info("push notification sent (both persisted and broadcasted)", "userID", userID, "title", title)
 	return nil
 }
 
-// GetPendingMessages retrieves pending push messages for a user
 func (s *LocalPushService) GetPendingMessages(ctx context.Context, userID uuid.UUID) ([]PushMessage, error) {
 	s.mu.RLock()
 	messages, exists := s.pushQueue[userID]
@@ -152,7 +138,6 @@ func (s *LocalPushService) GetPendingMessages(ctx context.Context, userID uuid.U
 		return []PushMessage{}, nil
 	}
 
-	// Filter unread messages
 	var unread []PushMessage
 	for _, msg := range messages {
 		if !msg.Read {
@@ -163,7 +148,6 @@ func (s *LocalPushService) GetPendingMessages(ctx context.Context, userID uuid.U
 	return unread, nil
 }
 
-// MarkMessageAsRead marks a push message as read
 func (s *LocalPushService) MarkMessageAsRead(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -183,7 +167,6 @@ func (s *LocalPushService) MarkMessageAsRead(ctx context.Context, userID uuid.UU
 	return nil
 }
 
-// ClearOldMessages clears messages older than retention period
 func (s *LocalPushService) ClearOldMessages(ctx context.Context, retentionHours int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -204,7 +187,6 @@ func (s *LocalPushService) ClearOldMessages(ctx context.Context, retentionHours 
 	return nil
 }
 
-// SubscribeToUser subscribes a WebSocket connection to user push notifications
 func (s *LocalPushService) SubscribeToUser(userID uuid.UUID, subscriberID string, msgChan chan PushMessage) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -220,7 +202,6 @@ func (s *LocalPushService) SubscribeToUser(userID uuid.UUID, subscriberID string
 	return nil
 }
 
-// UnsubscribeFromUser removes a WebSocket subscriber
 func (s *LocalPushService) UnsubscribeFromUser(userID uuid.UUID, subscriberID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -230,7 +211,6 @@ func (s *LocalPushService) UnsubscribeFromUser(userID uuid.UUID, subscriberID st
 		return nil
 	}
 
-	// Remove subscriber
 	var retained []PushSubscriber
 	for _, sub := range subscribers {
 		if sub.ID != subscriberID {
@@ -248,7 +228,6 @@ func (s *LocalPushService) UnsubscribeFromUser(userID uuid.UUID, subscriberID st
 	return nil
 }
 
-// BroadcastToUser broadcasts a message to all subscribers of a user
 func (s *LocalPushService) BroadcastToUser(userID uuid.UUID, message PushMessage) {
 	s.mu.RLock()
 	subscribers, exists := s.subscribers[userID]
@@ -258,7 +237,6 @@ func (s *LocalPushService) BroadcastToUser(userID uuid.UUID, message PushMessage
 		return
 	}
 
-	// Send to all subscribers non-blocking
 	for _, subscriber := range subscribers {
 		select {
 		case subscriber.Chan <- message:
@@ -268,7 +246,6 @@ func (s *LocalPushService) BroadcastToUser(userID uuid.UUID, message PushMessage
 	}
 }
 
-// GetUserTokens retrieves all push tokens for a user
 func (s *LocalPushService) GetUserTokens(ctx context.Context, userID uuid.UUID) ([]PushToken, error) {
 	var tokens []PushToken
 	if err := s.db.WithContext(ctx).Where("user_id = ?", userID).Find(&tokens).Error; err != nil {
@@ -277,7 +254,6 @@ func (s *LocalPushService) GetUserTokens(ctx context.Context, userID uuid.UUID) 
 	return tokens, nil
 }
 
-// Stats returns push service statistics
 func (s *LocalPushService) Stats() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
