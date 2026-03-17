@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/umar5678/go-backend/internal/models"
+	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
 type NotificationRepository interface {
@@ -51,14 +52,26 @@ func (r *notificationRepository) GetByUserID(ctx context.Context, userID uuid.UU
 
 	query := r.db.WithContext(ctx).Model(&models.Notification{}).Where("user_id = ?", userID)
 
+	logger.Info("GetByUserID querying database", "userID", userID.String(), "limit", limit, "offset", offset)
+	
 	if err := query.Count(&total).Error; err != nil {
+		logger.Error("GetByUserID count query failed", "error", err, "userID", userID.String())
 		return nil, 0, err
 	}
+
+	logger.Info("GetByUserID count result", "userID", userID.String(), "total", total)
 
 	err := query.Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).
 		Find(&notifications).Error
+
+	if err != nil {
+		logger.Error("GetByUserID find query failed", "error", err, "userID", userID.String())
+		return nil, 0, err
+	}
+
+	logger.Info("GetByUserID find result", "userID", userID.String(), "count", len(notifications))
 
 	return notifications, total, err
 }

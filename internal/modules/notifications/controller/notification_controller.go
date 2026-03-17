@@ -103,13 +103,16 @@ func (c *NotificationController) GetNotifications(ctx *gin.Context) {
 		return
 	}
 
+	logger.Info("GetNotifications called", "userID", userID.String(), "page", req.Page, "pageSize", req.PageSize)
+	
 	result, err := c.notifService.GetUserNotifications(ctx.Request.Context(), userID, &req)
 	if err != nil {
-		logger.Error("failed to get notifications", "error", err)
+		logger.Error("failed to get notifications", "error", err, "userID", userID.String())
 		response.InternalError(ctx, "Failed to get notifications")
 		return
 	}
 
+	logger.Info("GetNotifications success", "userID", userID.String(), "count", len(result.Notifications), "total", result.Total)
 	response.Success(ctx, result, "Notifications retrieved successfully")
 }
 

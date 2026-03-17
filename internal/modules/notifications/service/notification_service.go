@@ -8,6 +8,7 @@ import (
 
 	"github.com/umar5678/go-backend/internal/modules/notifications/dto"
 	"github.com/umar5678/go-backend/internal/modules/notifications/repository"
+	"github.com/umar5678/go-backend/internal/utils/logger"
 )
 
 type NotificationService interface {
@@ -36,10 +37,15 @@ func (s *notificationService) GetUserNotifications(ctx context.Context, userID u
 
 	offset := (req.Page - 1) * req.PageSize
 
+	logger.Info("GetUserNotifications querying database", "userID", userID.String(), "page", req.Page, "pageSize", req.PageSize, "offset", offset)
+	
 	notifications, total, err := s.repo.GetByUserID(ctx, userID, req.PageSize, offset)
 	if err != nil {
+		logger.Error("GetUserNotifications database query failed", "error", err, "userID", userID.String())
 		return nil, fmt.Errorf("failed to get notifications: %w", err)
 	}
+
+	logger.Info("GetUserNotifications database query success", "userID", userID.String(), "count", len(notifications), "total", total)
 
 	notificationDTOs := make([]*dto.NotificationDTO, len(notifications))
 	for i, n := range notifications {

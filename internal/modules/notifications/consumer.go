@@ -165,8 +165,8 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 
 	eventType := EventType(eventTypeStr)
 
-	if c.isProcessed(ctx, eventID) {
-		fmt.Printf("Event %s already processed, skipping\n", eventID)
+	if !c.tryClaimEvent(ctx, eventID) {
+		fmt.Printf("Event %s already claimed by another goroutine, skipping\n", eventID)
 		return nil
 	}
 
@@ -192,11 +192,6 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 		return nil
 	}
 
-	if !c.tryClaimEvent(ctx, eventID) {
-		fmt.Printf("Event %s already claimed by another goroutine, skipping\n", eventID)
-		return nil
-	}
-
 	var lastErr error
 	for attempt := 0; attempt <= c.config.MaxRetries; attempt++ {
 		if attempt > 0 {
@@ -219,16 +214,6 @@ func (c *KafkaConsumer) processMessage(ctx context.Context, msg kafka.Message) e
 	}
 
 	return lastErr
-}
-
-func (c *KafkaConsumer) isProcessed(ctx context.Context, eventID uuid.UUID) bool {
-	var count int64
-	err := c.db.WithContext(ctx).
-		Model(&models.ProcessedEvent{}).
-		Where("event_id = ? AND consumer_group = ?", eventID, c.config.GroupID).
-		Count(&count).Error
-
-	return err == nil && count > 0
 }
 
 func (c *KafkaConsumer) tryClaimEvent(ctx context.Context, eventID uuid.UUID) bool {
