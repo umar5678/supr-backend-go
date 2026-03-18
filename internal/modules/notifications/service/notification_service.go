@@ -38,7 +38,7 @@ func (s *notificationService) GetUserNotifications(ctx context.Context, userID u
 	offset := (req.Page - 1) * req.PageSize
 
 	logger.Info("GetUserNotifications querying database", "userID", userID.String(), "page", req.Page, "pageSize", req.PageSize, "offset", offset)
-	
+
 	notifications, total, err := s.repo.GetByUserID(ctx, userID, req.PageSize, offset)
 	if err != nil {
 		logger.Error("GetUserNotifications database query failed", "error", err, "userID", userID.String())

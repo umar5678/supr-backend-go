@@ -53,7 +53,7 @@ func (r *notificationRepository) GetByUserID(ctx context.Context, userID uuid.UU
 	query := r.db.WithContext(ctx).Model(&models.Notification{}).Where("user_id = ?", userID)
 
 	logger.Info("GetByUserID querying database", "userID", userID.String(), "limit", limit, "offset", offset)
-	
+
 	if err := query.Count(&total).Error; err != nil {
 		logger.Error("GetByUserID count query failed", "error", err, "userID", userID.String())
 		return nil, 0, err

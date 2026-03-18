@@ -25,7 +25,7 @@ func NewRideEventHandler(pushService notificationservice.PushService, db *gorm.D
 }
 
 func (h *RideEventHandler) EventType() EventType {
-	return EventRideRequested 
+	return EventRideRequested
 }
 
 func (h *RideEventHandler) CanHandle(eventType EventType) bool {
@@ -182,7 +182,7 @@ func NewPaymentEventHandler(pushService notificationservice.PushService) *Paymen
 }
 
 func (h *PaymentEventHandler) EventType() EventType {
-	return EventPaymentProcessed 
+	return EventPaymentProcessed
 }
 
 func (h *PaymentEventHandler) CanHandle(eventType EventType) bool {
@@ -349,7 +349,7 @@ func NewFraudEventHandler(pushService notificationservice.PushService) *FraudEve
 }
 
 func (h *FraudEventHandler) EventType() EventType {
-	return EventFraudPatternDetected 
+	return EventFraudPatternDetected
 }
 
 func (h *FraudEventHandler) CanHandle(eventType EventType) bool {
@@ -426,7 +426,7 @@ func NewUserEventHandler(pushService notificationservice.PushService) *UserEvent
 }
 
 func (h *UserEventHandler) EventType() EventType {
-	return EventUserRegistered 
+	return EventUserRegistered
 }
 
 func (h *UserEventHandler) CanHandle(eventType EventType) bool {

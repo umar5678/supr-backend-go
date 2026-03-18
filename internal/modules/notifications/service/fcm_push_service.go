@@ -208,11 +208,18 @@ func (s *FCMPushService) sendViaFCM(
 	if err := s.db.WithContext(ctx).
 		Where("user_id = ?", userID).
 		Find(&tokens).Error; err != nil {
+		logger.Error("failed to fetch FCM tokens",
+			"error", err, "userID", userID,
+		)
 		return fmt.Errorf("failed to fetch tokens: %w", err)
 	}
 
+	logger.Info("fetched FCM tokens for user",
+		"userID", userID, "tokenCount", len(tokens),
+	)
+
 	if len(tokens) == 0 {
-		logger.Debug("no push tokens registered for user",
+		logger.Warn("no push tokens registered for user, FCM skipped",
 			"userID", userID,
 		)
 		return nil // Not an error — user just hasn't registered
@@ -270,6 +277,10 @@ func (s *FCMPushService) sendViaFCM(
 
 	batchResp, err := s.fcmClient.SendEachForMulticast(ctx, msg)
 	if err != nil {
+		logger.Error("FCM multicast send failed",
+			"error", err, "userID", userID,
+			"deviceCount", len(registrationTokens),
+		)
 		return fmt.Errorf("FCM multicast send failed: %w", err)
 	}
 
@@ -282,6 +293,7 @@ func (s *FCMPushService) sendViaFCM(
 		"userID", userID,
 		"success", batchResp.SuccessCount,
 		"failure", batchResp.FailureCount,
+		"tokenCount", len(registrationTokens),
 	)
 
 	return nil

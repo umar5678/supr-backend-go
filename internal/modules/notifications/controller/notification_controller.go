@@ -18,7 +18,7 @@ import (
 type RegisterPushTokenRequest struct {
 	Token    string `json:"token" binding:"required"`
 	DeviceID string `json:"device_id" binding:"required"`
-	DeviceOS string `json:"device_os" binding:"required"` 
+	DeviceOS string `json:"device_os" binding:"required"`
 }
 
 type UnregisterPushTokenRequest struct {
@@ -104,7 +104,7 @@ func (c *NotificationController) GetNotifications(ctx *gin.Context) {
 	}
 
 	logger.Info("GetNotifications called", "userID", userID.String(), "page", req.Page, "pageSize", req.PageSize)
-	
+
 	result, err := c.notifService.GetUserNotifications(ctx.Request.Context(), userID, &req)
 	if err != nil {
 		logger.Error("failed to get notifications", "error", err, "userID", userID.String())

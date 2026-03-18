@@ -20,7 +20,7 @@ type PushToken struct {
 	UserID    uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
 	Token     string    `gorm:"type:varchar(500);uniqueIndex" json:"token"`
 	DeviceID  string    `gorm:"type:varchar(255)" json:"device_id"`
-	DeviceOS  string    `gorm:"type:varchar(50)" json:"device_os"` 
+	DeviceOS  string    `gorm:"type:varchar(50)" json:"device_os"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
